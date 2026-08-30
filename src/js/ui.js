@@ -930,6 +930,22 @@ const UI={
     $('#segDevice',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.mode=e.target.dataset.v;this.refreshPreview();Project.save()}});
     $('#segTheme',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.theme=e.target.dataset.v;this.refreshPreview();Project.save()}});
     $('#btnRefresh',slot).addEventListener('click',()=>{this._lastPreviewKey='';this.refreshPreview()});
+    $('#previewFrame',slot).addEventListener('load',()=>this.fitPreviewHeight($('#previewFrame',slot)));
+  },
+
+  fitPreviewHeight(frame){
+    if(!frame)return;
+    if(frame._previewRO){frame._previewRO.disconnect();frame._previewRO=null}
+    if(!window.matchMedia('(max-width:900px)').matches){frame.style.height='';return}
+    const doc=frame.contentDocument;
+    if(!doc||!doc.body)return;
+    const measure=()=>{
+      if(!window.matchMedia('(max-width:900px)').matches){frame.style.height='';return}
+      frame.style.height=Math.max(doc.documentElement.scrollHeight,doc.body.scrollHeight)+'px';
+    };
+    frame._previewRO=new ResizeObserver(measure);
+    frame._previewRO.observe(doc.body);
+    measure();
   },
 
   refreshPreview(){
@@ -940,6 +956,7 @@ const UI={
     $$('#segDevice button',pg).forEach(b=>b.classList.toggle('active',b.dataset.v===p.preview.mode));
     $$('#segTheme button',pg).forEach(b=>b.classList.toggle('active',b.dataset.v===p.preview.theme));
     frame.style.width=p.preview.mode==='mobile'?'430px':'100%';
+    this.fitPreviewHeight(frame);
     let comp;
     try{comp=Gen.build(p,{isPreview:true})}
     catch(e){
@@ -983,7 +1000,7 @@ const UI={
     box('① 开场白版','贴进 first_mes 或 alternate_greetings',comp,'开场白版');
 
     /* ② 标记 + 正则脚本版：生成可直接导入酒馆的正则 JSON */
-    const rx=document.createElement('div');rx.className='card';
+    const rx=document.createElement('div');rx.className='card export-box';
     rx.innerHTML=`<h3>② 标记 + 正则脚本版 <span class="hint">把「标记」贴进开场白/世界书，导入生成的正则脚本即可渲染</span></h3>
       <div class="row2">
         <div><label>标记文本（正则查找目标，避免与正文重复）</label><input id="markerInput" value="${esc(p.marker||'【开场页】')}"></div>
