@@ -1,0 +1,19 @@
+{
+  "name": "opening-page-generator",
+  "version": "1.5.0",
+  "private": true,
+  "description": "企鹅的酒馆开场页生成器 —— 多文件源码 + 单文件构建产物",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

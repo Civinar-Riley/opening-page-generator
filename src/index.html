@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企鹅的酒馆开场页生成器 v1.5.0</title>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="./css/tool.css">
+</head>
+<body>
+
+<div id="topbar">
+  <span class="logo">企鹅 · 酒馆开场页生成器</span>
+  <select id="projectSelect" title="切换工程"></select>
+  <button class="btn small" data-action="project-new">新建</button>
+  <button class="btn ghost small" data-action="project-dup">复制</button>
+  <button class="btn ghost small" data-action="project-tpl">存为模板</button>
+  <button class="btn ghost small" data-action="project-rename">重命名</button>
+  <button class="btn danger small" data-action="project-del">删除</button>
+  <button class="btn ghost small" data-action="project-save">💾 保存</button>
+  <span style="flex:1"></span>
+  <button class="btn ghost small" data-action="project-export">导出工程</button>
+  <button class="btn ghost small" data-action="project-import">导入工程</button>
+  <input type="file" id="importFile" accept=".json" style="display:none">
+</div>
+
+<div id="tabs">
+  <button type="button" class="tab active" data-page="pageConfig">模板配置</button>
+  <button type="button" class="tab" data-page="pagePreview">预览</button>
+  <button type="button" class="tab" data-page="pageExport">导出</button>
+  <button type="button" class="tab" data-page="pageAI">AI 助手</button>
+  <button type="button" class="tab" data-page="pageHelp">使用说明</button>
+</div>
+
+<div id="main">
+
+  <!-- ============ 模板配置 ============ -->
+  <div class="page active" id="pageConfig">
+    <div class="config-col" id="configCol"></div>
+    <div class="preview-col" id="livePreviewSlot"></div>
+  </div>
+
+  <!-- ============ 预览 ============ -->
+  <div class="page" id="pagePreview">
+    <div class="preview-col" style="flex:1;margin:0 auto;width:100%"></div>
+  </div>
+
+  <!-- ============ 导出 ============ -->
+  <div class="page" id="pageExport"><div class="config-col" id="exportCol" style="max-width:900px;margin:0 auto;width:100%"></div></div>
+
+  <!-- ============ AI ============ -->
+  <div class="page" id="pageAI"><div class="config-col" id="aiCol" style="max-width:760px;margin:0 auto;width:100%"></div></div>
+
+  <!-- ============ 说明 ============ -->
+  <div class="page" id="pageHelp"><div class="help-page" style="margin:0 auto;width:100%;overflow:auto;padding-right:8px"></div></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
+
