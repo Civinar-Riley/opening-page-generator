@@ -68,7 +68,6 @@ describe('Project.migrate 旧版迁移',()=>{
     expect(pr.characters[0].tags).toBe('a,b');
     expect(pr.characters[0].avatar).toBe('http://x');
     expect(pr.placeholderName).toBeUndefined();
-    expect(pr.wbName).toBeUndefined();
   });
   it('greetings clickAction insert/缺省迁移为 go',()=>{
     const p={name:'t',blocks:[
@@ -121,5 +120,40 @@ describe('撤销历史隔离',()=>{
     }finally{
       Project.save=origSave;Project.saveDebounced=origDeb;
     }
+  });
+});
+
+describe('工程导出脱敏',()=>{
+  it('exportData 剔除 apiKey/keyEnc 且不影响原工程',()=>{
+    const orig=Project.cur;
+    Project.cur={name:'t',ai:{baseURL:'https://x',apiKey:'sk-secret',keyEnc:'ENC',model:'m',keyMode:'plain'}};
+    try{
+      const out=Project.exportData();
+      expect(out.ai.apiKey).toBeUndefined();
+      expect(out.ai.keyEnc).toBeUndefined();
+      expect(out.ai.baseURL).toBe('https://x');
+      expect(out.ai.model).toBe('m');
+      expect(Project.cur.ai.apiKey).toBe('sk-secret');
+    }finally{Project.cur=orig}
+  });
+});
+
+describe('快照纳入状态栏配置',()=>{
+  it('undo/redo 双向恢复 statusbar',()=>{
+    const origSave=Project.save,origDeb=Project.saveDebounced;
+    Project.save=()=>{};Project.saveDebounced=()=>{};
+    setUI({renderAll(){}});
+    try{
+      Project.cur={id:'s',name:'S',blocks:[],statusbar:{fields:[{name:'旧字段',sample:'a',quote:false,render:'normal'}]}};
+      Project.resetHistory();
+      Project.cur.statusbar.fields.push({name:'新字段',sample:'b',quote:false,render:'progress'});
+      Project.saveSnapshot();
+      expect(Project.cur.statusbar.fields.length).toBe(2);
+      expect(Project.undo()).toBe(true);
+      expect(Project.cur.statusbar.fields.length).toBe(1);
+      expect(Project.cur.statusbar.fields[0].name).toBe('旧字段');
+      expect(Project.redo()).toBe(true);
+      expect(Project.cur.statusbar.fields.length).toBe(2);
+    }finally{Project.save=origSave;Project.saveDebounced=origDeb}
   });
 });

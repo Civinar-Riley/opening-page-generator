@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Macros } from '../src/js/macros.js';
 
-beforeEach(()=>{Macros.vars={}});
+beforeEach(()=>{Macros.vars={};Macros.resetCache()});
 
 describe('自定义宏与内置宏',()=>{
   it('替换自定义宏',()=>{
@@ -50,6 +50,16 @@ describe('随机宏',()=>{
   it('空选项被过滤',()=>{
     for(let i=0;i<20;i++){
       expect(['a','b']).toContain(Macros.apply('{{random::a::::b}}'));
+    }
+  });
+  it('选项内含一层花括号可正常替换',()=>{
+    for(let i=0;i<20;i++){
+      expect(['a{b}','c']).toContain(Macros.apply('{{random::a{b}::c}}'));
+    }
+  });
+  it('选项内花括号 + 双冒号分隔混用',()=>{
+    for(let i=0;i<20;i++){
+      expect(['{x}伤','{y}伤']).toContain(Macros.apply('{{random::{x}伤::{y}伤}}'));
     }
   });
 });
@@ -117,6 +127,11 @@ describe('dice / pickOne / splitArgs',()=>{
   it('dice 非法表达式返回 null',()=>{
     expect(Macros.dice('abc')).toBeNull();
   });
+  it('dice 面数上限 1000（极端表达式钳制）',()=>{
+    const r=Macros.dice('1d99999999');
+    expect(r).toBeGreaterThanOrEqual(1);
+    expect(r).toBeLessThanOrEqual(1000);
+  });
   it('splitArgs 按双冒号拆分并去除空白',()=>{
     expect(Macros.splitArgs(' a :: b ::c ')).toEqual(['a','b','c']);
   });
@@ -125,5 +140,22 @@ describe('dice / pickOne / splitArgs',()=>{
   });
   it('pickOne 逗号分隔',()=>{
     expect(['a','b','c']).toContain(Macros.pickOne('a,b,c'));
+  });
+});
+
+describe('预览随机结果缓存',()=>{
+  beforeEach(()=>{Macros.resetCache()});
+  it('缓存期内同一随机宏结果稳定（编辑时预览不闪变）',()=>{
+    const a=Macros.apply('{{random::红::蓝}}');
+    for(let i=0;i<10;i++)expect(Macros.apply('{{random::红::蓝}}')).toBe(a);
+  });
+  it('roll 同理稳定',()=>{
+    const a=Macros.apply('{{roll::2d6+3}}');
+    for(let i=0;i<10;i++)expect(Macros.apply('{{roll::2d6+3}}')).toBe(a);
+  });
+  it('resetCache 后重新抽取，结果仍在列表内',()=>{
+    Macros.apply('{{random::红::蓝}}');
+    Macros.resetCache();
+    expect(['红','蓝']).toContain(Macros.apply('{{random::红::蓝}}'));
   });
 });

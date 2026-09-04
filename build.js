@@ -6,8 +6,11 @@ let esbuild;
 try { esbuild = require('esbuild'); }
 catch (e) { console.error('缺少 esbuild，请先运行: npm install'); process.exit(1); }
 
+/* 构建脚本：src/ 多文件 → dist/ 单文件 HTML */
 function build() {
-  const html = fs.readFileSync('src/index.html', 'utf8');
+  const html0 = fs.readFileSync('src/index.html', 'utf8');
+  /* 版本号注入：src/index.html 中的 __OPG_VERSION__ 占位替换为 package.json 的 version */
+  const html = html0.replace(/__OPG_VERSION__/g, pkg.version);
   const css = fs.readFileSync('src/css/tool.css', 'utf8');
   /* watch 模式不压缩，便于断点调试；正式构建压缩 JS 与 CSS */
   const minify = !process.argv.includes('--watch');
