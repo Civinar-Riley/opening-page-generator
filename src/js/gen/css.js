@@ -396,7 +396,38 @@ ${bk} .${px}-clt{flex:1;min-width:0;opacity:.85}
         case 'gate':
           /* 固定全屏封面（z-index 仅低于灯箱）。闸门容器自身禁用入场动画：
              动画期间的 transform 会把 fixed 封面的包含块从视口错误地拉到容器上 */
-          s+=`
+          if(b.theme==='age'){
+            /* 年龄验证主题「准入审查站」：警示斜纹 + 面板卡片 + 18+ 印章徽章，全走主题令牌
+               随 6 套页面主题变色；类名独立 -gage* 前缀，与经典主题同工程共存不互扰 */
+            s+=`
+${bk} .${px}-gate{animation:none!important}
+.${px}-gageck{display:none}
+.${px}-gagecover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}33,rgba(6,7,14,0) 60%),rgba(6,7,14,.96);color:${cText};text-align:center${motion==='off'?'':`;transition:opacity .5s ease,visibility .5s ease`}}
+.${px}-gagepanel{position:relative;width:100%;max-width:400px;padding:36px 26px 26px;background:rgba(14,15,24,.92);border:1px solid rgba(255,255,255,.12);border-radius:${radius}px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.8)}
+.${px}-gagestripe{position:absolute;top:0;left:0;right:0;height:6px;background:repeating-linear-gradient(-45deg,${th.accent} 0 10px,rgba(0,0,0,0) 10px 20px);opacity:.7}
+.${px}-gagelogo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;opacity:.55;margin-bottom:18px}
+.${px}-gagedia{color:${th.accent};font-size:9px}
+.${px}-gagebadge{position:relative;width:78px;height:78px;margin:0 auto 16px;border:2px solid ${th.accent};border-radius:50%;display:flex;align-items:center;justify-content:center;color:${th.accent};font-size:26px;font-weight:800;letter-spacing:1px;transform:rotate(-8deg);box-shadow:inset 0 0 18px ${th.accent}22}
+.${px}-gagebadge::after{content:"";position:absolute;inset:-9px;border:1px dashed ${th.accent};border-radius:50%;opacity:.45}
+.${px}-gagetitle{font-size:19px;font-weight:800;letter-spacing:2px;margin-bottom:10px}
+.${px}-gagetext{font-size:13px;opacity:.7;line-height:1.8;max-width:300px;margin:0 auto 22px}
+.${px}-gagebtns{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto}
+.${px}-gagebtn{width:100%;padding:13px 18px;border-radius:${radius}px;font-size:14px;font-weight:700;cursor:pointer;user-select:none;text-align:center${motion==='off'?'':`;transition:background .2s,color .2s,border-color .2s,filter .2s,transform .1s`}}
+.${px}-gageenter{background:${th.accent};color:#0b0b12;border:1px solid ${th.accent}}
+.${px}-gageenter:hover{filter:brightness(1.12)}
+.${px}-gageleave{background:transparent;color:inherit;opacity:.7;border:1px solid rgba(255,255,255,.22)}
+.${px}-gageleave:hover{opacity:1;border-color:${th.accent};color:${th.accent}}
+.${px}-gagebtn:active{transform:scale(.98)}
+.${px}-gageck:checked ~ .${px}-gagecover{opacity:0;visibility:hidden;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.${px}-gagecover{transition:none!important}.${px}-gagebtn{transition:none!important}}
+`;
+            /* 面板错峰上浮：动画落在 fixed 封面的子元素上，不改变封面的包含块 */
+            if(motion!=='off')s+=`
+@keyframes ${px}-gagein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.${px}-gagepanel{animation:${px}-gagein .45s ease both}
+`;
+          }else{
+            s+=`
 ${bk} .${px}-gate{animation:none!important}
 .${px}-gateck{display:none}
 .${px}-gatecover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,8,14,.97);color:${th.textColor};text-align:center;padding:24px;cursor:default${motion==='off'?'':`;transition:opacity .6s ease,visibility .6s ease`}}
@@ -407,6 +438,7 @@ ${bk} .${px}-gate{animation:none!important}
 .${px}-gateck:checked ~ .${px}-gatecover{opacity:0;visibility:hidden;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.${px}-gatecover{transition:none!important}}
 `;
+          }
           break;
         case 'decode':
           s+=`

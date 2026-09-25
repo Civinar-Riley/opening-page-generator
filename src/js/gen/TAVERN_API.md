@@ -51,7 +51,7 @@
 - 用途：开场白「填入输入框」模式（`/setinput 文本`）、「直接发送」模式（`/send 文本`）
 - 签名：`triggerSlash(cmd)` → `Promise`
 - 守卫与降级：`hasFn('triggerSlash')`；try/catch → `note('填入输入框失败')`；缺失时 `note('未检测到酒馆助手 API，无法填入')`
-- 使用处：`gen/scripts.js` 开场白 insert/send 分支
+- 使用处：`gen/scripts.js` 开场白 insert/send 分支；`gen/body.js` 年龄验证闸门「离开」（`/close` 退回酒馆主页）
 
 ### 5. getLorebookEntries / getWorldbook —— 读世界书（开场白标题库）
 - 用途：读「标题库」世界书条目（每行 `序号|标题|描述`）覆盖开场白选项的自动提取标题。两代 API 兼容：旧 `getLorebookEntries` 条目名字段是 `comment`，新 `getWorldbook` 是 `name`
@@ -63,7 +63,7 @@
 - 用途：监听 `MESSAGE_SWIPED / MESSAGE_EDITED / MESSAGE_DELETED / CHAT_CHANGED`，驱动开场白列表重读；另有 3 秒 `setInterval` 轮询兜底（带 `syncing` 重入保护与 `document.hidden` 跳过）
 - 签名：`eventOn(事件名, cb)`；事件名取自全局 `tavern_events` 对象（逐个 `undefined/null` 判断后才注册，单个注册失败不影响其余）
 - 守卫与降级：`typeof tavern_events==='object' && typeof eventOn==='function'` 整体守卫；缺失时仅靠轮询
-- 使用处：`gen/scripts.js` IIFE 事件注册段
+- 使用处：`gen/scripts.js` IIFE 事件注册段；`gen/body.js` 年龄验证闸门 CHAT_CHANGED 重显
 
 ### 7. appendInexistentScriptButtons + getButtonEvent —— 注册酒馆脚本按钮（开场白序号跳转）
 - 用途：开场白「按钮模式」（clickAction='button'）下向酒馆助手按钮栏注册脚本按钮，点击后输入序号（1 开始）快速跳转；页内列表照常渲染（点选切换不受影响），按钮仅作快捷方式。灵感来源外部「快速切换开局」脚本（只学思路，实现自研）
@@ -87,7 +87,7 @@
 - 用途：产物内轻提示统一酒馆风格（替代自绘 note 条）
 - 签名：`toastr.info(text, title, opts)`
 - 守卫与降级：`typeof toastr!=='undefined' && typeof toastr.info==='function'`；try/catch 包裹；缺失 → 自绘 note 浮层（2.2s 自动消失）
-- 使用处：`gen/scripts.js` `script()` 的 `note()` 与 `bgmScript()` 的 `noteTa()`
+- 使用处：`gen/scripts.js` `script()` 的 `note()` 与 `bgmScript()` 的 `noteTa()`；`gen/body.js` 年龄验证闸门 `note()`
 
 ### 11. 渲染器 CSS 类 char-avatar / user-avatar 与宏 {{charAvatarPath}} / {{userAvatarPath}}（零 JS，无 API 依赖）
 - 用途：角色简介区头像「零 JS 方案」——容器加 `char-avatar`/`user-avatar` 类，渲染器自动注入对应头像为背景图（仅 background-image，尺寸/圆角等由产物样式自理）
@@ -124,9 +124,9 @@
 | getCharacter | 开场白列表降级读聊天 swipe（getChatMessages 可用时） |
 | getChatMessages | 列表显示卡开场白；都缺则保留渲染时的静态占位列表 |
 | setChatMessages | 点选项弹 note「未检测到酒馆助手 setChatMessages API，无法切换开场白」 |
-| triggerSlash | 弹 note「未检测到酒馆助手 API，无法填入」 |
+| triggerSlash | 弹 note「未检测到酒馆助手 API，无法填入」；年龄验证闸门「离开」弹 note 不退出 |
 | getLorebookEntries / getWorldbook | 标题/描述自动提取（无需配置，永不出错） |
-| eventOn / tavern_events | 列表同步退化为 3 秒轮询 |
+| eventOn / tavern_events | 列表同步退化为 3 秒轮询；年龄验证闸门跳过切卡重显 |
 | appendInexistentScriptButtons / getButtonEvent | 静默跳过按钮注册（页内列表仍可点选，功能不受影响） |
 | SillyTavern.callGenericPopup | 点按钮弹 note「未检测到弹出输入，请直接点击页内列表选项」 |
 | playAudio / pauseAudio（音频 API） | BGM 回落本地 `<audio>` 播放器（多楼层可能各自播放） |

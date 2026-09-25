@@ -62,7 +62,7 @@ const BLOCK_DEFS={
   /* v1.9 新增区块（默认关闭）：更新日志 / 入场闸门 / 解码文本 / 命运卡池 / 连击彩蛋 / 模糊揭示 */
   changelog:{name:'更新日志区',icon:'🧾',create:()=>({showTitle:true,title:'📜 更新日志',
     lines:'v1.2｜2025-06-01｜新增两张地图与隐藏结局\nv1.1｜2025-05-20｜修复第三夜对话跳出的问题\nv1.0｜2025-05-01｜正式发布'})},
-  gate:{name:'入场闸门',icon:'🚪',create:()=>({title:'✦ 开始阅读 ✦',text:'故事即将展开——确定要推开这扇门吗？',buttonText:'点击进入'})},
+  gate:{name:'入场闸门',icon:'🚪',create:()=>({theme:'classic',title:'✦ 开始阅读 ✦',text:'故事即将展开——确定要推开这扇门吗？',buttonText:'点击进入',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD'})},
   decode:{name:'解码文本区',icon:'🔎',create:()=>({lines:'信号接入中……\n身份确认：{{user}}\n欢迎回到深夜电台'})},
   gacha:{name:'命运卡池',icon:'🎴',create:()=>({title:'✦ 命运卡池 ✦',buttonText:'点击抽取',
     cards:'SSR｜命运之刃｜传闻只有命定之人才能拔出它\nSR｜月光斗篷｜在满月之夜隐去身形\nSR｜精灵指环｜古老的森林依然眷顾着佩戴者\nR｜旅人的水袋｜装着永远喝不完的清水\nR｜旧铜钥匙｜能打开某扇被遗忘的门\nN｜一撮烟尘｜除了呛人一无是处'})},
@@ -455,6 +455,9 @@ const BLOCK_PRESETS={
     {name:'命运检定 (1d20)',data:{label:'命运检定',expr:'1d20',style:'card'}},
     {name:'攻击判定 (2d6)',data:{label:'攻击判定',expr:'2d6',style:'poker'}},
     {name:'幸运检定 (1d100)',data:{label:'幸运检定',expr:'1d100',style:'rpg'}},
+  ],
+  gate:[
+    {name:'年龄验证（18+）',data:{theme:'age',title:'你满 18 岁了吗？',text:'本角色卡可能涉及成人内容，未满18岁谢绝进入。',buttonText:'是，我已年满18岁并同意进入',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD'}},
   ],
 };
 

@@ -269,17 +269,66 @@ export function body(p,px,blocks,isPreview){
           }
           break;
         }
-        case 'gate':
-          /* 入场闸门：hidden checkbox + fixed 全屏封面，:checked 后揭开（纯 CSS 零脚本）。
-             id 用 opg- 前缀（约束 1 已知例外，同多标签页/求签先例） */
-          out+=`  <div class="${px}-gate">\n`;
-          out+=`    <input type="checkbox" id="${px}-gateck" class="${px}-gateck">\n`;
-          out+=`    <label for="${px}-gateck" class="${px}-gatecover">\n`;
-          if(b.title)out+=`      <span class="${px}-gatetitle">${esc(tx(b.title))}</span>\n`;
-          if(b.text)out+=`      <span class="${px}-gatetext">${esc(tx(b.text))}</span>\n`;
-          out+=`      <span class="${px}-gatebtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
-          out+=`    </label>\n  </div>\n`;
+        case 'gate':{
+          /* 入场闸门双主题：
+             经典幕布 = hidden checkbox + label 封面，:checked 后揭开（纯 CSS 零脚本）；
+             年龄验证 = 审查站面板双按钮，「进入」仍纯 CSS label，「离开」与切卡重显走内联脚本
+             （hasFn 守卫 + note 降级，同 scripts.js 模式；功能性脚本，motion off 也产出）。
+             checkbox id 带块索引（bk{i}）支持同类多实例；id 用 opg- 前缀（约束 1 已知例外） */
+          const isAge=b.theme==='age';
+          const ckId=`${px}-bk${i}-gateck`;
+          out+=`  <div class="${px}-gate${isAge?' '+px+'-gateage':''}">\n`;
+          out+=`    <input type="checkbox" id="${ckId}" class="${isAge?px+'-gageck':px+'-gateck'}">\n`;
+          if(!isAge){
+            out+=`    <label for="${ckId}" class="${px}-gatecover">\n`;
+            if(b.title)out+=`      <span class="${px}-gatetitle">${esc(tx(b.title))}</span>\n`;
+            if(b.text)out+=`      <span class="${px}-gatetext">${esc(tx(b.text))}</span>\n`;
+            out+=`      <span class="${px}-gatebtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
+            out+=`    </label>\n`;
+          }else{
+            out+=`    <div class="${px}-gagecover">\n`;
+            out+=`      <div class="${px}-gagepanel">\n`;
+            out+=`        <div class="${px}-gagestripe"></div>\n`;
+            out+=`        <div class="${px}-gagelogo"><span class="${px}-gagedia">◆</span>${esc(tx(b.logo||'CHARACTER CARD'))}<span class="${px}-gagedia">◆</span></div>\n`;
+            out+=`        <div class="${px}-gagebadge">18+</div>\n`;
+            if(b.title)out+=`        <div class="${px}-gagetitle">${esc(tx(b.title))}</div>\n`;
+            if(b.text)out+=`        <div class="${px}-gagetext">${esc(tx(b.text))}</div>\n`;
+            out+=`        <div class="${px}-gagebtns">\n`;
+            out+=`          <label for="${ckId}" class="${px}-gagebtn ${px}-gageenter">${esc(tx(b.buttonText||'是，我已年满18岁并同意进入'))}</label>\n`;
+            out+=`          <button type="button" class="${px}-gagebtn ${px}-gageleave" data-opg="gateleave">${esc(tx(b.leaveText||'不，我未满18岁并离开'))}</button>\n`;
+            out+=`        </div>\n`;
+            out+=`      </div>\n    </div>\n`;
+            /* 年龄主题运行时：离开（triggerSlash /close，缺失降级 note）+ 切卡重显（CHAT_CHANGED）。
+               脚本内无反引号与字面 ${}、闭合标签转义（约束 7）；API 契约见 TAVERN_API.md §4/§6/§10 */
+            out+=`  <script>
+(function(){
+  var root=document.currentScript.previousElementSibling;if(!root)return;
+  var ck=root.querySelector('.${px}-gageck');if(!ck)return;
+  function note(m){
+    try{if(typeof toastr!=='undefined'&&toastr&&typeof toastr.info==='function'){toastr.info(m,'',{timeOut:2200});return}}catch(e){}
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(20,20,30,.88);color:#fff;padding:6px 14px;border-radius:6px;font-size:12px;z-index:2147483647;max-width:80vw';
+    d.textContent=m;document.body.appendChild(d);
+    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},2200);
+  }
+  var lv=root.querySelector('[data-opg="gateleave"]');
+  if(lv)lv.addEventListener('click',function(){
+    if(typeof triggerSlash!=='function'){note('未检测到酒馆助手 triggerSlash API，无法退出');return}
+    try{
+      var r=triggerSlash('/close');
+      if(r&&typeof r.then==='function')r.catch(function(){note('离开失败：/close 未执行')});
+    }catch(e){note('离开失败：'+e)}
+  });
+  if(typeof eventOn==='function'&&typeof tavern_events==='object'&&tavern_events){
+    var ev=tavern_events.CHAT_CHANGED;
+    if(ev!==undefined&&ev!==null){try{eventOn(ev,function(){ck.checked=false})}catch(e){}}
+  }
+})();
+  <\/script>\n`;
+          }
+          out+=`  </div>\n`;
           break;
+        }
         case 'decode':{
           const dlines=String(b.lines??'').split('\n').map(s=>s.trim()).filter(Boolean);
           if(dlines.length){

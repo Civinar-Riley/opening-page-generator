@@ -1,7 +1,7 @@
 /* 生成引擎单元测试（纯字符串函数，无需 DOM） */
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../src/js/gen/index.js';
-import { defaultProject } from '../src/js/defs.js';
+import { defaultProject, BLOCK_PRESETS } from '../src/js/defs.js';
 
 const proj=blocks=>{const p=defaultProject('t');p.blocks=blocks;return p};
 const stripSlashes=s=>s.replace(/^\//,'').replace(/\/$/,'');
@@ -550,5 +550,58 @@ describe('Gen.auditCompat 墨月避坑检查',()=>{
     expect(bad.some(x=>/innerHTML/.test(x.msg))).toBe(true);
     const ok=Gen.auditCompat(withHtml('<script>el.innerHTML="静态内容";<\/script>')).items;
     expect(ok.some(x=>/innerHTML/.test(x.msg))).toBe(false);
+  });
+});
+
+describe('gate 双主题（经典幕布 / 年龄验证）',()=>{
+  const ageGate=(over={})=>({type:'gate',enabled:true,theme:'age',title:'你满 18 岁了吗？',text:'本角色卡可能涉及成人内容，未满18岁谢绝进入。',buttonText:'是，我已年满18岁并同意进入',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD',...over});
+  it('BLOCK_PRESETS.gate 预设换主题并带完整文案',()=>{
+    const g=BLOCK_PRESETS.gate[0];
+    expect(g.data.theme).toBe('age');
+    expect(g.data.title).toBe('你满 18 岁了吗？');
+    expect(g.data.text).toBe('本角色卡可能涉及成人内容，未满18岁谢绝进入。');
+  });
+  it('年龄主题：18+ 徽章 / 标识行 / 双按钮 / 离开与切卡重显脚本',()=>{
+    const html=Gen.build(proj([ageGate()]),{isPreview:false});
+    expect(html).toContain('-gagebadge">18+');
+    expect(html).toContain('-gagelogo');
+    expect(html).toContain('-gagetitle">你满 18 岁了吗？');
+    expect(html).toContain('-gageenter');
+    expect(html).toContain('data-opg="gateleave"');
+    expect(html).toContain('不，我未满18岁并离开');
+    expect(html).toContain('未检测到酒馆助手 triggerSlash API');
+    expect(html).toContain('ck.checked=false');
+    expect(html).toContain('</script>');
+  });
+  it('年龄主题导出自检零阻断（脚本闭合计数平衡）',()=>{
+    const a=Gen.auditFullDoc(Gen.buildFullDoc(proj([ageGate()])));
+    expect(a.ok).toBe(true);
+    expect(a.problems.filter(x=>x.level==='阻断')).toHaveLength(0);
+  });
+  it('经典主题：无年龄内容与脚本，checkbox id 带块索引',()=>{
+    const html=Gen.build(proj([{type:'gate',enabled:true,title:'开始',text:'引言',buttonText:'进入'}]),{isPreview:false});
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk0-gateck"/);
+    expect(html).toContain('-gatecover">');
+    expect(html).toContain('-gatebtn">进入');
+    expect(html).not.toContain('-gagebadge');
+    expect(html).not.toContain('gateleave');
+  });
+  it('宏双轨：预览替换、导出保留',()=>{
+    const mk=()=>{const p=proj([ageGate({title:'你好 {{user}}'})]);p.macros=[{k:'char',v:'艾'},{k:'user',v:'旅人'}];return p};
+    expect(Gen.build(mk(),{isPreview:true})).toContain('你好 旅人');
+    expect(Gen.build(mk(),{isPreview:false})).toContain('你好 {{user}}');
+  });
+  it('双实例：checkbox id 唯一、两主题同工程互不干扰',()=>{
+    const html=Gen.build(proj([ageGate(),{type:'gate',enabled:true,title:'经典',text:'引言',buttonText:'进入'}]),{isPreview:false});
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk0-gateck"/);
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk1-gateck"/);
+    expect(html).toContain('-gagebadge">18+');
+    expect(html).toContain('-gatecover">');
+  });
+  it('motion=off：功能脚本照常产出、面板入场关键帧不产出',()=>{
+    const p=proj([ageGate()]);p.theme.motion='off';
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain('data-opg="gateleave"');
+    expect(html).not.toContain('-gagein');
   });
 });

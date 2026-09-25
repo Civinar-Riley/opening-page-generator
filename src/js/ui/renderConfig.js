@@ -813,12 +813,21 @@ export function renderBlockBody(container,b,i){
       html=`<div class="row2">${chk('showTitle','显示标题')}${bind('title','标题文字')}</div>
         ${area('lines','日志列表（每行：版本｜日期｜内容，支持宏；可多段并入内容）')}`;
       break;
-    case 'gate':
-      html=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。</div>
-        ${bind('title','封面标题')}
-        ${area('text','封面引言')}
-        ${bind('buttonText','按钮文字')}`;
+    case 'gate':{
+      const presets=BLOCK_PRESETS.gate||[];
+      const isAge=b.theme==='age';
+      html=(presets.length?`<div style="margin:0 0 8px"><label>✨ 主题预设</label><select data-gpreset="gate"><option value="">选择预设模板…</option>${presets.map((pb,pi)=>`<option value="${pi}">${esc(pb.name)}</option>`).join('')}</select></div>`:'')
+        +`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${isAge?'🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /close 退出（无 API 时弹提示），切换聊天自动重新盖上。':'📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。'}</div>
+        <div><label>闸门主题</label><select data-bkey="${i}.theme">
+          <option value="classic"${isAge?'':' selected'}>经典幕布（纯 CSS 单按钮）</option>
+          <option value="age"${isAge?' selected':''}>年龄验证（18+ 双按钮）</option>
+        </select></div>
+        ${bind('title',isAge?'验证标题（支持宏）':'封面标题（支持宏）')}
+        ${area('text',isAge?'说明文字（支持宏）':'封面引言（支持宏）')}
+        ${bind('buttonText',isAge?'进入按钮文字':'按钮文字')}
+        ${isAge?bind('leaveText','离开按钮文字')+bind('logo','标识行文字（支持宏）'):''}`;
       break;
+    }
     case 'decode':
       html=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 文本先以乱码呈现再逐字解码成正文（赛博/悬疑/克苏鲁向）。跟随主题「动效档位」与系统减少动效偏好。</div>
         ${area('lines','解码文本（每行一条，行间错峰解码，支持宏）')}`;
@@ -859,6 +868,8 @@ export function renderBlockBody(container,b,i){
       /* number 型输入按数值入库（合法 0 保留），避免下游直接比较时踩字符串坑 */
       const v=e.target.type==='number'?(e.target.value!==''&&Number.isFinite(+e.target.value)?+e.target.value:e.target.value):e.target.value;
       Project.cur.blocks[+a][c]=v;
+      /* theme 切换会改变 gate 等区块的字段集，重渲染编辑器（同 bchk showTitle 先例） */
+      if(c==='theme')UI.renderConfig();
       this.debouncedPreview();Project.saveDebounced();
     }
   });

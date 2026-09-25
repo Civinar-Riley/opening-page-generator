@@ -28,6 +28,14 @@ describe('Project.normalize 规范化',()=>{
     const w=p.blocks.find(b=>b.type==='welcome');
     expect(w.title).toBe(BLOCK_DEFS.welcome.create().title);
   });
+  it('gate 缺 theme 等字段补默认值（旧工程兼容）',()=>{
+    const p={name:'t',blocks:[{type:'gate',enabled:true}]};
+    Project.normalize(p);
+    const g=p.blocks.find(b=>b.type==='gate');
+    expect(g.theme).toBe('classic');
+    expect(g.leaveText).toBe(BLOCK_DEFS.gate.create().leaveText);
+    expect(g.logo).toBe(BLOCK_DEFS.gate.create().logo);
+  });
   it('已有区块的 enabled 不被覆盖',()=>{
     const p={name:'t',blocks:[{type:'welcome',enabled:true}]};
     Project.normalize(p);
