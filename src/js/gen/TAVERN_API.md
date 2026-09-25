@@ -1,6 +1,6 @@
 # TavernHelper API 契约（gen 生成脚本所依赖）
 
-> 适用范围：本目录生成的运行时脚本 —— `gen/scripts.js` 的 `script()/lightbox()/bgmScript()` 与 `gen/body.js` 内联脚本，以及 `../mvu.js` 生成的状态栏运行时（同属生成产物）。
+> 适用范围：本目录生成的运行时脚本 —— `gen/scripts.js` 的 `script()/lightbox()/bgmScript()` 与 `gen/body.js` 内联脚本。
 > 官方文档：https://n0vi028.github.io/JS-Slash-Runner-Doc/
 > **新增任何酒馆助手 API 使用前，先在本表登记**（作用/签名/守卫/降级），保持契约与实现同步。
 
@@ -89,32 +89,16 @@
 - 守卫与降级：`typeof toastr!=='undefined' && typeof toastr.info==='function'`；try/catch 包裹；缺失 → 自绘 note 浮层（2.2s 自动消失）
 - 使用处：`gen/scripts.js` `script()` 的 `note()` 与 `bgmScript()` 的 `noteTa()`
 
-### 11. Mvu —— MVU 变量框架全局接口（`mvu.js` 生成的状态栏运行时）
-- 用途：读当前楼层 `stat_data` 渲染状态面板；监听变量更新自动重渲染
-- 签名：`waitGlobalInitialized('Mvu')` → Promise（等全局接口就绪）；`Mvu.getMvuData({type:'message',message_id})` → `{stat_data,…}`；`Mvu.events.VARIABLE_UPDATE_ENDED` 事件名
-- 守卫与降级：`typeof Mvu!=='undefined' && typeof waitGlobalInitialized==='function'`；getMvuData/waitGlobalInitialized 全程 try/catch；Mvu 缺失 → 降级 `getVariables({type:'message'})` 读 `stat_data`；再缺失 → 轮询 20×200ms 后显示「未读取到变量」提示（绝不白屏）
-- 使用处：`mvu.js` `buildStatusbarHtml()` 运行时
-
-### 12. getVariables —— 读楼层变量（状态栏降级路径）
-- 签名：`getVariables({type:'message'})` → 同步或 Promise<变量对象>
-- 守卫与降级：`typeof getVariables==='function'`；缺失时轮询超限后提示安装 MVU
-- 使用处：`mvu.js` 状态栏运行时（Mvu 缺失时）
-
-### 13. getCurrentMessageId —— 取所在楼层号（状态栏定位自己的楼层变量）
-- 签名：`getCurrentMessageId()` → number
-- 守卫与降级：`typeof getCurrentMessageId==='function'`；缺失传 `undefined` 由 Mvu 取默认楼层
-- 使用处：`mvu.js` 状态栏运行时
-
-### 14. 渲染器 CSS 类 char-avatar / user-avatar 与宏 {{charAvatarPath}} / {{userAvatarPath}}（零 JS，无 API 依赖）
+### 11. 渲染器 CSS 类 char-avatar / user-avatar 与宏 {{charAvatarPath}} / {{userAvatarPath}}（零 JS，无 API 依赖）
 - 用途：角色简介区头像「零 JS 方案」——容器加 `char-avatar`/`user-avatar` 类，渲染器自动注入对应头像为背景图（仅 background-image，尺寸/圆角等由产物样式自理）
 - 守卫与降级：非 API，无需守卫；无渲染器的环境（工具预览/普通浏览器）显示占位底色
 - 使用处：`gen/body.js` profile 区块（characters[].avatarMode='char'|'user'）、`gen/css.js` `.opg-avatar` 背景兜底
 
-### 15. 未使用 API 的生成脚本（明确无依赖，列出防误加）
+### 12. 未使用 API 的生成脚本（明确无依赖，列出防误加）
 - `lightbox()`：纯 DOM，无酒馆 API（`bgmScript` 见 §9）
 - `gen/body.js` 倒计时 / 粒子内联脚本：纯 DOM + 访问者本地时间（`Date.now()`），与酒馆时区无关
 
-### 16. 已评估可用的备用接口（登记备用，产物暂未使用——启用前先真机验证）
+### 13. 已评估可用的备用接口（登记备用，产物暂未使用——启用前先真机验证）
 
 来源：TavernHelper @types 官方声明（墨月本地写卡工坊核对副本）+ 墨月前端规范实测。按「接口优先级」均属第 1 层封装接口，启用时照 §运行环境规则 3-5 守卫。
 
@@ -129,9 +113,9 @@
 | `MESSAGE_UPDATED / MESSAGE_SWIPE_DELETED / MORE_MESSAGES_LOADED` | 补齐开场白同步盲区（编辑刷新、删 swipe、向上翻页加载旧消息时第 0 楼可能变化） | 同 §6 `eventOn` 注册 | 逐个守卫，单个注册失败不影响其余 |
 | `errorCatched(fn)` | 启动函数包裹：报错转酒馆通知弹窗（比裸 try/catch 提示更统一） | `$(errorCatched(init))` | iframe 产物内建议替代裸 catch 的 UI 提示 |
 | `getTavernHelperVersion()` | 兼容性门槛判断（如音频 API 需 ≥4.3.5） | 返回版本字符串 | 缺失时视为旧版，走降级路径 |
-| `waitGlobalInitialized(name)` | 等待全局共享接口就绪（§11 Mvu 已用；其他全局接口同理） | → Promise | 超时须有降级 |
+| `waitGlobalInitialized(name)` | 等待全局共享接口就绪（其他全局接口同理） | → Promise | 超时须有降级 |
 
-**变量写入类 API（`insertOrAssignVariables` 等）**：TAVERN_API.md 维持「产物不写回变量/楼层」的既有边界（见仓库根 AGENTS.md 同层原理备忘），未评估前不登记使用。
+**变量写入类 API（`insertOrAssignVariables` 等）**：本文档维持「产物不写回变量/楼层」的既有边界，未评估前不登记使用。
 
 ## 降级矩阵（无 API 环境的用户所见）
 
@@ -146,12 +130,11 @@
 | appendInexistentScriptButtons / getButtonEvent | 静默跳过按钮注册（页内列表仍可点选，功能不受影响） |
 | SillyTavern.callGenericPopup | 点按钮弹 note「未检测到弹出输入，请直接点击页内列表选项」 |
 | playAudio / pauseAudio（音频 API） | BGM 回落本地 `<audio>` 播放器（多楼层可能各自播放） |
-| Mvu / getVariables（状态栏） | 轮询 20×200ms 后显示「未读取到楼层变量 stat_data」提示与安装指引 |
 | toastr | 降级自绘 note 浮层（视觉差异仅此而已） |
 | 全部缺失（普通浏览器） | 静态占位内容完整可见，无任何报错 |
 
 ## 参考
 
 - 官方文档（接口说明与示例）：https://n0vi028.github.io/JS-Slash-Runner-Doc/
-- 修改 `gen/scripts.js` / `mvu.js` 后：核对本文档契约 → `npm test` → `npm run build` → 在真实酒馆环境冒烟一次（列表渲染/切换/选项填入/BGM 接续/状态栏读数）
+- 修改 `gen/scripts.js` / `gen/body.js` 后：核对本文档契约 → `npm test` → `npm run build` → 在真实酒馆环境冒烟一次（列表渲染/切换/选项填入/BGM 接续）
 - 版本基线：酒馆助手 ≥ 4.6.0（SillyTavern ≥ 1.12.13）解锁全部能力；BGM 音频 API ≥ 4.3.5；其余守卫式 API 无硬性版本要求
