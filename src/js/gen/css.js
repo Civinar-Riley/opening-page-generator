@@ -435,11 +435,13 @@ ${bk} .${px}-gate{animation:none!important}
 `;
           }else if(gt==='curtain'){
             /* 剧场帷幕「双开丝绒」：左右两片幕布 + 顶部帷幔，揭示 = 幕布向两侧滑出。
-               幕布是 fixed 封面的子元素（transform 不改变封面包含块）；封面本体只做
-               visibility 切换（:checked 后 pointer-events:none 让滑出不被拦截） */
+               幕布是 fixed 封面的子元素（transform 不改变封面包含块）；封面背景独立
+               ::before 层——:checked 后随幕布滑出淡出（否则半透明幕布下黑底残留成新遮挡），
+               封面本体只做 visibility 切换（:checked 后 pointer-events:none 让滑出不被拦截） */
             s+=`
 .${px}-gcurck{display:none}
-.${px}-gcurcover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}2a,rgba(6,7,14,0) 62%),rgba(6,7,14,.96);color:${cText};text-align:center;cursor:pointer;overflow:hidden}
+.${px}-gcurcover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;color:${cText};text-align:center;cursor:pointer;overflow:hidden}
+.${px}-gcurcover::before{content:"";position:absolute;inset:0;background:radial-gradient(140% 100% at 50% 0%,${th.primary}2a,rgba(6,7,14,0) 62%),rgba(6,7,14,.96)${motion==='off'?'':`;transition:opacity .45s ease .18s`}}
 .${px}-gcurl,.${px}-gcurr{position:absolute;top:0;bottom:0;width:52%;background:repeating-linear-gradient(90deg,${th.primary}44 0 26px,${th.primary}22 26px 52px),linear-gradient(180deg,${th.primary}66,${th.primary}18);box-shadow:inset 0 0 60px rgba(0,0,0,.55)${motion==='off'?'':`;transition:transform .75s cubic-bezier(.65,0,.35,1)`}}
 .${px}-gcurl{left:0;border-right:2px solid ${th.accent}88}
 .${px}-gcurr{right:0;border-left:2px solid ${th.accent}88}
@@ -450,12 +452,13 @@ ${bk} .${px}-gate{animation:none!important}
 .${px}-gcurtext{font-size:13px;opacity:.78;line-height:1.85}
 .${px}-gcurbtn{margin-top:4px;padding:11px 36px;border:1px solid ${th.accent};border-radius:${radius}px;font-size:13px;letter-spacing:3px;color:${th.accent};cursor:pointer;user-select:none;${motion==='off'?'':`transition:background .2s,color .2s;`}display:inline-block}
 .${px}-gcurbtn:hover{background:${th.accent};color:#0a0a12}
-.${px}-gcurck:checked ~ .${px}-gcurcover{pointer-events:none}
+.${px}-gcurck:checked ~ .${px}-gcurcover{pointer-events:none;visibility:hidden;transition:visibility 0s .75s}
+.${px}-gcurck:checked ~ .${px}-gcurcover::before{opacity:0}
 .${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurl{transform:translateX(-101%)}
 .${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurr{transform:translateX(101%)}
 .${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurval{transform:translateY(-101%)}
 .${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurmid{opacity:0}
-@media(prefers-reduced-motion:reduce){.${px}-gcurl,.${px}-gcurr,.${px}-gcurval,.${px}-gcurmid,.${px}-gcurbtn{transition:none!important}}
+@media(prefers-reduced-motion:reduce){.${px}-gcurl,.${px}-gcurr,.${px}-gcurval,.${px}-gcurmid,.${px}-gcurbtn,.${px}-gcurcover::before{transition:none!important}}
 `;
           }else if(gt==='seal'){
             /* 封印法阵「符文消散」：虚线外环慢转 + conic 刻度环 + 内环，中心菱形徽记；

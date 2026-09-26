@@ -1,7 +1,7 @@
 /* 生成引擎单元测试（纯字符串函数，无需 DOM） */
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../src/js/gen/index.js';
-import { defaultProject, BLOCK_PRESETS } from '../src/js/defs.js';
+import { defaultProject, BLOCK_PRESETS, BLOCK_DEFS, applyBlockPreset, syncGateThemeCopy } from '../src/js/defs.js';
 
 const proj=blocks=>{const p=defaultProject('t');p.blocks=blocks;return p};
 const stripSlashes=s=>s.replace(/^\//,'').replace(/\/$/,'');
@@ -716,5 +716,36 @@ describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
       expect(x.data.text).toBeTruthy();
       expect(x.data.buttonText).toBeTruthy();
     });
+  });
+  it('套预设归一：上一预设残留字段被清（logo/leaveText 不跨主题串）',()=>{
+    const b={type:'gate',enabled:true,...BLOCK_DEFS.gate.create()};
+    applyBlockPreset(b,BLOCK_PRESETS.gate[1].data); /* 剧场帷幕 */
+    applyBlockPreset(b,BLOCK_PRESETS.gate[2].data); /* 封印法阵（预设无 logo/leaveText） */
+    expect(b.theme).toBe('seal');
+    expect(b.title).toBe('封印已至');
+    expect(b.logo).toBe(BLOCK_DEFS.gate.create().logo); /* 帷幕 NOW SHOWING 残留被清 */
+    expect(b.leaveText).toBe(BLOCK_DEFS.gate.create().leaveText); /* 年龄预设残留被清 */
+    const other={type:'welcome',enabled:true,title:'自定'};
+    applyBlockPreset(other,{title:'新标题'});
+    expect(other.title).toBe('新标题'); /* 非 gate 类型行为不变：只叠预设 */
+  });
+  it('切主题文案同步：模板值随主题换、用户自定义保留',()=>{
+    const mk=()=>({type:'gate',enabled:true,...BLOCK_DEFS.gate.create()});
+    const b=mk();b.theme='curtain';syncGateThemeCopy(b);
+    expect(b.title).toBe('✦ 开场在即 ✦'); /* 经典模板 → 帷幕模板 */
+    expect(b.buttonText).toBe('拉开帷幕');
+    const b2=mk();b2.title='我的自定义标题';b2.theme='seal';syncGateThemeCopy(b2);
+    expect(b2.title).toBe('我的自定义标题'); /* 自定义不动 */
+    const b3=mk();b3.theme='age';syncGateThemeCopy(b3);b3.theme='vault';syncGateThemeCopy(b3);
+    expect(b3.title).toBe('库门紧闭'); /* 模板 → 模板连续换 */
+    expect(b3.logo).toBe('VAULT-07');
+  });
+  it('帷幕揭示：背景独立 ::before 层并随揭示淡出，封面 checked 后无残留遮挡',()=>{
+    const html=Gen.build(proj([{type:'gate',enabled:true,theme:'curtain',title:'幕',text:'引言',buttonText:'进入'}]),{isPreview:false});
+    expect(html).toContain('-gcurcover::before{content:""');
+    expect(html).toMatch(/-gcurcover::before\{[^}]*background:radial-gradient/);
+    expect(html).not.toMatch(/-gcurcover\{[^}]*background:/); /* 背景不在封面本体上 */
+    expect(html).toContain('-gcurcover{pointer-events:none;visibility:hidden'); /* 揭开后整面退出 */
+    expect(html).toContain('-gcurcover::before{opacity:0}'); /* 背景层随幕布滑出淡出 */
   });
 });

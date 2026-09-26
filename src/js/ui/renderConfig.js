@@ -1,6 +1,6 @@
 /* 配置页渲染与交互（renderConfig + renderBlockBody 区块编辑器） */
 import { $, $$, esc, toast, confirmModal } from '../utils.js';
-import { BLOCK_DEFS, BLOCK_ORDER, COMP_LIB, THEME_PRESETS, BLOCK_PRESETS } from '../defs.js';
+import { BLOCK_DEFS, BLOCK_ORDER, COMP_LIB, THEME_PRESETS, BLOCK_PRESETS, applyBlockPreset, syncGateThemeCopy } from '../defs.js';
 import { Project } from '../project.js';
 import { UI } from './core.js';
 import { bindListEditor, detectFonts } from './shared.js';
@@ -880,7 +880,7 @@ export function renderBlockBody(container,b,i){
     const pi=+e.target.value;
     if(isNaN(pi)||!BLOCK_PRESETS[gp][pi])return;
     const preset=BLOCK_PRESETS[gp][pi];
-    Object.keys(preset.data).forEach(k=>{Project.cur.blocks[i][k]=preset.data[k]});
+    applyBlockPreset(Project.cur.blocks[i],preset.data);
     UI.renderConfig();UI.renderExport();UI.refreshPreview();Project.save();Project.saveSnapshot();
     toast('已套用预设：'+preset.name);
   });
@@ -891,8 +891,12 @@ export function renderBlockBody(container,b,i){
       /* number 型输入按数值入库（合法 0 保留），避免下游直接比较时踩字符串坑 */
       const v=e.target.type==='number'?(e.target.value!==''&&Number.isFinite(+e.target.value)?+e.target.value:e.target.value):e.target.value;
       Project.cur.blocks[+a][c]=v;
-      /* theme 切换会改变 gate 等区块的字段集，重渲染编辑器（同 bchk showTitle 先例） */
-      if(c==='theme')UI.renderConfig();
+      /* theme 切换会改变 gate 等区块的字段集：先同步闸门文案（模板值随主题换、自定义保留）再重渲染编辑器 */
+      if(c==='theme'){
+        const blk=Project.cur.blocks[+a];
+        if(blk.type==='gate')syncGateThemeCopy(blk);
+        UI.renderConfig();
+      }
       this.debouncedPreview();Project.saveDebounced();
     }
   });

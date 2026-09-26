@@ -466,6 +466,39 @@ const BLOCK_PRESETS={
 };
 
 /* ================================================================
+ * gate 主题/预设文案同步（纯函数，UI 接线 + 测试共用）：
+ * 六主题字段集不同，套预设/切主题若不同步字段会跨主题串显残留文案
+ * ================================================================ */
+const GATE_THEMES=['curtain','seal','vault','scan','age'];
+const GATE_COPY_FIELDS=['title','text','buttonText','logo','leaveText'];
+
+/* 套预设：gate 先归一 create() 全字段再叠预设，清除上一预设残留（其他类型只叠预设） */
+function applyBlockPreset(b,data){
+  if(b&&b.type==='gate'){
+    const clean=BLOCK_DEFS.gate.create();
+    Object.keys(clean).forEach(k=>{b[k]=clean[k]});
+  }
+  Object.keys(data).forEach(k=>{b[k]=data[k]});
+}
+
+/* 切主题后同步文案：字段值属模板集合（create 默认 + 五预设）→ 换新主题模板值；用户自定义保留 */
+function syncGateThemeCopy(b){
+  const tpl=new Set();
+  const collect=o=>Object.values(o).forEach(v=>{if(typeof v==='string')tpl.add(v)});
+  collect(BLOCK_DEFS.gate.create());
+  BLOCK_PRESETS.gate.forEach(pd=>collect(pd.data));
+  const nt=GATE_THEMES.includes(b.theme)?b.theme:'classic';
+  const tOf=k=>{
+    if(nt==='classic')return BLOCK_DEFS.gate.create()[k];
+    const pd=BLOCK_PRESETS.gate.find(x=>x.data.theme===nt);
+    return pd&&pd.data[k]!==undefined?pd.data[k]:BLOCK_DEFS.gate.create()[k];
+  };
+  GATE_COPY_FIELDS.forEach(k=>{
+    if(typeof b[k]==='string'&&tpl.has(b[k]))b[k]=tOf(k);
+  });
+}
+
+/* ================================================================
  * 工具自身 UI 主题（顶栏下拉选择；CSS 端为 html[data-theme='id'] 令牌块）
  * ================================================================ */
 const UI_THEMES=[
@@ -476,5 +509,5 @@ const UI_THEMES=[
   {id:'abyss',    name:'深海'},
 ];
 
-export {BLOCK_DEFS, BLOCK_ORDER, CORE_TYPES, THEME_PRESETS, COMP_LIB, BUILTIN_TEMPLATES, BLOCK_PRESETS, defaultProject, UI_THEMES};
+export {BLOCK_DEFS, BLOCK_ORDER, CORE_TYPES, THEME_PRESETS, COMP_LIB, BUILTIN_TEMPLATES, BLOCK_PRESETS, defaultProject, UI_THEMES, applyBlockPreset, syncGateThemeCopy};
 
