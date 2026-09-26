@@ -19,7 +19,7 @@
 | `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 |
 
-交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功。lint 或测试失败禁止交付。
+交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功 → **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
 
 ## 模块地图（src/js js 文件 + index.html + tool.css）
 
@@ -70,6 +70,21 @@ localStorage（openingPageGen_* 键）
 9. **自由 HTML 全权限警示**：自由 HTML 区块的脚本在预览（srcdoc 继承父 origin + allow-same-origin）与酒馆导出中均以完整权限运行，可读写 localStorage——文档与区块编辑器须注明「勿粘贴不可信来源的代码」（自伤型风险，与酒馆真实环境一致）
 
 ## 常见任务配方
+
+### README 同步（每次修改后必做）
+每次功能/结构调整落地后，基于**当前代码实际状态**核对根目录 `README.md` 并更新——README 是对外门面，数字过时即失真。核对清单：
+
+| README 位置 | 对照源 |
+|------|------|
+| 标题版本号 `v x.y.z` | `package.json` `version`（build.js 注入 `__OPG_VERSION__`） |
+| 功能特性列表（区块/组件/模板/主题数量与名称） | `defs.js`：`BLOCK_ORDER`（24）、`COMP_LIB`（59）、`BUILTIN_TEMPLATES`（12）、`THEME_PRESETS`（6）、`UI_THEMES`（5） |
+| 功能特性新增条目 | 本次改动引入的能力（如新区块特性、新组件、闸门双主题） |
+| 项目结构树 | `src/`、`tests/`、根目录实际文件（新增/删除目录要同步，如 `reference/`；不存在的文件如 `TESTING.md` 要移除） |
+| 构建/测试命令说明 | `package.json` scripts |
+
+- 只改了文案/注释/测试 → 快速扫一遍结构树即可；动了 `defs.js` 或新增模块 → 上表逐行核对
+- 数字与清单以代码为准，凭记忆写的描述一律视为待核对
+- 版本号是否 bump 由改动性质决定（feature/fix 通常升 minor/patch，纯 docs 不必），升版本时 README 标题同步改
 
 ### UI 设计任务（强制）
 涉及新增/修改 工具主题（`UI_THEMES`+`tool.css`）、页面主题预设（`THEME_PRESETS`）、`COMP_LIB` 组件、或任何可见界面视觉设计时：**必须先调用 skill 工具加载 `frontend-design`**，按其方法论（概念先行/纹理氛围/克制动效/破格排版）执行设计，并遵守本文件硬约束与该技能内的「opening-page-generator 项目适配注记」。设计前先查 `defs.js` 现有视觉资产（6 套页面主题 / 59 组件），避免趋同。
