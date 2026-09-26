@@ -553,7 +553,7 @@ describe('Gen.auditCompat 墨月避坑检查',()=>{
   });
 });
 
-describe('gate 双主题（经典幕布 / 年龄验证）',()=>{
+describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
   const ageGate=(over={})=>({type:'gate',enabled:true,theme:'age',title:'你满 18 岁了吗？',text:'本角色卡可能涉及成人内容，未满18岁谢绝进入。',buttonText:'是，我已年满18岁并同意进入',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD',...over});
   it('BLOCK_PRESETS.gate 预设换主题并带完整文案',()=>{
     const g=BLOCK_PRESETS.gate[0];
@@ -609,5 +609,112 @@ describe('gate 双主题（经典幕布 / 年龄验证）',()=>{
     const html=Gen.build(p,{isPreview:false});
     expect(html).toContain('data-opg="gateleave"');
     expect(html).not.toContain('-gagein');
+  });
+  it('四新主题：标记类 + 揭开选择器 + 纯 CSS 零脚本',()=>{
+    const mk=t=>Gen.build(proj([{type:'gate',enabled:true,theme:t,title:'开始',text:'引言',buttonText:'进入',logo:'LOGO'}]),{isPreview:false});
+    const cur=mk('curtain');
+    expect(cur).toContain('-gcurcover">');
+    expect(cur).toContain('-gcurl');
+    expect(cur).toContain('-gcurval');
+    expect(cur).toContain('-gcurmid');
+    expect(cur).toContain('-gcurck:checked');
+    expect(cur).not.toContain('gateleave');
+    const seal=mk('seal');
+    expect(seal).toContain('-gsealcover">');
+    expect(seal).toContain('-gsealring');
+    expect(seal).toContain('-gsealglyph');
+    expect(seal).toContain('-gsealck:checked');
+    expect(seal).not.toContain('gateleave');
+    const vault=mk('vault');
+    expect(vault).toContain('-gvaultcover">');
+    expect(vault).toContain('-gvaultwheel');
+    expect(vault).toContain('-gvaulthub');
+    expect(vault).toContain('-gvaultck:checked');
+    expect(vault).not.toContain('gateleave');
+    const scan=mk('scan');
+    expect(scan).toContain('-gscancover">');
+    expect(scan).toContain('-gscanfpr');
+    expect(scan).toContain('-gscanline');
+    expect(scan).toContain('-gscandone');
+    expect(scan).toContain('-gscanck:checked');
+    expect(scan).not.toContain('gateleave');
+  });
+  it('新主题结构：帷幕三件套 / 法阵徽记 / 钢印标识 / 扫描状态双 span',()=>{
+    const mk=t=>Gen.build(proj([{type:'gate',enabled:true,theme:t,title:'开始',text:'引言',buttonText:'进入',logo:'LOGO'}]),{isPreview:false});
+    const cur=mk('curtain');
+    expect(cur).toContain('-gcurr');
+    expect(cur).toContain('-gcurval');
+    expect(cur).toContain('-gcurlogo">LOGO');
+    const seal=mk('seal');
+    expect(seal).toContain('-gsealtick');
+    expect(seal).toContain('-gsealinner');
+    expect(seal).not.toContain('logo">LOGO'); /* seal 无 logo 字段渲染 */
+    const vault=mk('vault');
+    expect(vault).toContain('-gvaultlogo">LOGO');
+    expect(vault).toContain('rotate(540deg)');
+    expect(vault).toContain('cubic-bezier(.7,0,.3,1) .25s'); /* 转轮先转、闸门延时升起 */
+    expect(vault).toContain('visibility 0s 1.05s');
+    const scan=mk('scan');
+    expect(scan).toContain('-gscanlogo">LOGO');
+    expect(scan).toContain('-gscanwait');
+    expect(scan).toContain('-gscandone');
+    expect(scan).toContain('<svg');
+  });
+  it('未知 theme 回落经典（兼容旧工程/手改数据）',()=>{
+    const html=Gen.build(proj([{type:'gate',enabled:true,theme:'weird',title:'开始',text:'引言',buttonText:'进入'}]),{isPreview:false});
+    expect(html).toContain('-gatecover">');
+    expect(html).toMatch(/class="opg-[a-z0-9]+-gateck"/);
+    expect(html).not.toContain('-gcurcover');
+    expect(html).not.toContain('gateleave');
+  });
+  it('新主题双实例：ck 类与封面各归各、checkbox id 唯一',()=>{
+    const html=Gen.build(proj([
+      {type:'gate',enabled:true,theme:'curtain',title:'幕',text:'引言',buttonText:'进入'},
+      {type:'gate',enabled:true,theme:'vault',title:'库',text:'引言',buttonText:'进入'}
+    ]),{isPreview:false});
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk0-gateck"/);
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk1-gateck"/);
+    expect(html).toContain('-gcurck');
+    expect(html).toContain('-gvaultck');
+    expect(html).toContain('-gcurcover">');
+    expect(html).toContain('-gvaultcover">');
+  });
+  it('motion=off：新主题法阵慢转/扫描线关键帧不产出，揭开选择器仍在',()=>{
+    const p=proj([
+      {type:'gate',enabled:true,theme:'seal',title:'开始',text:'引言',buttonText:'进入'},
+      {type:'gate',enabled:true,theme:'scan',title:'开始',text:'引言',buttonText:'进入'}
+    ]);
+    p.theme.motion='off';
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).not.toContain('-gsealspin');
+    expect(html).not.toContain('-gscansweep');
+    expect(html).toContain('-gsealck:checked');
+    expect(html).toContain('-gscanck:checked');
+  });
+  it('六主题混合导出自检零阻断（仅 age 贡献脚本，闭合平衡）',()=>{
+    const mk=t=>({type:'gate',enabled:true,theme:t,title:t,text:'引言',buttonText:'进入',logo:'LOGO',leaveText:'离开'});
+    const p=proj([mk('classic'),mk('age'),mk('curtain'),mk('seal'),mk('vault'),mk('scan')]);
+    const doc=Gen.buildFullDoc(p);
+    const a=Gen.auditFullDoc(doc);
+    expect(a.ok).toBe(true);
+    expect(a.problems.filter(x=>x.level==='阻断')).toHaveLength(0);
+    expect(doc).toContain('</script>');
+    expect(doc).toContain('-gcurck:checked');
+    expect(doc).toContain('-gsealck:checked');
+    expect(doc).toContain('-gvaultck:checked');
+    expect(doc).toContain('-gscanck:checked');
+  });
+  it('新主题宏双轨：预览替换、导出保留',()=>{
+    const mk=()=>{const p=proj([{type:'gate',enabled:true,theme:'curtain',title:'你好 {{user}}',text:'引言',buttonText:'进入'}]);p.macros=[{k:'user',v:'旅人'}];return p};
+    expect(Gen.build(mk(),{isPreview:true})).toContain('你好 旅人');
+    expect(Gen.build(mk(),{isPreview:false})).toContain('你好 {{user}}');
+  });
+  it('BLOCK_PRESETS.gate 五预设：theme 顺序与文案齐全',()=>{
+    expect(BLOCK_PRESETS.gate.map(x=>x.data.theme)).toEqual(['age','curtain','seal','vault','scan']);
+    BLOCK_PRESETS.gate.forEach(x=>{
+      expect(x.data.title).toBeTruthy();
+      expect(x.data.text).toBeTruthy();
+      expect(x.data.buttonText).toBeTruthy();
+    });
   });
 });

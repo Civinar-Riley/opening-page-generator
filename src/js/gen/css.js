@@ -393,16 +393,23 @@ ${bk} .${px}-cld{flex:none;font-size:11px;opacity:.5;font-variant-numeric:tabula
 ${bk} .${px}-clt{flex:1;min-width:0;opacity:.85}
 `;
           break;
-        case 'gate':
+        case 'gate':{
           /* 固定全屏封面（z-index 仅低于灯箱）。闸门容器自身禁用入场动画：
-             动画期间的 transform 会把 fixed 封面的包含块从视口错误地拉到容器上 */
-          if(b.theme==='age'){
+             动画期间的 transform 会把 fixed 封面的包含块从视口错误地拉到容器上。
+             六主题 gt 分派，未知 theme 回落 classic（与 renderConfig/body 一致）；
+             类名前缀各自独立（-gate/-gage/-gcur/-gseal/-gvault/-gscan），同工程多主题
+             共存互不串扰；全部走主题令牌随 6 套页面主题变色；curtain/seal/vault/scan
+             四新主题纯 CSS 零脚本 */
+          const gt=['curtain','seal','vault','scan','age'].includes(b.theme)?b.theme:'classic';
+          s+=`
+${bk} .${px}-gate{animation:none!important}
+`;
+          if(gt==='age'){
             /* 年龄验证主题「准入审查站」：警示斜纹 + 面板卡片 + 18+ 印章徽章，全走主题令牌
                随 6 套页面主题变色；类名独立 -gage* 前缀，与经典主题同工程共存不互扰 */
             s+=`
-${bk} .${px}-gate{animation:none!important}
 .${px}-gageck{display:none}
-.${px}-gagecover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}33,rgba(6,7,14,0) 60%),rgba(6,7,14,.96);color:${cText};text-align:center${motion==='off'?'':`;transition:opacity .5s ease,visibility .5s ease`}}
+.${px}-gagecover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}33,rgba(6,7,14,0) 60%),rgba(6,7,14,.96);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .5s ease,visibility .5s ease`}}
 .${px}-gagepanel{position:relative;width:100%;max-width:400px;padding:36px 26px 26px;background:rgba(14,15,24,.92);border:1px solid rgba(255,255,255,.12);border-radius:${radius}px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.8)}
 .${px}-gagestripe{position:absolute;top:0;left:0;right:0;height:6px;background:repeating-linear-gradient(-45deg,${th.accent} 0 10px,rgba(0,0,0,0) 10px 20px);opacity:.7}
 .${px}-gagelogo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;opacity:.55;margin-bottom:18px}
@@ -426,11 +433,110 @@ ${bk} .${px}-gate{animation:none!important}
 @keyframes ${px}-gagein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .${px}-gagepanel{animation:${px}-gagein .45s ease both}
 `;
+          }else if(gt==='curtain'){
+            /* 剧场帷幕「双开丝绒」：左右两片幕布 + 顶部帷幔，揭示 = 幕布向两侧滑出。
+               幕布是 fixed 封面的子元素（transform 不改变封面包含块）；封面本体只做
+               visibility 切换（:checked 后 pointer-events:none 让滑出不被拦截） */
+            s+=`
+.${px}-gcurck{display:none}
+.${px}-gcurcover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}2a,rgba(6,7,14,0) 62%),rgba(6,7,14,.96);color:${cText};text-align:center;cursor:pointer;overflow:hidden}
+.${px}-gcurl,.${px}-gcurr{position:absolute;top:0;bottom:0;width:52%;background:repeating-linear-gradient(90deg,${th.primary}44 0 26px,${th.primary}22 26px 52px),linear-gradient(180deg,${th.primary}66,${th.primary}18);box-shadow:inset 0 0 60px rgba(0,0,0,.55)${motion==='off'?'':`;transition:transform .75s cubic-bezier(.65,0,.35,1)`}}
+.${px}-gcurl{left:0;border-right:2px solid ${th.accent}88}
+.${px}-gcurr{right:0;border-left:2px solid ${th.accent}88}
+.${px}-gcurval{position:absolute;top:0;left:-2%;right:-2%;height:54px;z-index:2;background:repeating-linear-gradient(90deg,${th.primary}88 0 30px,${th.primary}44 30px 60px);border-bottom:2px solid ${th.accent}aa;border-radius:0 0 26px 26px;box-shadow:0 10px 30px -12px rgba(0,0,0,.8)${motion==='off'?'':`;transition:transform .75s cubic-bezier(.65,0,.35,1)`}}
+.${px}-gcurmid{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:13px;max-width:340px;padding-top:34px${motion==='off'?'':`;transition:opacity .3s ease`}}
+.${px}-gcurlogo{font-size:11px;letter-spacing:5px;color:${th.accent};opacity:.75}
+.${px}-gcurtitle{font-size:21px;font-weight:800;letter-spacing:4px;color:${th.accent}}
+.${px}-gcurtext{font-size:13px;opacity:.78;line-height:1.85}
+.${px}-gcurbtn{margin-top:4px;padding:11px 36px;border:1px solid ${th.accent};border-radius:${radius}px;font-size:13px;letter-spacing:3px;color:${th.accent};cursor:pointer;user-select:none;${motion==='off'?'':`transition:background .2s,color .2s;`}display:inline-block}
+.${px}-gcurbtn:hover{background:${th.accent};color:#0a0a12}
+.${px}-gcurck:checked ~ .${px}-gcurcover{pointer-events:none}
+.${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurl{transform:translateX(-101%)}
+.${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurr{transform:translateX(101%)}
+.${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurval{transform:translateY(-101%)}
+.${px}-gcurck:checked ~ .${px}-gcurcover .${px}-gcurmid{opacity:0}
+@media(prefers-reduced-motion:reduce){.${px}-gcurl,.${px}-gcurr,.${px}-gcurval,.${px}-gcurmid,.${px}-gcurbtn{transition:none!important}}
+`;
+          }else if(gt==='seal'){
+            /* 封印法阵「符文消散」：虚线外环慢转 + conic 刻度环 + 内环，中心菱形徽记；
+               揭示 = 整个封印 scale 扩散 + 封面淡出（纯 CSS 两段联动） */
+            s+=`
+.${px}-gsealck{display:none}
+.${px}-gsealcover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background:radial-gradient(100% 75% at 50% 42%,${th.primary}33,rgba(6,7,14,0) 70%),rgba(6,7,14,.97);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .55s ease,visibility .55s ease`}}
+.${px}-gsealmark{position:relative;width:min(66vw,240px);height:min(66vw,240px);display:flex;align-items:center;justify-content:center;flex:none${motion==='off'?'':`;transition:transform .55s ease,opacity .55s ease`}}
+.${px}-gsealring{position:absolute;inset:0;border:2px dashed ${th.accent};border-radius:50%;opacity:.75${motion==='off'?'':`;animation:${px}-gsealspin 14s linear infinite`}}
+.${px}-gsealtick{position:absolute;inset:16px;border-radius:50%;background:repeating-conic-gradient(${th.accent} 0 1.4deg,rgba(0,0,0,0) 1.4deg 11deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 80%,#000 81%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 80%,#000 81%);opacity:.65}
+.${px}-gsealinner{position:absolute;inset:34px;border:1px solid ${th.accent}aa;border-radius:50%}
+.${px}-gsealglyph{position:relative;font-size:44px;line-height:1;color:${th.accent};text-shadow:0 0 24px ${th.accent}66}
+.${px}-gsealtitle{font-size:20px;font-weight:800;letter-spacing:4px;color:${th.accent}}
+.${px}-gsealtext{font-size:13px;opacity:.78;line-height:1.8;max-width:300px}
+.${px}-gsealbtn{margin-top:4px;padding:11px 34px;border:1px solid ${th.accent};border-radius:999px;font-size:13px;letter-spacing:3px;color:${th.accent};cursor:pointer;user-select:none;${motion==='off'?'':`transition:background .2s,color .2s;`}display:inline-block}
+.${px}-gsealbtn::before{content:"❖ ";opacity:.7}
+.${px}-gsealbtn::after{content:" ❖";opacity:.7}
+.${px}-gsealbtn:hover{background:${th.accent};color:#0a0a12}
+.${px}-gsealck:checked ~ .${px}-gsealcover{opacity:0;visibility:hidden;pointer-events:none}
+.${px}-gsealck:checked ~ .${px}-gsealcover .${px}-gsealmark{transform:scale(1.5);opacity:0}
+@media(prefers-reduced-motion:reduce){.${px}-gsealcover,.${px}-gsealmark,.${px}-gsealring,.${px}-gsealbtn{transition:none!important;animation:none!important}}
+`;
+            if(motion!=='off')s+=`
+@keyframes ${px}-gsealspin{to{transform:rotate(360deg)}}
+`;
+          }else if(gt==='vault'){
+            /* 机密金库「转轮开启」：拉丝钢板 + 四角铆钉 + 四辐转轮（accent 描边 + 钢印编号）。
+               揭示 = 转轮先转 540°，封面随后整扇升起 translateY(-101%)（视觉上限延迟交错） */
+            s+=`
+.${px}-gvaultck{display:none}
+.${px}-gvaultcover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 24px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,rgba(0,0,0,0) 1px 4px),linear-gradient(180deg,${th.primary}3a,rgba(10,11,16,.97) 55%);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:transform .8s cubic-bezier(.7,0,.3,1) .25s,visibility 0s 1.05s`}}
+.${px}-gvaultcover::before,.${px}-gvaultcover::after{content:"";position:absolute;left:22px;right:22px;height:8px;background:radial-gradient(circle at 5px 4px,rgba(255,255,255,.26) 3px,rgba(0,0,0,0) 4px) 0 0/28px 8px repeat-x;opacity:.8}
+.${px}-gvaultcover::before{top:18px}
+.${px}-gvaultcover::after{bottom:18px}
+.${px}-gvaultwheel{position:relative;width:118px;height:118px;border:3px solid ${th.accent};border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 8px ${th.accent}22,inset 0 0 24px rgba(0,0,0,.5)${motion==='off'?'':`;transition:transform .7s cubic-bezier(.6,.05,.3,1)`}}
+.${px}-gvaultwheel::before,.${px}-gvaultwheel::after{content:"";position:absolute;background:linear-gradient(90deg,${th.accent},${th.accent}88);border-radius:3px}
+.${px}-gvaultwheel::before{left:10%;right:10%;top:calc(50% - 3px);height:6px}
+.${px}-gvaultwheel::after{top:10%;bottom:10%;left:calc(50% - 3px);width:6px}
+.${px}-gvaulthub{position:relative;z-index:1;width:26px;height:26px;border-radius:50%;background:${th.accent};box-shadow:0 0 12px ${th.accent}88}
+.${px}-gvaultlogo{font-size:12px;font-weight:700;letter-spacing:6px;color:${th.accent};opacity:.85}
+.${px}-gvaulttitle{font-size:20px;font-weight:800;letter-spacing:5px;color:${cText}}
+.${px}-gvaulttext{font-size:13px;opacity:.75;line-height:1.8;max-width:320px}
+.${px}-gvaultbtn{margin-top:4px;padding:12px 34px;border:1px solid ${th.accent};border-radius:${radius}px;background:${th.accent};color:#0b0b12;font-size:14px;font-weight:700;letter-spacing:3px;cursor:pointer;user-select:none;${motion==='off'?'':`transition:filter .2s,transform .1s;`}display:inline-block}
+.${px}-gvaultbtn:hover{filter:brightness(1.12)}
+.${px}-gvaultbtn:active{transform:scale(.98)}
+.${px}-gvaultck:checked ~ .${px}-gvaultcover{transform:translateY(-101%);visibility:hidden;pointer-events:none}
+.${px}-gvaultck:checked ~ .${px}-gvaultcover .${px}-gvaultwheel{transform:rotate(540deg)}
+@media(prefers-reduced-motion:reduce){.${px}-gvaultcover,.${px}-gvaultwheel,.${px}-gvaultbtn{transition:none!important}}
+`;
+          }else if(gt==='scan'){
+            /* 生物识别「扫描验证」：指纹弧 + 往复扫描线 + 状态文本，识别面板淡入。
+               揭示 = 扫描线停 + 状态翻转为「验证通过」+ 封面延迟淡出 */
+            s+=`
+.${px}-gscanck{display:none}
+.${px}-gscancover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(130% 95% at 50% 12%,${th.primary}30,rgba(6,7,14,0) 65%),rgba(6,7,14,.97);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .45s ease,visibility .45s ease`}}
+.${px}-gscanpanel{position:relative;width:100%;max-width:390px;padding:32px 24px 28px;background:rgba(11,14,20,.93);border:1px solid ${th.accent}55;border-radius:${radius}px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.85)${motion==='off'?'':`;animation:${px}-gscanin .45s ease both`}}
+.${px}-gscanpanel::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,rgba(0,0,0,0),${th.accent},rgba(0,0,0,0));opacity:.7}
+.${px}-gscanlogo{font-size:11px;letter-spacing:4px;color:${th.accent};opacity:.7;margin-bottom:16px}
+.${px}-gscanfpr{position:relative;width:min(52vw,180px);height:min(52vw,180px);margin:0 auto 14px;color:${th.accent}}
+.${px}-gscanfpr svg{width:100%;height:100%;display:block}
+.${px}-gscanline{position:absolute;left:-6%;right:-6%;top:8%;height:2px;background:linear-gradient(90deg,rgba(0,0,0,0),${th.accent},${th.accent});box-shadow:0 0 14px ${th.accent}${motion==='off'?'':`;animation:${px}-gscansweep 1.9s ease-in-out infinite alternate`}}
+.${px}-gscanstat{font-size:12px;letter-spacing:3px;color:${th.accent};min-height:18px;margin-bottom:14px}
+.${px}-gscandone{display:none;font-weight:700}
+.${px}-gscantitle{font-size:19px;font-weight:800;letter-spacing:3px;margin-bottom:10px}
+.${px}-gscantext{font-size:13px;opacity:.72;line-height:1.8;max-width:300px;margin:0 auto 20px}
+.${px}-gscanbtn{padding:12px 32px;border:1px solid ${th.accent};border-radius:${radius}px;background:transparent;color:${th.accent};font-size:14px;font-weight:700;letter-spacing:3px;cursor:pointer;user-select:none;${motion==='off'?'':`transition:background .2s,color .2s;`}display:inline-block}
+.${px}-gscanbtn:hover{background:${th.accent};color:#0b0b12}
+.${px}-gscanck:checked ~ .${px}-gscancover{opacity:0;visibility:hidden;pointer-events:none;transition-delay:.45s}
+.${px}-gscanck:checked ~ .${px}-gscancover .${px}-gscanline{animation:none}
+.${px}-gscanck:checked ~ .${px}-gscancover .${px}-gscanwait{display:none}
+.${px}-gscanck:checked ~ .${px}-gscancover .${px}-gscandone{display:inline}
+@media(prefers-reduced-motion:reduce){.${px}-gscancover,.${px}-gscanpanel,.${px}-gscanbtn{transition:none!important;animation:none!important}.${px}-gscanline{animation:none!important}}
+`;
+            if(motion!=='off')s+=`
+@keyframes ${px}-gscanin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes ${px}-gscansweep{from{top:8%}to{top:88%}}
+`;
           }else{
             s+=`
-${bk} .${px}-gate{animation:none!important}
 .${px}-gateck{display:none}
-.${px}-gatecover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,8,14,.97);color:${th.textColor};text-align:center;padding:24px;cursor:default${motion==='off'?'':`;transition:opacity .6s ease,visibility .6s ease`}}
+.${px}-gatecover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,8,14,.97);color:${cText};text-align:center;padding:24px;cursor:pointer${motion==='off'?'':`;transition:opacity .6s ease,visibility .6s ease`}}
 .${px}-gatetitle{font-size:20px;font-weight:700;letter-spacing:6px;color:${th.accent}}
 .${px}-gatetext{font-size:13px;opacity:.75;line-height:1.8;max-width:320px}
 .${px}-gatebtn{margin-top:10px;padding:10px 34px;border:1px solid ${th.accent};border-radius:999px;font-size:13px;letter-spacing:3px;color:${th.accent};cursor:pointer;user-select:none;${motion==='off'?'':`transition:background .2s,color .2s;`}display:inline-block}
@@ -440,6 +546,7 @@ ${bk} .${px}-gate{animation:none!important}
 `;
           }
           break;
+        }
         case 'decode':
           s+=`
 ${bk} .${px}-dec{margin:12px 0}

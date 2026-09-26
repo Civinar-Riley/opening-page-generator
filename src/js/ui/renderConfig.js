@@ -815,17 +815,40 @@ export function renderBlockBody(container,b,i){
       break;
     case 'gate':{
       const presets=BLOCK_PRESETS.gate||[];
-      const isAge=b.theme==='age';
+      /* 六主题：未知 theme 值（旧工程/手改 JSON）一律回落 classic，与 gen 渲染分支一致 */
+      const gt=['curtain','seal','vault','scan','age'].includes(b.theme)?b.theme:'classic';
+      const hasLogo=['age','curtain','vault','scan'].includes(gt);
+      const TIP={
+        classic:'📌 经典幕布：全屏封面先盖住页面，点击按钮后整体淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。',
+        curtain:'🎭 剧场帷幕：丝绒双开幕布 + 顶部帷幔与场次小字，点击后左右拉开揭开（纯 CSS 零脚本）。适合舞台/演出/剧场开场。',
+        seal:'🔮 封印法阵：符文法阵慢转环绕，点击后封印扩散消散揭开（纯 CSS 零脚本）。适合奇幻/魔法/契约开场。',
+        vault:'🏦 机密金库：钢板铆钉门 + 四辐转轮与钢印编号，点击后转轮旋开、整扇门升起揭开（纯 CSS 零脚本）。适合废土/蒸汽/谍战开场。',
+        scan:'🧬 生物识别：指纹弧 + 扫描线往复，验证通过后封面淡出（纯 CSS 零脚本）。适合赛博/科幻开场。',
+        age:'🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /closechat 退出（无 API 时弹提示），切换聊天自动重新盖上。'
+      };
+      const LB={
+        classic:['封面标题（支持宏）','封面引言（支持宏）','按钮文字'],
+        curtain:['幕布标题（支持宏）','幕间引言（支持宏）','拉开按钮文字'],
+        seal:['封印标题（支持宏）','封印引言（支持宏）','解印按钮文字'],
+        vault:['库门标题（支持宏）','库门引言（支持宏）','转轮按钮文字'],
+        scan:['扫描标题（支持宏）','扫描说明（支持宏）','验证按钮文字'],
+        age:['验证标题（支持宏）','说明文字（支持宏）','进入按钮文字']
+      }[gt];
+      const LOGO_LB={age:'标识行文字（支持宏）',curtain:'场次标识（支持宏）',vault:'钢印编号（支持宏）',scan:'系统标识（支持宏）'}[gt]||'标识文字（支持宏）';
       html=(presets.length?`<div style="margin:0 0 8px"><label>✨ 主题预设</label><select data-gpreset="gate"><option value="">选择预设模板…</option>${presets.map((pb,pi)=>`<option value="${pi}">${esc(pb.name)}</option>`).join('')}</select></div>`:'')
-        +`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${isAge?'🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /closechat 退出（无 API 时弹提示），切换聊天自动重新盖上。':'📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。'}</div>
+        +`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${esc(TIP[gt]||TIP.classic)}</div>
         <div><label>闸门主题</label><select data-bkey="${i}.theme">
-          <option value="classic"${isAge?'':' selected'}>经典幕布（纯 CSS 单按钮）</option>
-          <option value="age"${isAge?' selected':''}>年龄验证（18+ 双按钮）</option>
+          <option value="classic"${gt==='classic'?' selected':''}>经典幕布（纯 CSS 单按钮）</option>
+          <option value="curtain"${gt==='curtain'?' selected':''}>剧场帷幕（双开拉开）</option>
+          <option value="seal"${gt==='seal'?' selected':''}>封印法阵（符文消散）</option>
+          <option value="vault"${gt==='vault'?' selected':''}>机密金库（转轮开启）</option>
+          <option value="scan"${gt==='scan'?' selected':''}>生物识别（扫描验证）</option>
+          <option value="age"${gt==='age'?' selected':''}>年龄验证（18+ 双按钮）</option>
         </select></div>
-        ${bind('title',isAge?'验证标题（支持宏）':'封面标题（支持宏）')}
-        ${area('text',isAge?'说明文字（支持宏）':'封面引言（支持宏）')}
-        ${bind('buttonText',isAge?'进入按钮文字':'按钮文字')}
-        ${isAge?bind('leaveText','离开按钮文字')+bind('logo','标识行文字（支持宏）'):''}`;
+        ${bind('title',LB[0])}
+        ${area('text',LB[1])}
+        ${bind('buttonText',LB[2])}
+        ${(gt==='age'?bind('leaveText','离开按钮文字'):'')+(hasLogo?bind('logo',LOGO_LB):'')}`;
       break;
     }
     case 'decode':

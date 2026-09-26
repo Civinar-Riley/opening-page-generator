@@ -458,6 +458,10 @@ const BLOCK_PRESETS={
   ],
   gate:[
     {name:'年龄验证（18+）',data:{theme:'age',title:'你满 18 岁了吗？',text:'本角色卡可能涉及成人内容，未满18岁谢绝进入。',buttonText:'是，我已年满18岁并同意进入',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD'}},
+    {name:'剧场帷幕',data:{theme:'curtain',title:'✦ 开场在即 ✦',text:'帷幕之后，故事正在等你落座启封。',buttonText:'拉开帷幕',logo:'NOW SHOWING'}},
+    {name:'封印法阵',data:{theme:'seal',title:'封印已至',text:'触碰符文，解除沉睡此地的契约。',buttonText:'解开封印'}},
+    {name:'机密金库',data:{theme:'vault',title:'库门紧闭',text:'转动转轮，开启尘封的机密档案。',buttonText:'转动开启',logo:'VAULT-07'}},
+    {name:'生物识别',data:{theme:'scan',title:'身份未验证',text:'请通过视网膜扫描确认你的访问权限。',buttonText:'通过验证',logo:'SEC-09 // CLEARANCE'}},
   ],
 };
 

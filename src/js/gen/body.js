@@ -270,22 +270,53 @@ export function body(p,px,blocks,isPreview){
           break;
         }
         case 'gate':{
-          /* 入场闸门双主题：
-             经典幕布 = hidden checkbox + label 封面，:checked 后揭开（纯 CSS 零脚本）；
-             年龄验证 = 审查站面板双按钮，「进入」仍纯 CSS label，「离开」与切卡重显走内联脚本
+          /* 入场闸门六主题：
+             classic/curtain/seal/vault/scan = hidden checkbox + label 封面，:checked 纯 CSS 揭开（零脚本）；
+             age = 审查站面板双按钮，「进入」仍纯 CSS label，「离开」与切卡重显走内联脚本
              （hasFn 守卫 + note 降级，同 scripts.js 模式；功能性脚本，motion off 也产出）。
-             checkbox id 带块索引（bk{i}）支持同类多实例；id 用 opg- 前缀（约束 1 已知例外） */
-          const isAge=b.theme==='age';
+             checkbox id 六主题统一 ${px}-bk${i}-gateck（测试锚点），仅 ck 类按主题分派；
+             id 带块索引（bk{i}）支持同类多实例；id 用 opg- 前缀（约束 1 已知例外）；
+             覆盖均为 label（点击整面揭开），内部按钮用 span 避免 label 嵌套 */
+          const gt=['curtain','seal','vault','scan','age'].includes(b.theme)?b.theme:'classic';
+          const ckCls={classic:'gateck',age:'gageck',curtain:'gcurck',seal:'gsealck',vault:'gvaultck',scan:'gscanck'}[gt];
           const ckId=`${px}-bk${i}-gateck`;
-          out+=`  <div class="${px}-gate${isAge?' '+px+'-gateage':''}">\n`;
-          out+=`    <input type="checkbox" id="${ckId}" class="${isAge?px+'-gageck':px+'-gateck'}">\n`;
-          if(!isAge){
-            out+=`    <label for="${ckId}" class="${px}-gatecover">\n`;
-            if(b.title)out+=`      <span class="${px}-gatetitle">${esc(tx(b.title))}</span>\n`;
-            if(b.text)out+=`      <span class="${px}-gatetext">${esc(tx(b.text))}</span>\n`;
-            out+=`      <span class="${px}-gatebtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
+          out+=`  <div class="${px}-gate${gt==='age'?' '+px+'-gateage':''}">\n`;
+          out+=`    <input type="checkbox" id="${ckId}" class="${px}-${ckCls}">\n`;
+          if(gt==='curtain'){
+            out+=`    <label for="${ckId}" class="${px}-gcurcover">\n`;
+            out+=`      <span class="${px}-gcurl"></span>\n      <span class="${px}-gcurr"></span>\n      <span class="${px}-gcurval"></span>\n`;
+            out+=`      <div class="${px}-gcurmid">\n`;
+            if(b.logo)out+=`        <div class="${px}-gcurlogo">${esc(tx(b.logo))}</div>\n`;
+            if(b.title)out+=`        <div class="${px}-gcurtitle">${esc(tx(b.title))}</div>\n`;
+            if(b.text)out+=`        <div class="${px}-gcurtext">${esc(tx(b.text))}</div>\n`;
+            out+=`        <span class="${px}-gcurbtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
+            out+=`      </div>\n    </label>\n`;
+          }else if(gt==='seal'){
+            out+=`    <label for="${ckId}" class="${px}-gsealcover">\n`;
+            out+=`      <div class="${px}-gsealmark"><span class="${px}-gsealring"></span><span class="${px}-gsealtick"></span><span class="${px}-gsealinner"></span><span class="${px}-gsealglyph">◈</span></div>\n`;
+            if(b.title)out+=`      <div class="${px}-gsealtitle">${esc(tx(b.title))}</div>\n`;
+            if(b.text)out+=`      <div class="${px}-gsealtext">${esc(tx(b.text))}</div>\n`;
+            out+=`      <span class="${px}-gsealbtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
             out+=`    </label>\n`;
-          }else{
+          }else if(gt==='vault'){
+            out+=`    <label for="${ckId}" class="${px}-gvaultcover">\n`;
+            out+=`      <div class="${px}-gvaultwheel"><span class="${px}-gvaulthub"></span></div>\n`;
+            if(b.logo)out+=`      <div class="${px}-gvaultlogo">${esc(tx(b.logo))}</div>\n`;
+            if(b.title)out+=`      <div class="${px}-gvaulttitle">${esc(tx(b.title))}</div>\n`;
+            if(b.text)out+=`      <div class="${px}-gvaulttext">${esc(tx(b.text))}</div>\n`;
+            out+=`      <span class="${px}-gvaultbtn">${esc(tx(b.buttonText||'打开金库'))}</span>\n`;
+            out+=`    </label>\n`;
+          }else if(gt==='scan'){
+            out+=`    <label for="${ckId}" class="${px}-gscancover">\n`;
+            out+=`      <div class="${px}-gscanpanel">\n`;
+            if(b.logo)out+=`        <div class="${px}-gscanlogo">${esc(tx(b.logo))}</div>\n`;
+            out+=`        <div class="${px}-gscanfpr"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M14 60a36 36 0 0 1 72 0"/><path d="M24 66a26 26 0 0 1 52 0"/><path d="M34 72a16 16 0 0 1 32 0"/><path d="M44 78a6 6 0 0 1 12 0"/><path d="M50 24v14"/></svg><span class="${px}-gscanline"></span></div>\n`;
+            out+=`        <div class="${px}-gscanstat"><span class="${px}-gscanwait">正在扫描指纹…</span><span class="${px}-gscandone">✓ 验证通过</span></div>\n`;
+            if(b.title)out+=`        <div class="${px}-gscantitle">${esc(tx(b.title))}</div>\n`;
+            if(b.text)out+=`        <div class="${px}-gscantext">${esc(tx(b.text))}</div>\n`;
+            out+=`        <span class="${px}-gscanbtn">${esc(tx(b.buttonText||'确认进入'))}</span>\n`;
+            out+=`      </div>\n    </label>\n`;
+          }else if(gt==='age'){
             out+=`    <div class="${px}-gagecover">\n`;
             out+=`      <div class="${px}-gagepanel">\n`;
             out+=`        <div class="${px}-gagestripe"></div>\n`;
@@ -325,6 +356,12 @@ export function body(p,px,blocks,isPreview){
   }
 })();
   <\/script>\n`;
+          }else{
+            out+=`    <label for="${ckId}" class="${px}-gatecover">\n`;
+            if(b.title)out+=`      <span class="${px}-gatetitle">${esc(tx(b.title))}</span>\n`;
+            if(b.text)out+=`      <span class="${px}-gatetext">${esc(tx(b.text))}</span>\n`;
+            out+=`      <span class="${px}-gatebtn">${esc(tx(b.buttonText||'点击进入'))}</span>\n`;
+            out+=`    </label>\n`;
           }
           out+=`  </div>\n`;
           break;
