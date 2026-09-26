@@ -572,6 +572,12 @@ describe('gate 双主题（经典幕布 / 年龄验证）',()=>{
     expect(html).toContain('未检测到酒馆助手 triggerSlash API');
     expect(html).toContain('ck.checked=false');
     expect(html).toContain('</script>');
+    /* 脚本锚点必须是 parentNode（gate 容器）而非 previousElementSibling（gagecover 面板）——
+       后者查不到面板外的 checkbox 会提前 return，监听器全灭；离开命令为 ST 内置 /closechat */
+    expect(html).toContain('document.currentScript.parentNode');
+    expect(html).not.toContain('document.currentScript.previousElementSibling');
+    expect(html).toContain("triggerSlash('/closechat')");
+    expect(html).not.toContain("triggerSlash('/close')");
   });
   it('年龄主题导出自检零阻断（脚本闭合计数平衡）',()=>{
     const a=Gen.auditFullDoc(Gen.buildFullDoc(proj([ageGate()])));

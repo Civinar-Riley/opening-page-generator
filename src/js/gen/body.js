@@ -298,11 +298,11 @@ export function body(p,px,blocks,isPreview){
             out+=`          <button type="button" class="${px}-gagebtn ${px}-gageleave" data-opg="gateleave">${esc(tx(b.leaveText||'不，我未满18岁并离开'))}</button>\n`;
             out+=`        </div>\n`;
             out+=`      </div>\n    </div>\n`;
-            /* 年龄主题运行时：离开（triggerSlash /close，缺失降级 note）+ 切卡重显（CHAT_CHANGED）。
+            /* 年龄主题运行时：离开（triggerSlash /closechat，缺失降级 note）+ 切卡重显（CHAT_CHANGED）。
                脚本内无反引号与字面 ${}、闭合标签转义（约束 7）；API 契约见 TAVERN_API.md §4/§6/§10 */
             out+=`  <script>
 (function(){
-  var root=document.currentScript.previousElementSibling;if(!root)return;
+  var root=document.currentScript.parentNode;if(!root)return;
   var ck=root.querySelector('.${px}-gageck');if(!ck)return;
   function note(m){
     try{if(typeof toastr!=='undefined'&&toastr&&typeof toastr.info==='function'){toastr.info(m,'',{timeOut:2200});return}}catch(e){}
@@ -315,8 +315,8 @@ export function body(p,px,blocks,isPreview){
   if(lv)lv.addEventListener('click',function(){
     if(typeof triggerSlash!=='function'){note('未检测到酒馆助手 triggerSlash API，无法退出');return}
     try{
-      var r=triggerSlash('/close');
-      if(r&&typeof r.then==='function')r.catch(function(){note('离开失败：/close 未执行')});
+      var r=triggerSlash('/closechat');
+      if(r&&typeof r.then==='function')r.catch(function(){note('离开失败：/closechat 未执行')});
     }catch(e){note('离开失败：'+e)}
   });
   if(typeof eventOn==='function'&&typeof tavern_events==='object'&&tavern_events){

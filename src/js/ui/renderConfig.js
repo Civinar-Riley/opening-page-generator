@@ -817,7 +817,7 @@ export function renderBlockBody(container,b,i){
       const presets=BLOCK_PRESETS.gate||[];
       const isAge=b.theme==='age';
       html=(presets.length?`<div style="margin:0 0 8px"><label>✨ 主题预设</label><select data-gpreset="gate"><option value="">选择预设模板…</option>${presets.map((pb,pi)=>`<option value="${pi}">${esc(pb.name)}</option>`).join('')}</select></div>`:'')
-        +`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${isAge?'🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /close 退出（无 API 时弹提示），切换聊天自动重新盖上。':'📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。'}</div>
+        +`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${isAge?'🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /closechat 退出（无 API 时弹提示），切换聊天自动重新盖上。':'📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。'}</div>
         <div><label>闸门主题</label><select data-bkey="${i}.theme">
           <option value="classic"${isAge?'':' selected'}>经典幕布（纯 CSS 单按钮）</option>
           <option value="age"${isAge?' selected':''}>年龄验证（18+ 双按钮）</option>

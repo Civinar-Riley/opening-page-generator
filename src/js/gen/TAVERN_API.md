@@ -51,7 +51,7 @@
 - 用途：开场白「填入输入框」模式（`/setinput 文本`）、「直接发送」模式（`/send 文本`）
 - 签名：`triggerSlash(cmd)` → `Promise`
 - 守卫与降级：`hasFn('triggerSlash')`；try/catch → `note('填入输入框失败')`；缺失时 `note('未检测到酒馆助手 API，无法填入')`
-- 使用处：`gen/scripts.js` 开场白 insert/send 分支；`gen/body.js` 年龄验证闸门「离开」（`/close` 退回酒馆主页）
+- 使用处：`gen/scripts.js` 开场白 insert/send 分支；`gen/body.js` 年龄验证闸门「离开」（`/closechat` 关闭当前聊天退回主页，SillyTavern 内置命令）
 
 ### 5. getLorebookEntries / getWorldbook —— 读世界书（开场白标题库）
 - 用途：读「标题库」世界书条目（每行 `序号|标题|描述`）覆盖开场白选项的自动提取标题。两代 API 兼容：旧 `getLorebookEntries` 条目名字段是 `comment`，新 `getWorldbook` 是 `name`

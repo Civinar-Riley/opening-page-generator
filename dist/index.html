@@ -928,7 +928,7 @@ ${y.map(v=>`    <source data-name="${m(o(v.name))}" src="${m(o(v.url))}">`).join
     </div>
 `,r+=`  <script>
 (function(){
-  var root=document.currentScript.previousElementSibling;if(!root)return;
+  var root=document.currentScript.parentNode;if(!root)return;
   var ck=root.querySelector('.${e}-gageck');if(!ck)return;
   function note(m){
     try{if(typeof toastr!=='undefined'&&toastr&&typeof toastr.info==='function'){toastr.info(m,'',{timeOut:2200});return}}catch(e){}
@@ -941,8 +941,8 @@ ${y.map(v=>`    <source data-name="${m(o(v.name))}" src="${m(o(v.url))}">`).join
   if(lv)lv.addEventListener('click',function(){
     if(typeof triggerSlash!=='function'){note('未检测到酒馆助手 triggerSlash API，无法退出');return}
     try{
-      var r=triggerSlash('/close');
-      if(r&&typeof r.then==='function')r.catch(function(){note('离开失败：/close 未执行')});
+      var r=triggerSlash('/closechat');
+      if(r&&typeof r.then==='function')r.catch(function(){note('离开失败：/closechat 未执行')});
     }catch(e){note('离开失败：'+e)}
   });
   if(typeof eventOn==='function'&&typeof tavern_events==='object'&&tavern_events){
@@ -1615,7 +1615,7 @@ ${this.build(t,{isPreview:!1})}
               <input data-qif="${b}.${L}.q" value="${m(h.q||"")}" placeholder="问题">
               <input data-qif="${b}.${L}.a" value="${m(h.a||"")}" placeholder="回答">
               <button type="button" data-qidel="${b}.${L}" style="background:none;border:none;color:var(--err);font-size:14px">✕</button></div>`}),i+=`<button type="button" class="btn ghost small" data-qiadd="${b}" style="margin-top:4px">＋ 添加问答</button></div>`}),i+='<button type="button" class="btn ghost small" data-qgadd="1" style="margin-top:4px">＋ 添加分组</button>',t.innerHTML=i};g(),t.addEventListener("click",async i=>{if(i.target.dataset.qgadd&&(e.groups.push({name:"",items:[{q:"",a:""}]}),g(),k.debouncedPreview(),k.renderExport(),f.save(),f.saveSnapshot()),i.target.dataset.qgdel!==void 0&&(e.groups.splice(+i.target.dataset.qgdel,1),g(),k.debouncedPreview(),k.renderExport(),f.save(),f.saveSnapshot()),i.target.dataset.qiadd!==void 0){let d=+i.target.dataset.qiadd;Array.isArray(e.groups[d].items)||(e.groups[d].items=[]),e.groups[d].items.push({q:"",a:""}),g(),k.debouncedPreview(),k.renderExport(),f.save(),f.saveSnapshot()}if(i.target.dataset.qidel){let[d,b]=i.target.dataset.qidel.split(".");e.groups[+d].items.splice(+b,1),g(),k.debouncedPreview(),k.renderExport(),f.save(),f.saveSnapshot()}}),t.addEventListener("input",i=>{let d=i.target.dataset.qgf;if(d!==void 0){let[h,L]=d.split(".");e.groups[+h][L]=i.target.value,k.debouncedPreview(),f.saveDebounced()}let b=i.target.dataset.qif;if(b!==void 0){let[h,L,E]=b.split(".");e.groups[+h].items[+L][E]=i.target.value,k.debouncedPreview(),f.saveDebounced()}});break}case"changelog":p=`<div class="row2">${o("showTitle","显示标题")}${l("title","标题文字")}</div>
-        ${c("lines","日志列表（每行：版本｜日期｜内容，支持宏；可多段并入内容）")}`;break;case"gate":{let g=W.gate||[],i=e.theme==="age";p=(g.length?`<div style="margin:0 0 8px"><label>✨ 主题预设</label><select data-gpreset="gate"><option value="">选择预设模板…</option>${g.map((d,b)=>`<option value="${b}">${m(d.name)}</option>`).join("")}</select></div>`:"")+`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${i?"🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /close 退出（无 API 时弹提示），切换聊天自动重新盖上。":"📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。"}</div>
+        ${c("lines","日志列表（每行：版本｜日期｜内容，支持宏；可多段并入内容）")}`;break;case"gate":{let g=W.gate||[],i=e.theme==="age";p=(g.length?`<div style="margin:0 0 8px"><label>✨ 主题预设</label><select data-gpreset="gate"><option value="">选择预设模板…</option>${g.map((d,b)=>`<option value="${b}">${m(d.name)}</option>`).join("")}</select></div>`:"")+`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">${i?"🔞 年龄验证闸门：18+ 审查站样式，双按钮——「进入」纯 CSS 揭开，「离开」经酒馆助手 /closechat 退出（无 API 时弹提示），切换聊天自动重新盖上。":"📌 全屏入场封面：先盖住页面，点击按钮后淡出揭开（纯 CSS 零脚本）。适合悬疑/仪式感开场。"}</div>
         <div><label>闸门主题</label><select data-bkey="${n}.theme">
           <option value="classic"${i?"":" selected"}>经典幕布（纯 CSS 单按钮）</option>
           <option value="age"${i?" selected":""}>年龄验证（18+ 双按钮）</option>
@@ -1811,7 +1811,7 @@ ${this.build(t,{isPreview:!1})}
 <p>紧凑卡片列表展示版本历史，每行格式 <code>版本｜日期｜内容</code>（分隔符全角半角均可，内容可多段）。强调色版本徽标 + 暗色日期，斑马纹行底。</p>
 
 <h5>🚪 入场闸门</h5>
-<p>全屏封面在阅读前盖住页面。两种主题可选：<b>经典幕布</b>——显示标题、引言与「点击进入」按钮，点击后淡出揭开（纯 CSS 零脚本、零 API），适合悬疑/仪式感开场；<b>年龄验证（18+）</b>——审查站面板（警示斜纹 + 18+ 印章徽章 + 双按钮），「进入」仍为纯 CSS 揭开，「离开」经酒馆助手 <code>/close</code> 退出（无 API 时弹提示），并监听 <code>CHAT_CHANGED</code> 在切换聊天/角色卡时重新盖上。封面不参与主题「动效档位」的入场错峰，避免定位异常。</p>
+<p>全屏封面在阅读前盖住页面。两种主题可选：<b>经典幕布</b>——显示标题、引言与「点击进入」按钮，点击后淡出揭开（纯 CSS 零脚本、零 API），适合悬疑/仪式感开场；<b>年龄验证（18+）</b>——审查站面板（警示斜纹 + 18+ 印章徽章 + 双按钮），「进入」仍为纯 CSS 揭开，「离开」经酒馆助手 <code>/closechat</code> 关闭当前聊天退回主页（无 API 时弹提示），并监听 <code>CHAT_CHANGED</code> 在切换聊天/角色卡时重新盖上。封面不参与主题「动效档位」的入场错峰，避免定位异常。</p>
 
 <h5>🔎 解码文本区</h5>
 <p>文本先以乱码字符呈现，再逐字「解码」成正文（行间错峰）——赛博/悬疑/克苏鲁卡的开场利器。跟随主题动效档位与系统减少动效偏好（关闭时直接显示正文），宏在解码开始前已由酒馆解析。</p>
