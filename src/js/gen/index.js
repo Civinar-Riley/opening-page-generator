@@ -26,7 +26,8 @@ const Gen={
       /* 性能护栏：捕获组>15 改交 JS 解析；重复 id 多次插入互相干扰 */
       const capN=(html.match(/\((?!\?)/g)||[]).length; /* 捕获组约数（排除非捕获组 (?:） */
       if(capN>15)items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 正则捕获组约 ${capN} 个（>15）——捕获组过多易错位且性能差，建议改为整块输出交 JS 解析`});
-      const dupIds=(html.match(/id=\"([^"]+)\"/g)||[]).map(m=>m[1]);
+      /* match 带全局旗标返回整段匹配（不含捕获组），必须用 matchAll 才能取到捕获组里的 id 名 */
+      const dupIds=[...(html.matchAll(/id=\"([^\"]+)\"/g))].map(m=>m[1]);
       const dupId=dupIds.filter((v,idx)=>dupIds.indexOf(v)!==idx);
       if(dupId.length)items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 存在重复 id（${[...new Set(dupId)].join('、')}）——多次插入/渲染会互相干扰，建议改用类名或加唯一前缀`});
       /* 弯引号检测：正则捕获/JSON Patch 场景弯引号易与直引号混用导致匹配或解析失败 */

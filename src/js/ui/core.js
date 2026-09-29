@@ -6,6 +6,7 @@ import { Macros } from '../macros.js';
 /* 页面模块在模块顶层只做「导出方法定义」，不读 UI 值——挂载由本文件在 UI 初始化后统一执行，
  * 从而规避 ES 循环 import 的 TDZ 问题 */
 import { renderConfig, renderBlockBody } from './renderConfig.js';
+import { hasBridge } from './extBridge.js';
 import { renderExport } from './renderExport.js';
 import { renderAI } from './renderAI.js';
 import { renderHelp } from './renderHelp.js';
@@ -69,8 +70,15 @@ const UI={
     const measure=()=>{
       if(!always&&!window.matchMedia('(max-width:900px)').matches){frame.style.height='';return}
       /* 只按内容高度（body）计算：documentElement.scrollHeight 至少等于 iframe 当前高度，
-       * 若取两者最大值会导致高度「只增不减」 */
-      frame.style.height=(doc.body.scrollHeight+2)+'px';
+       * 若取两者最大值会导致高度「只增不减」。
+       * srcdoc 模板的 body 带 min-height:100vh——iframe 长高会抬高内部视口、视口又抬高
+       * body.scrollHeight，互相喂高（实测 4 轮后从 537px 涨到失控），故测量前摘掉它，
+       * 读纯内容高度后立刻恢复（恢复只影响视觉底色的最小铺满，不参与后续测量） */
+      const prevMinH=doc.body.style.minHeight;
+      doc.body.style.minHeight='0';
+      const h=doc.body.scrollHeight;
+      doc.body.style.minHeight=prevMinH;
+      frame.style.height=(h+2)+'px';
     };
     frame._previewRO=new ResizeObserver(measure);
     frame._previewRO.observe(doc.body);
@@ -177,6 +185,9 @@ $$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
       if(f._previewRO){f._previewRO.disconnect();f._previewRO=null}
       const n=document.createElement('iframe');
       n.id='previewFrame';n.setAttribute('sandbox','allow-scripts allow-same-origin');
+      /* 新 iframe 也要绑 load 测高：srcdoc 加载完成前 contentDocument 是 about:blank，
+         ≤900px 视口下会按 0 高度钉死 2px，预览塌缩 */
+      n.addEventListener('load',()=>UI.fitPreviewHeight(n));
       f.replaceWith(n);
       /* 新 iframe 无 srcdoc，必须清空增量 key，否则下方 refreshPreview 会因内容未变而跳过 → 预览页空白 */
       UI._lastPreviewKey='';
@@ -190,6 +201,23 @@ $$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
 
 Project.load();
 UI.renderAll();
+
+/* ---- 卸载兜底：saveDebounced 有 600ms 窗口，扩展内嵌的 iframe 被宿主拆毁（关 overlay/
+   切聊天）或独立版关页时，窗口内输入会随上下文一起消失——pagehide 同步写一次 localStorage ---- */
+window.addEventListener('pagehide',()=>{clearTimeout(Project._svT);Project.save()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')Project.save()});
+
+/* ---- 扩展内嵌（extBridge 桥存在）时，Esc 请求宿主关闭工坊 overlay：
+   iframe 获焦后宿主 document 收不到按键，只能由工具侧转发（无弹窗打开时才转发，
+   避免和工具内 confirmModal/写卡弹窗的 Esc 语义打架） ---- */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  try{
+    if(hasBridge()&&!document.querySelector('.opg-modal-root.show')&&!document.querySelector('#opgwc-card')){
+      window.parent.postMessage({type:'opg-ext-close'},'*');
+    }
+  }catch(_){/* 跨域 parent 等异常静默 */}
+});
 
 /* ---- 全局键盘快捷键（key 统一小写比较：CapsLock 开启时 'S'→'s' 仍命中，且不会触发浏览器保存对话框） ---- */
 document.addEventListener('keydown',e=>{

@@ -101,6 +101,7 @@ const Project={
     /* 旧工程的 followTavern 布尔映射为新四路跟随开关的 text 项（必须在通用合并前，
        否则会被 def.theme.follow 的全 false 默认值覆盖导致跟随静默失效） */
     if(!p.theme.follow&&p.theme.followTavern)p.theme.follow={text:true,quote:false,font:false,em:false};
+    delete p.theme.followTavern; /* 映射完成后清理死字段，避免每个工程都带着 */
     Object.keys(def.theme).forEach(k=>{if(p.theme[k]===undefined)p.theme[k]=def.theme[k]});
     if(!Array.isArray(p.macros))p.macros=[{k:'char',v:'{{char}}'},{k:'user',v:'{{user}}'}];
     if(!p.ai||typeof p.ai!=='object')p.ai={};
@@ -142,6 +143,8 @@ const Project={
     p.blocks=(p.blocks||[]).filter(b=>BLOCK_DEFS[b.type]);
   },
   save(){
+    /* 工厂重置后 reload 前的空窗期：任何触发保存的操作会把内存旧数据写回，直接短路 */
+    if(this._resetting)return;
     try{
       localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
       localStorage.setItem(this.LS_CUR,this.cur?.id||'');
@@ -153,7 +156,8 @@ const Project={
   },
   /* 高频输入路径用防抖保存，避免每次按键全量序列化所有工程 */
   _svT:null,
-  saveDebounced(){clearTimeout(this._svT);this._svT=setTimeout(()=>this.save(),600)},
+  _resetting:false,
+  saveDebounced(){if(this._resetting)return;clearTimeout(this._svT);this._svT=setTimeout(()=>this.save(),600)},
   select(id){
     this.cur=this.list.find(p=>p.id===id)||this.list[0];
     this.save();this.resetHistory();_ui.renderAll();
@@ -277,6 +281,8 @@ const Project={
       }catch(e){toast('导入失败：不是有效的工程文件')}
       input.value='';
     };
+    /* 读取失败（文件不可读/拖入目录等）不提示会让文件选择器「卡死」——同文件重选不触发 change */
+    r.onerror=()=>{toast('读取文件失败：文件不可读');input.value=''};
     r.readAsText(f);
   },
 };

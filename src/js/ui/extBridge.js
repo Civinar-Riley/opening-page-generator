@@ -1,6 +1,6 @@
 /* 扩展版桥接：本工具被酒馆扩展（extension 分支 ext/index.js）以 iframe 内嵌时，
-   宿主页注入 window.__OPG_EXT__（listCards / writeToCard），导出页即可把生成文档
-   直写角色卡 first_mes / alternate_greetings，免复制粘贴。
+   宿主页注入 window.__OPG_EXT__（listCards / writeToCard / aiAvailable / aiGenerate），
+   导出页可把生成文档直写角色卡、AI 助手页可直连酒馆当前连接生成，免复制粘贴免 Key。
    独立单文件版无桥（parent===window），hasBridge() 恒 false——功能休眠不可见。 */
 import { $, esc, toast, confirmModal } from '../utils.js';
 
@@ -9,6 +9,30 @@ export function hasBridge(){
     const b=window.parent!==window&&window.parent.__OPG_EXT__;
     return !!b&&typeof b.listCards==='function'&&typeof b.writeToCard==='function';
   }catch(e){return false} /* 跨域 parent 直接抛 SecurityError */
+}
+
+/* AI 连接模式解析（纯函数）：桥存在且宿主暴露酒馆生成通道（aiAvailable）时可用「酒馆当前连接」，
+   否则一律回落自定义接口模式。channel 用户可显式选 'custom' 强制走自定义。 */
+export function resolveAiChannel(channel){
+  let tavernOK=false;
+  try{
+    const b=window.parent!==window&&window.parent.__OPG_EXT__;
+    tavernOK=!!b&&typeof b.aiAvailable==='function'&&!!b.aiAvailable();
+  }catch(e){tavernOK=false}
+  if(!tavernOK)return 'custom';
+  return channel==='custom'?'custom':'tavern';
+}
+
+/* 酒馆模式生成请求的载荷（纯函数，便于测试）：ordered_prompts 干净生成（不带预设/世界书），
+   should_silence 静默生成不打扰玩家发送按钮 */
+export function buildTavernAiPayload(system,user){
+  return {
+    ordered_prompts:[
+      {role:'system',content:String(system??'')},
+      {role:'user',content:String(user??'')},
+    ],
+    should_silence:true,
+  };
 }
 
 async function listCards(){
@@ -20,13 +44,30 @@ async function writeCard(avatar,mode,content){
   return window.parent.__OPG_EXT__.writeToCard(avatar,mode,content);
 }
 
+/* 酒馆模式生成：经桥调用宿主侧 TavernHelper.generateRaw，走酒馆当前连接（Key/模型/参数全复用） */
+export async function tavernGenerate(system,user){
+  const payload=buildTavernAiPayload(system,user);
+  const r=await window.parent.__OPG_EXT__.aiGenerate(payload);
+  return typeof r==='string'?r:String((r&&r.content)??r??'');
+}
+
+let writerOpen=false; /* listCards 为异步：await 期间连点会叠开两层弹窗 */
+
 /* 导出页「写入角色卡」全流程：选卡 → 选目标（覆盖 first_mes / 追加 alternate_greetings）
    → 写前确认（覆盖模式二次确认）→ 经桥写入 → toast 结果。弹窗画在工具 iframe 内
    （复用工具主题令牌），桥只负责数据与写动作。 */
 export async function openCardWriter(fenced){
-  let cards=[];
-  try{cards=await listCards()}catch(e){toast('读取角色卡列表失败：'+((e&&e.message)||e));return}
-  if(!cards.length){toast('酒馆里没有可写入的角色卡');return}
+  if(writerOpen)return;
+  writerOpen=true;
+  try{
+    let cards=[];
+    try{cards=await listCards()}catch(e){toast('读取角色卡列表失败：'+((e&&e.message)||e));return}
+    if(!cards.length){toast('酒馆里没有可写入的角色卡');return}
+    await new Promise(resolve=>{openWriterDialog(cards,fenced,resolve)});
+  }finally{writerOpen=false}
+}
+
+function openWriterDialog(cards,fenced,onDone){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
@@ -46,8 +87,14 @@ export async function openCardWriter(fenced){
       <button type="button" class="btn small" id="opgwc-write">写入</button>
     </div>`;
   ov.appendChild(box);document.body.appendChild(ov);
-  const close=()=>{document.removeEventListener('keydown',onKey);ov.remove()};
-  const onKey=e=>{if(e.key==='Escape')close()};
+  const close=()=>{document.removeEventListener('keydown',onKey);ov.remove();onDone()};
+  const onKey=e=>{
+    if(e.key!=='Escape')return;
+    /* 确认框（.opg-modal-root.show）叠在写卡弹窗上时让位：Esc 只关确认框，
+       否则会把写卡弹窗连根关掉、悬留确认框点确定仍执行不可恢复覆盖 */
+    if(document.querySelector('.opg-modal-root.show'))return;
+    close();
+  };
   document.addEventListener('keydown',onKey);
   const cardSel=$('#opgwc-card',box),hint=$('#opgwc-hint',box);
   const refreshHint=()=>{
@@ -69,7 +116,8 @@ export async function openCardWriter(fenced){
     const mode=box.querySelector('input[name="opgwc-mode"]:checked').value;
     if(mode==='first_mes'){
       const ok=await confirmModal(`将覆盖角色卡「${cname}」的主开场白（first_mes），原内容不可恢复。确认写入？`,'覆盖确认');
-      if(!ok)return;
+      /* 确认期间弹窗可能已被 Esc 关闭（ov 已脱离 DOM）：此刻中止，杜绝在死 UI 上继续写入 */
+      if(!ok||!ov.isConnected)return;
     }
     const btn=$('#opgwc-write',box);btn.disabled=true;btn.textContent='写入中…';
     try{

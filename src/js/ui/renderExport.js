@@ -77,7 +77,7 @@ export function renderExport(){
   const rxOpts=()=>({
     placement:$('#rxPlacement',rx).value.split(',').map(x=>+x),
     runOnEdit:$('#rxRunOnEdit',rx).checked,
-    maxDepth:$('#rxMaxDepth',rx).value===''?null:+$('#rxMaxDepth',rx).value,
+    maxDepth:$('#rxMaxDepth',rx).value===''?null:Math.max(0,+$('#rxMaxDepth',rx).value||0),
   });
   /* replaceString 与 marker/placement/runOnEdit 无关（仅在下载时读取），pre 只渲染一次 */
   $('pre',rx).innerHTML=hlDoc(fenced);

@@ -175,7 +175,7 @@ ${bk} .${px}-gcoverph{position:absolute;inset:0;background:linear-gradient(160de
 ${bk} .${px}-gcoverph::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.13) 50%,transparent 58%)}
 ${bk} .${px}-gphnum{position:absolute;right:8px;bottom:-7px;font-size:46px;font-weight:700;line-height:1;color:rgba(255,255,255,.2)}
 ${bk} .${px}-gwallitem .${px}-gnum{position:absolute;top:6px;left:6px;z-index:1;min-width:0;font-size:12px;line-height:1;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;opacity:1}
-${bk} .${px}-gwallitem .${px}-gcur .${px}-gnum,${bk} .${px}-gwallitem:hover .${px}-gnum{color:${th.accent}}
+${bk} .${px}-gwallitem.${px}-gcur .${px}-gnum,${bk} .${px}-gwallitem:hover .${px}-gnum{color:${th.accent}}
 ${bk} .${px}-gwallitem .${px}-gmain{padding:8px 10px 10px}
 ${bk} .${px}-gwallitem .${px}-gtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 ${bk} .${px}-gwallitem .${px}-gdesc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
