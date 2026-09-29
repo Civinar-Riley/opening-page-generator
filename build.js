@@ -27,6 +27,23 @@ function build() {
   });
   /* 内联进 <script> 前，把字符串里的 </script> 转义，避免提前闭合 */
   let js = r.outputFiles[0].text.replace(/<\/script>/gi, '<\\/script>');
+  /* HTML5 script 双转义闸门：bundle 内 '<!--'（进 script 转义态）之后若再出现 '<script'
+     （进双转义态）且无 '-->' 弹出，文件末尾唯一的 </script> 只会把双转义退回转义态而
+     无法真正闭合脚本——整个 bundle 被浏览器当文本吞掉且零报错（v1.13.0 工具白屏根因）。
+     结束态仍为双转义即构建失败，逼源码消除 '<!--' 字面序列 */
+  {
+    let st = 0; /* 0 normal 1 escaped 2 double-escaped */
+    for (let i = 0; i < js.length - 8; i++) {
+      if (st === 0) { if (js.startsWith('<!--', i)) { st = 1; i += 3; } }
+      else if (st === 1) {
+        if (/^<script[ \t\n\f\r/>]/.test(js.slice(i, i + 8))) { st = 2; i += 6; }
+        else if (js.startsWith('-->', i)) { st = 0; i += 2; }
+      } else {
+        if (/^<\/script[ \t\n\f\r/>]/.test(js.slice(i, i + 9))) { st = 1; i += 8; }
+      }
+    }
+    if (st === 2) throw new Error('bundle 触发 HTML script 双转义：\'<!--\' 之后出现 \'<script\' 且无 \'-->\' 弹出，末尾 </script> 会被浏览器吞掉导致整包静默不执行——请消除源码中的 \'<!--\' 字面量（用 \'\u003c\' 转义或字符串拆接）');
+  }
   /* CSS 同样经 esbuild 压缩（tool.css 无本地 url() 引用，可安全 bundle） */
   const cssR = esbuild.buildSync({
     entryPoints: ['src/css/tool.css'],

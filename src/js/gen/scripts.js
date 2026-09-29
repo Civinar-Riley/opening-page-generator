@@ -257,7 +257,8 @@ export function script(p,px){
   /* 人物名提取（思路借鉴外部开场白选择器，实现为精简自研版）：
      显式字段 → 成对标签 → 冒号说话人归属（剥标签后 + 元数据/代词黑名单），去重上限 3 */
   function extractNames(text){
-    var raw=stripTags(String(text||'')).replace(/<!--[\\s\\S]*?-->/g,' ');
+    /* '\u003c' 转义断开 HTML 注释开启序列（HTML script 双转义坑，惯例同上方 jss），正则语义等价 */
+    var raw=stripTags(String(text||'')).replace(/\\u003c!--[\\s\\S]*?-->/g,' ');
     var found=[],add=function(n){n=(n||'').trim();if(n&&found.indexOf(n)===-1&&found.length<3)found.push(n)},m,re;
     re=/(?:姓名|人物姓名|角色名|角色姓名|登场人物|名字)[：:]\\s*([\\u4e00-\\u9fa5]{2,4})(?=$|[\\s，,。；;|<])/gm;
     while((m=re.exec(raw)))add(m[1]);
