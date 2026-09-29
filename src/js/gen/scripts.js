@@ -131,14 +131,19 @@ export function bgmScript(px){
 <\/script>`;
 }
 
+  /** 排除标签解析（纯函数，gen 侧共用：运行时 script() 与写卡快照烘焙同一口径）：
+   *  切分→剥 <> 前后缀→合法性→去重→上限 40 */
+export function parseExcludedTags(str){
+    return [...new Set(String(str??'').split(/[，,、\s]+/).map(x=>x.trim().replace(/^<\/?|\/?>$/g,'')).filter(x=>/^[\w\u4e00-\u9fa5-]{1,40}$/.test(x)))].slice(0,40);
+}
+
   /** 运行时脚本：酒馆助手 API，全量 typeof 检查 + 降级 */
 export function script(p,px){
     const greet=p.blocks.find(b=>b.type==='greetings');
     const action=greet?.clickAction||'go';
     const titleWb=greet?.titleWb||'',titleEntry=greet?.titleEntry||'开场白标题库';
     const btnName=(greet&&greet.buttonText)?greet.buttonText:'快速切换开局';
-    /* 排除标签 gen 侧解析（运行时只做剥除）：切分→剥 <> 前后缀→合法性→去重→上限 40 */
-    const tags=[...new Set(String(greet?.excludedTags||'').split(/[，,、\s]+/).map(x=>x.trim().replace(/^<\/?|\/?>$/g,'')).filter(x=>/^[\w\u4e00-\u9fa5-]{1,40}$/.test(x)))].slice(0,40);
+    const tags=parseExcludedTags(greet?.excludedTags);
     const meta=(Array.isArray(greet?.entries)?greet.entries:[]).map(e=>({cover:String(e&&e.cover||''),audio:String(e&&e.audio||'')}));
     const showNames=greet?greet.showNames!==false:true;
     const wall=greet?.cardStyle==='wall';

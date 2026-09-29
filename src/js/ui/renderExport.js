@@ -41,7 +41,18 @@ export function renderExport(){
   $('#exp1CopyRaw',box1).onclick=()=>{if(guard())copyText(fullDoc)};
   $('#exp1Dl',box1).onclick=()=>{if(guard())download(`${p.name}-开场白版.html`,fullDoc)};
   const toCardBtn=$('#exp1ToCard',box1);
-  if(toCardBtn)toCardBtn.onclick=()=>{if(guard())openCardWriter(fenced)};
+  if(toCardBtn){
+    /* 写卡时按所选卡重建文档：把卡的真实开场白烘焙进 greetings 区块静态列表
+       （Gen.greetSnapshotLines 转占位行），替代编辑器占位文本；无 greetings 区块则不传 */
+    const hasGreet=p.blocks.some(b=>b.enabled&&b.type==='greetings');
+    const rebuildGreet=hasGreet?texts=>{
+      const list=Gen.greetSnapshotLines(texts,(p.blocks.find(b=>b.enabled&&b.type==='greetings')||{}).excludedTags);
+      if(!list)return null;
+      const clone={...p,blocks:p.blocks.map(b=>b.enabled&&b.type==='greetings'?{...b,placeholderList:list}:b)};
+      return Gen.fencedFullDoc(clone);
+    }:null;
+    toCardBtn.onclick=()=>{if(guard())openCardWriter(fenced,rebuildGreet)};
+  }
   col.appendChild(box1);
 
   /* ④ 兼容审查报告：与 ① 导出自检并列（提示级避坑清单，不阻断复制/下载；报告只算一次） */
