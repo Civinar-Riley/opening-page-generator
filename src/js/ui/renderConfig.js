@@ -8,10 +8,25 @@ import { collectSearchMatches, replaceAllInProject, replaceAllInString } from '.
 /* 组件库分类（与 defs.js COMP_LIB[].cat 对应） */
 const COMP_CATS=[['all','全部'],['text','叙事文本'],['info','信息展示'],['role','角色卡'],['tech','科技终端'],['fx','状态动效'],['fantasy','古风奇幻'],['fun','交互趣味']];
 
+/* 页面区块展开状态（索引制，按工程隔离）：showTitle/闸门主题/预设/组件插入等
+   触发的整页重渲染不再跳回「第一个区块展开」；换工程时重置 */
+let cfgOpen=new Set([0]),cfgOpenProj=null;
+
 /* ---------- 配置页 ---------- */
 export function renderConfig(){
   const p=Project.cur,col=$('#configCol');
+  if(cfgOpenProj!==p){cfgOpen=new Set([0]);cfgOpenProj=p}
+  else{
+    /* 整页重渲染前从旧 DOM 抢救展开状态——下方 col.innerHTML='' 后 renderBlocks
+       拿到的是新建空列表，无法再从 DOM 读回（修复：改选项后跳回第一个区块展开） */
+    const oldBlocks=col.querySelectorAll('.block');
+    if(oldBlocks.length){
+      cfgOpen.clear();
+      oldBlocks.forEach((el,i)=>{if(!el.classList.contains('collapsed'))cfgOpen.add(i)});
+    }
+  }
   col.innerHTML='';
+  const expandedSet=cfgOpen; /* 模块级持久状态：跨整页重渲染保留展开位置 */
 
   /* 主题卡片 */
   const themeCard=document.createElement('div');themeCard.className='card';
@@ -137,7 +152,6 @@ export function renderConfig(){
 
   /* 桌面拖拽排序（mouse 事件改为拖拽实现，松开即落位） */
   let dragIdx=-1;
-  const expandedSet=new Set([0]);
   blockList.addEventListener('dragstart',e=>{
     const t=e.target.closest('.block');if(!t)return;
     dragIdx=[...blockList.children].indexOf(t);
@@ -224,10 +238,12 @@ export function renderConfig(){
   });
 
   const renderBlocks=()=>{
-    /* 保存当前展开状态；首次重建（blockList 为空）默认展开第一个区块 */
-    expandedSet.clear();
-    blockList.querySelectorAll('.block').forEach((el,i)=>{if(!el.classList.contains('collapsed'))expandedSet.add(i)});
-    if(!expandedSet.size)expandedSet.add(0);
+    /* 有旧 DOM 时按 DOM 同步展开状态；blockList 为空（首次构建）保留初始 {0}，
+       用户手动全部收起后保持收起，不再强制弹开第一个区块 */
+    if(blockList.children.length){
+      expandedSet.clear();
+      blockList.querySelectorAll('.block').forEach((el,i)=>{if(!el.classList.contains('collapsed'))expandedSet.add(i)});
+    }
     blockList.innerHTML='';
     /* 统计同类型数量用于序号角标 */
     const typeCount={};
