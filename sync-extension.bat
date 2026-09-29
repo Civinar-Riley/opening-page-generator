@@ -4,10 +4,11 @@ rem cmd 对批处理是增量读取，文件被 git 换掉会中断（"The batch
 if "%~1"=="run" goto body
 setlocal
 copy /y "%~f0" "%TEMP%\opg-sync-ext.bat" >nul
-rem %~dp0 尾部反斜杠会转义收尾引号（cmd 经典坑），剥掉再传
+rem %~dp0 尾部反斜杠会转义收尾引号（cmd 经典坑），剥掉再传；
+rem 调批处理用 call 而非 cmd /c（后者会剥引号，带引号路径+参数解析错乱）
 set "REPO=%~dp0"
 if "%REPO:~-1%"=="\" set "REPO=%REPO:~0,-1%"
-cmd /c "%TEMP%\opg-sync-ext.bat" run "%REPO%"
+call "%TEMP%\opg-sync-ext.bat" run "%REPO%"
 echo.
 pause
 exit /b 0
