@@ -6,6 +6,8 @@
   background: rgba(0, 0, 0, 0.72);
   display: flex;
   flex-direction: column;
+  /* 触屏上滑到 overlay 边缘时不要把滚动链到背后的酒馆页面（rubber-band 穿透） */
+  overscroll-behavior: contain;
 }
 
 #opg-ext-overlay .opg-ext-bar {
