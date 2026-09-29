@@ -16,21 +16,42 @@ const st={total:0,urls:[],thumbs:[],source:''};
 const getAddr=()=>{try{return localStorage.getItem(SERVICE_KEY)||DEF_ADDR}catch(e){return DEF_ADDR}};
 const setAddr=v=>{try{localStorage.setItem(SERVICE_KEY,v)}catch(e){}};
 
-/** 服务探活（3s 超时）：更新状态点与提示文案 */
+/** 服务探活（3s 超时）：更新状态点、提示文案与启动/停止按钮可见性 */
 async function probe(){
   const dot=$('#nhDot'),hint=$('#nhSvcHint'),addr=$('#nhAddr').value.trim().replace(/\/+$/,'');
   if(!dot)return;
   dot.className='status-dot status-warn';
   const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),3000);
+  let ok=false,ver='';
   try{
     const res=await fetch(addr+'/api/status',{signal:ctl.signal});
     const j=await res.json();
-    if(j&&j.ok){dot.className='status-dot status-ok';hint.textContent=`已连接（服务 v${j.version}）`;return}
-    throw new Error(j&&j.error||'未知响应');
-  }catch(e){
+    if(j&&j.ok){ok=true;ver=j.version||''}
+  }catch(e){/* 未连接 */}
+  finally{clearTimeout(timer)}
+  if(ok){
+    dot.className='status-dot status-ok';
+    hint.textContent=`已连接（服务 v${ver}）`;
+  }else{
     dot.className='status-dot status-err';
-    hint.textContent=e.name==='AbortError'?'连接超时——服务未启动？先在终端运行 npm run nh-serve':'未连接：'+e.message+'——先在终端运行 npm run nh-serve';
-  }finally{clearTimeout(timer)}
+    hint.textContent='未连接——点「🚀 一键启动服务」唤起（首次需先跑一次 npm run nh-install），或手动 npm run nh-serve';
+  }
+  const btnStart=$('#nhStart'),btnStop=$('#nhStop');
+  if(btnStart)btnStart.style.display=ok?'none':'';
+  if(btnStop)btnStop.style.display=ok?'':'none';
+  return ok;
+}
+
+/** 一键唤起服务：触发 opg-nh:// 协议（npm run nh-install 注册）→ 轮询探活；返回是否成功 */
+async function ensureService(){
+  if(await probe())return true;
+  try{location.href='opg-nh://start'}catch(e){/* 协议未注册时浏览器静默 */}
+  for(let i=0;i<5;i++){
+    await new Promise(r=>setTimeout(r,800));
+    if(await probe())return true;
+  }
+  toast('未能唤起服务——先在工具目录跑一次 npm run nh-install 注册一键启动，或手动 npm run nh-serve');
+  return false;
 }
 
 /** 抓取结果网格（全选初始）；勾选状态以 DOM checkbox 为单一事实源 */
@@ -69,8 +90,10 @@ export function renderNh(){
   if(!col.dataset.built){
     col.innerHTML=`
     <div class="card">
-      <h3>📚 漫画导入 <span class="status-dot" id="nhDot"></span><span class="nh-svchint" id="nhSvcHint">检查中…</span></h3>
-      <p class="nh-hint">通过<strong>本机辅助服务</strong>抓取 nhentai 画廊的页面直链（浏览器直连会被跨域拦截，故服务只监听本机 127.0.0.1）。服务未启动时先在工具目录终端运行 <code>npm run nh-serve</code>；也可用单次命令 <code>npm run nh -- 画廊链接 --skip-last 3</code> 直接导出到剪贴板。抓到全本后在下方<strong>勾选要的页</strong>（末尾广告页直接取消勾选），一键写入漫画阅读器区块。</p>
+      <h3>📚 漫画导入 <span class="status-dot" id="nhDot"></span><span class="nh-svchint" id="nhSvcHint">检查中…</span>
+        <button type="button" class="btn small" id="nhStart" style="display:none">🚀 一键启动服务</button>
+        <button type="button" class="btn ghost small" id="nhStop" style="display:none">⏹ 停止服务</button></h3>
+      <p class="nh-hint">通过<strong>本机辅助服务</strong>抓取 nhentai 画廊的页面直链（浏览器直连会被跨域拦截，故服务只监听本机 127.0.0.1）。未连接时点 <strong>🚀 一键启动服务</strong>（首次使用先跑一次 <code>npm run nh-install</code> 注册协议，之后浏览器会询问一次是否打开）；也可手动 <code>npm run nh-serve</code>，或单次命令 <code>npm run nh -- 画廊链接 --skip-last 3</code> 直接导出到剪贴板。抓到全本后在下方<strong>勾选要的页</strong>（末尾广告页直接取消勾选），一键写入漫画阅读器区块。</p>
       <div class="row2"><div><label>服务地址</label><input id="nhAddr" value="${esc(getAddr())}"></div>
       <div style="display:flex;align-items:flex-end"><button type="button" class="btn ghost small" id="nhProbe">检查连接</button></div></div>
       <div class="row2"><div><label>画廊链接或 ID</label><input id="nhUrl" placeholder="https://nhentai.net/g/123456/ 或 123456"></div>
@@ -97,19 +120,45 @@ export function renderNh(){
     /* 事件绑定（构建一次，全部挂在此处） */
     $('#nhAddr',col).addEventListener('change',function(){setAddr(this.value.trim().replace(/\/+$/,'')||DEF_ADDR);probe()});
     $('#nhProbe',col).onclick=()=>probe();
+    $('#nhStart',col).onclick=async function(){
+      this.disabled=true;
+      try{await ensureService()}finally{this.disabled=false}
+    };
+    $('#nhStop',col).onclick=async function(){
+      const addr=$('#nhAddr',col).value.trim().replace(/\/+$/,'');
+      try{await fetch(addr+'/api/shutdown');toast('服务已停止')}
+      catch(e){toast('停止失败：'+e.message)}
+      /* 服务端 100ms 延迟退出，立即探活会误报仍在线 */
+      setTimeout(probe,500);
+    };
     $('#nhFetch',col).onclick=async function(){
       const q=$('#nhUrl',col).value.trim();
       if(!q){toast('先填画廊链接或 ID');return}
-      this.disabled=true;const old=this.textContent;this.textContent='⏳ 抓取中…';
-      try{
+      /* grab 抛 service-unreachable 表示连接不上服务（网络层），与服务返回的业务错误区分开 */
+      const grab=async()=>{
         const addr=$('#nhAddr',col).value.trim().replace(/\/+$/,'');
-        const res=await fetch(addr+'/api/gallery?url='+encodeURIComponent(q));
+        let res;
+        try{res=await fetch(addr+'/api/gallery?url='+encodeURIComponent(q))}
+        catch(e){throw new Error('service-unreachable')}
         const j=await res.json();
         if(!j.ok)throw new Error(j.error||'服务返回异常');
         st.total=j.total;st.urls=j.urls;st.thumbs=j.thumbs;st.source=j.source;
-        renderGrid();probe();
+        renderGrid();
+      };
+      this.disabled=true;const old=this.textContent;this.textContent='⏳ 抓取中…';
+      try{
+        try{await grab()}
+        catch(e){
+          if(e.message!=='service-unreachable')throw e;
+          /* 服务未连接：自动一键唤起（opg-nh:// 协议）后重试一次 */
+          if(!await ensureService())throw new Error('服务未能启动——先跑一次 npm run nh-install 注册一键启动，或手动 npm run nh-serve');
+          await grab();
+        }
       }catch(e){toast('抓取失败：'+e.message)}
-      finally{this.disabled=false;this.textContent=old}
+      finally{
+        probe();
+        this.disabled=false;this.textContent=old;
+      }
     };
     $('#nhGrid',col).addEventListener('change',e=>{if(e.target.dataset.nhpg!==undefined)updateCount()});
     $('#nhAll',col).onclick=()=>setChecked(()=>true);

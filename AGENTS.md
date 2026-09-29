@@ -21,6 +21,7 @@
 | `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
 | `npm run nh -- <画廊URL\|ID> [--skip-last N] [--pages a-b]` | nhentai 画廊直链单次导出到剪贴板（`scripts/nh-import.mjs`） |
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端 |
+| `npm run nh-install` / `nh-uninstall` | 注册/移除 `opg-nh://` 本地协议（HKCU）——工具页「🚀 一键启动服务」按钮的唤起通道 |
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功 → **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
 
