@@ -4,7 +4,7 @@
   "js": "ext/index.js",
   "css": "ext/overlay.css",
   "author": "Civinar-Riley",
-  "version": "1.16.0",
+  "version": "1.17.0",
   "homePage": "https://github.com/Civinar-Riley/opening-page-generator",
   "auto_update": false
 }
