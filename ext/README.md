@@ -30,7 +30,9 @@ tool.html       工具本体（npm run build:ext 由 dist/index.html 复制生�
 
 ## 维护（开发者）
 
-main 分支为主开发线；本分支 = main + 上述胶水文件。同步流程：
+main 分支为主开发线；本分支 = main + 上述胶水文件。**日常同步双击根目录 `sync-extension.bat` 即可**——工作区需干净，脚本自动完成：checkout extension → merge main → `build:ext` 重建 tool.html → lint / 测试 → 提交推送 → 切回原分支（合并冲突自动中止回退，测试不过不推送）。
+
+手动等价流程（或脚本失败后排查用）：
 
 ```
 git checkout extension
