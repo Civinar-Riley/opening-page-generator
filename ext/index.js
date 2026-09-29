@@ -6,7 +6,7 @@
    全程走 SillyTavern.getContext() 全局入口与 window.TavernHelper，不做 ST 内部模块相对导入（官方明示随时可能变）。 */
 
 const EXT_ID = 'opening-page-generator';
-const BRIDGE_VERSION = '1.13.0';
+const BRIDGE_VERSION = '1.13.1';
 
 function ctx() {
   try { return window.SillyTavern && typeof window.SillyTavern.getContext === 'function' ? window.SillyTavern.getContext() : null; }
@@ -29,6 +29,8 @@ function listCards() {
   return list.map(ch => ({
     name: String(ch.name || ch.data?.name || ch.avatar || ''),
     avatar: String(ch.avatar || ''),
+    /* firstMes 供工具侧写卡时提取真实开场白烘焙进开场白选择区列表（extBridge.greetSnapshot） */
+    firstMes: String(ch.data?.first_mes ?? ch.first_mes ?? ''),
     alternateGreetings: (ch.data?.alternate_greetings) || ch.alternate_greetings || [],
   })).filter(x => x.avatar);
 }
