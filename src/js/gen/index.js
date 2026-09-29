@@ -2,7 +2,7 @@
 import { uid } from '../utils.js';
 import { css } from './css.js';
 import { body } from './body.js';
-import { script, lightbox, bgmScript } from './scripts.js';
+import { script, lightbox, bgmScript, parseExcludedTags } from './scripts.js';
 
 const Gen={
   /** 容器唯一前缀。同一工程导出的组件共用一个 id */
@@ -104,6 +104,33 @@ ${comp}
     const doc=this.buildFullDoc(p);
     if(doc.includes('```'))return '````\n'+doc+'\n````';
     return '```\n'+doc+'\n```';
+  },
+
+  /** 开场白原文快照 → 占位列表行（纯函数）：扩展版「写入角色卡」前把所选卡的真实开场白
+   *  烘焙进静态列表，替代编辑器占位文本。每条取首行作标题、余行并作描述，截断口径与
+   *  运行时 extractTitleDesc（gen/scripts.js）对齐——同步接管前静态列表与实时列表观感一致；
+   *  跳过 HTML 注释行与代码围栏行；剥除作者配置的排除标签（同一 TAGS 口径）。
+   *  人物名不烘焙（extractNames 逻辑过重，运行时 3 秒内同步补齐）。
+   * @param {string[]} texts 开场白原文数组（[first_mes, ...alternate_greetings]）
+   * @param {string} [excludedTags] 排除标签配置原文
+   * @returns {string} placeholderList 格式文本（每行 `标题｜描述`），无可烘焙内容时为 ''
+   */
+  greetSnapshotLines(texts,excludedTags){
+    const tags=parseExcludedTags(excludedTags);
+    const strip=t=>{for(const tag of tags){
+      t=t.replace(new RegExp('<'+tag+'(\\s[^<>]*)?>[\\s\\S]*?<\\/'+tag+'\\s*>','gi'),' ');
+      t=t.replace(new RegExp('<'+tag+'(?:\\s[^<>]*)?\\/?>','gi'),' ');
+      t=t.replace(new RegExp('<\\/'+tag+'\\s*>','gi'),' ');
+    }return t};
+    /* 占位列表按竖线切分字段：正文自带 ｜/| 会误切，换成近似字形 */
+    const sepSan=s=>s.replace(/[｜|]/g,'│');
+    return (Array.isArray(texts)?texts:[]).map(x=>strip(String(x??'')).replace(/\r/g,'')).map(t=>{
+      const ls=t.split('\n').map(s=>s.trim()).filter(s=>s&&s.indexOf('<!--')!==0&&s.indexOf('```')!==0);
+      if(!ls.length)return '';
+      let title=ls[0].replace(/^#+\s*/,'');if(title.length>20)title=title.slice(0,20)+'…';
+      let desc=ls.slice(1).join(' ');if(desc.length>=48)desc=desc.slice(0,48)+'…';
+      return sepSan(title)+(desc?'｜'+sepSan(desc):'');
+    }).filter(Boolean).join('\n');
   },
 
   /** 可直接导入酒馆的正则脚本 JSON（字段结构与 ST 正则扩展一致）

@@ -890,3 +890,32 @@ describe('Gen.build 审计修复回归（v1.13.0）',()=>{
     expect(Gen.auditCompat(p).items.some(x=>/重复 id（aaa）/.test(x.msg))).toBe(true);
   });
 });
+
+describe('Gen.greetSnapshotLines 写卡开场白快照（v1.13.1）',()=>{
+  it('多行开场白 → 首行标题｜余行描述（与运行时 extractTitleDesc 同口径）',()=>{
+    expect(Gen.greetSnapshotLines(['宁静的清晨\n晨光洒进房间\n新的一天'])).toBe('宁静的清晨｜晨光洒进房间 新的一天');
+  });
+  it('标题超 20 字截断加省略号，描述满 48 字截断加省略号',()=>{
+    const t30='一二三四五六七八九十一二三四五六七八九十一二三四五六七八九十';
+    expect(Gen.greetSnapshotLines([t30+'尾'])).toBe(t30.slice(0,20)+'…');
+    const d=Array.from({length:48},()=>'字').join('');
+    expect(Gen.greetSnapshotLines(['标\n'+d+'尾'])).toBe('标｜'+d+'…');
+    expect(Gen.greetSnapshotLines(['标\n'+d.slice(0,47)])).toBe('标｜'+d.slice(0,47));
+  });
+  it('跳过 HTML 注释行与围栏标记行（围栏内容行保留，与运行时同口径），剥行首 #，兼容 \\r',()=>{
+    expect(Gen.greetSnapshotLines(['<!-- 注释 -->\n```js\n代码\n```\n真标题\r\n正文'])).toBe('代码｜真标题 正文');
+    expect(Gen.greetSnapshotLines(['# 标题\n正文'])).toBe('标题｜正文');
+  });
+  it('排除标签剥除（与运行时 stripTags 同口径）',()=>{
+    expect(Gen.greetSnapshotLines(['<think>内心</think>开场白\n描述'],'<think>')).toBe('开场白｜描述');
+  });
+  it('标题/描述自带竖线换近似字形，防占位行误切字段',()=>{
+    const out=Gen.greetSnapshotLines(['A｜B\nC|D']);
+    expect(out).toBe('A│B｜C│D');
+  });
+  it('空输入 / 非数组 / 全空白 → 空串（调用方回落原占位列表）',()=>{
+    expect(Gen.greetSnapshotLines([])).toBe('');
+    expect(Gen.greetSnapshotLines('str')).toBe('');
+    expect(Gen.greetSnapshotLines([null,'   \n  <!-- x -->'])).toBe('');
+  });
+});
