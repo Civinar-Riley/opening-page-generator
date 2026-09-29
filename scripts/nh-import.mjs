@@ -105,6 +105,11 @@ export async function serve(){
     const u=new URL(req.url,`http://${HOST}`);
     try{
       if(u.pathname==='/api/status')return send(200,{ok:true,version:VERSION});
+      if(u.pathname==='/api/shutdown'){ /* 停止按钮：仅本机可达（服务只绑 127.0.0.1），退出服务进程 */
+        send(200,{ok:true,bye:true});
+        setTimeout(()=>process.exit(0),100);
+        return;
+      }
       if(u.pathname==='/api/gallery'){
         const g=await fetchGallery(u.searchParams.get('url')||'');
         const {urls,thumbs}=buildPageUrls(g.mediaId,g.pages);
