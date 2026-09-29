@@ -11,6 +11,7 @@ import { uid } from './utils.js';
  * @property {string} [html] - 自由 HTML（freehtml）
  * @property {Array<{name:string,desc:string,tags:string,avatar:string}>} [characters] - 角色列表（profile）
  * @property {Array<{url:string,cap:string}>} [images] - 图片列表（gallery）
+ * @property {Array<{url:string,cap:string}>} [pages] - 漫画页列表（comic）
  * @property {Array<{name:string,url:string}>} [tracks] - 曲目列表（bgm）
  * @property {Array<{name:string,items:Array<{q:string,a:string}>}>} [groups] - 问答分组（qa）
  */
@@ -70,8 +71,11 @@ const BLOCK_DEFS={
     lines:'「……你为什么一直点我？」\n「好啦好啦，有个秘密告诉你——其实我很喜欢 {{user}}。」'})},
   blurreveal:{name:'模糊揭示区',icon:'🌫️',create:()=>({showTitle:false,title:'🌫️ 逐段揭示',hint:'点击显示',
     lines:'你在旧书页里发现了一张夹着的字条，字迹被水洇开了大半——\n「别相信第七夜的雨声，那不是雨。」\n落款被撕掉了，只留下半个像「{{char}}」开头的签名。'})},
+  /* v1.14 新增区块（默认关闭）：漫画阅读器——点击封面/横幅打开全屏阅读器 */
+  comic:{name:'漫画阅读器',icon:'📚',create:()=>({entry:'cover',mode:'strip',title:'第 1 话',cover:'',buttonText:'📖 点击阅读漫画',
+    pages:[{url:'',cap:''}]})},
 };
-const BLOCK_ORDER=['welcome','decor','fx','quote','clockbar','randomevent','dice','countdown','timeline','profile','qa','gallery','bgm','greetings','divider','disclaimer','author','freehtml','changelog','gate','decode','gacha','egg','blurreveal'];
+const BLOCK_ORDER=['welcome','decor','fx','quote','clockbar','randomevent','dice','countdown','timeline','profile','qa','gallery','bgm','greetings','divider','disclaimer','author','freehtml','changelog','gate','decode','gacha','egg','blurreveal','comic'];
 /* 默认启用的核心区块；新区块默认关闭，由用户自行开启 */
 const CORE_TYPES=['welcome','decor','profile','greetings','divider','disclaimer'];
 

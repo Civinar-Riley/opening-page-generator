@@ -76,7 +76,7 @@ export function css(p,px,blocks){
     }
 
     /* 各区块实例样式（支持同类型多实例，按实例作用域隔离） */
-    let lbCssDone=false;
+    let lbCssDone=false,readerCssDone=false;
     blocks.forEach((b,i)=>{
       const bk=`.${px}-bk${i}`;
       switch(b.type){
@@ -222,6 +222,66 @@ ${bk} .${px}-gal figcaption{font-size:11px;padding:4px 8px;opacity:.75;text-alig
 .${px}-lb.on img{animation:${px}-lbin .22s ease}
 .${px}-lb img{max-width:94vw;max-height:84vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6)}
 .${px}-lbcap{color:#fff;font-size:13px;opacity:.85;text-align:center;max-width:90vw;line-height:1.6}
+`;
+          }
+          break;
+        }
+        case 'comic':{
+          /* 单行本入口卡：halftone 网点作漫画印刷质感；hover 动效属装饰，motion=off 时只保留静态变色 */
+          const dotBg=`radial-gradient(rgba(255,255,255,.055) 1px,transparent 1.4px)`;
+          s+=`
+${bk} .${px}-cvwrap{display:flex;justify-content:center;margin:14px 0}
+${bk} .${px}-cvcard{position:relative;width:min(240px,80%);border-radius:10px;overflow:hidden;cursor:pointer;border:1px solid ${th.accent}55;background:rgba(255,255,255,.05);box-shadow:0 6px 24px rgba(0,0,0,.45);transition:border-color .18s ease,box-shadow .18s ease}
+${bk} .${px}-cvcard:hover{border-color:${th.accent};box-shadow:0 10px 30px rgba(0,0,0,.6)}
+${bk} .${px}-cvimg{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:rgba(255,255,255,.06)}
+${bk} .${px}-cvcard::before{content:"";position:absolute;inset:0;background-image:${dotBg};background-size:6px 6px;pointer-events:none}
+${bk} .${px}-cvbelt{position:absolute;left:0;right:0;bottom:0;padding:16px 12px 9px 14px;background:linear-gradient(0deg,rgba(8,8,14,.92) 30%,rgba(8,8,14,.55) 75%,transparent);border-left:4px solid ${th.accent};display:flex;flex-direction:column;gap:2px}
+${bk} .${px}-cvbt{font-size:14px;font-weight:700;color:#fff;line-height:1.35;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+${bk} .${px}-cvgo{font-size:11px;color:${th.accent};letter-spacing:1px}
+${bk} .${px}-cvpgs{position:absolute;top:8px;right:8px;font-size:11px;padding:2px 9px;border-radius:12px;background:rgba(8,8,14,.78);color:${th.accent};border:1px solid ${th.accent}55;letter-spacing:.5px}
+${bk} .${px}-cvbnr{display:flex;align-items:center;gap:10px;margin:12px 0;padding:13px 16px;border:1px solid ${th.primary}66;border-radius:10px;cursor:pointer;color:inherit;font-size:14px;text-align:left;width:100%;background-color:rgba(255,255,255,.05);background-image:${dotBg},linear-gradient(90deg,${th.primary}26,transparent 60%);background-size:6px 6px,100% 100%;transition:border-color .18s ease,background-color .18s ease}
+${bk} .${px}-cvbnr:hover{border-color:${th.accent};background-color:rgba(255,255,255,.09)}
+${bk} .${px}-cvbgo{margin-left:auto;color:${th.accent};font-size:13px;flex:none}
+`;
+          if(motion!=='off')s+=`
+${bk} .${px}-cvcard{transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+${bk} .${px}-cvcard:hover{transform:translateY(-3px)}
+${bk} .${px}-cvcard::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.13) 50%,transparent 58%);transform:translateX(-130%);pointer-events:none}
+${bk} .${px}-cvcard:hover::after{transition:transform .7s ease;transform:translateX(130%)}
+${bk} .${px}-cvbnr{transition:transform .18s ease,border-color .18s ease,background-color .18s ease}
+${bk} .${px}-cvbnr:hover{transform:translateY(-1px)}
+`;
+          /* 阅读器覆盖层样式全页只需一份（覆盖层元素每实例各一，类名共用） */
+          if(!readerCssDone){
+            readerCssDone=true;
+            s+=`
+.${px}-reader{position:fixed;inset:0;z-index:2147483647;background:rgba(6,6,10,.94);display:none;flex-direction:column}
+.${px}-reader.on{display:flex;animation:${px}-rdfade .22s ease}
+@keyframes ${px}-rdfade{from{opacity:0}}
+.${px}-rbar{flex:none;display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(10,10,18,.92);border-bottom:1px solid rgba(255,255,255,.09)}
+.${px}-rtitle{flex:1;min-width:0;font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.${px}-rpage{flex:none;font-size:12px;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums}
+.${px}-rclose{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:none;color:#fff;font-size:14px;cursor:pointer;transition:border-color .15s,color .15s}
+.${px}-rclose:hover{border-color:${th.accent};color:${th.accent}}
+.${px}-rbody{flex:1;min-height:0}
+.${px}-rbody.strip{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 0}
+.${px}-rbody.strip .${px}-rpgcol{width:min(92%,680px);margin:0 auto}
+.${px}-rbody .${px}-rpg{margin:0;position:relative}
+.${px}-rbody .${px}-rpg img{display:block;width:100%;height:auto;background:rgba(255,255,255,.04)}
+.${px}-rbody .${px}-rpgcap{padding:6px 10px;font-size:12px;color:rgba(255,255,255,.6);text-align:center}
+.${px}-rbody.paged{display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:12px 0 4px}
+.${px}-rbody.paged .${px}-rpg{display:none;flex:1;min-height:0;width:100%}
+.${px}-rbody.paged .${px}-rpg.onp{display:flex;flex-direction:column;align-items:center;justify-content:center;animation:${px}-rdpg .18s ease}
+@keyframes ${px}-rdpg{from{opacity:0}}
+.${px}-rbody.paged .${px}-rpg img{width:auto;max-width:94%;max-height:100%;min-height:0;object-fit:contain;border-radius:6px}
+.${px}-rnav{flex:none;display:flex;justify-content:space-between;gap:10px;padding:8px 12px 12px}
+.${px}-rnav button{min-width:76px;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#fff;font-size:13px;cursor:pointer;transition:border-color .15s,color .15s}
+.${px}-rnav button:hover{border-color:${th.accent};color:${th.accent}}
+.${px}-rnav button:disabled{opacity:.3;cursor:default}
+.${px}-rpg.perr{min-height:110px;border:1px dashed rgba(255,255,255,.2);border-radius:6px}
+.${px}-rpg.perr::after{content:"⚠️ 本页图片加载失败";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.55)}
+@media(max-width:430px){.${px}-rbar{padding:8px 10px;gap:8px}.${px}-rtitle{font-size:13px}.${px}-rnav button{min-width:64px;padding:7px 10px}}
+@media(prefers-reduced-motion:reduce){.${px}-reader.on,.${px}-rbody.paged .${px}-rpg.onp{animation:none!important}}
 `;
           }
           break;

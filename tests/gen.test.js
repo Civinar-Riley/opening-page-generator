@@ -919,3 +919,78 @@ describe('Gen.greetSnapshotLines 写卡开场白快照（v1.13.1）',()=>{
     expect(Gen.greetSnapshotLines([null,'   \n  <!-- x -->'])).toBe('');
   });
 });
+
+describe('Gen.build 漫画阅读器（comic，v1.14）',()=>{
+  const base={type:'comic',enabled:true,title:'第 1 话',mode:'strip',entry:'cover',cover:'c.png',buttonText:'读',pages:[{url:'p1.png',cap:'开场'}]};
+  it('封面卡入口：封面图 + 书腰标题 + 页数徽标 + 热区/覆盖层配对',()=>{
+    const html=Gen.build(proj([base]),{isPreview:true});
+    expect(html).toContain('data-opg="comic-open" data-comic="bk0"');
+    expect(html).toContain('-cvimg" src="c.png"');
+    expect(html).toContain('1 页');
+    expect(html).toContain('-cvbelt');
+    expect(html).toContain('data-opg="comic-reader" data-comic="bk0"');
+    expect(html).toContain('-rbody strip');
+  });
+  it('entry=cover 未填封面自动回落横幅；entry=banner 不输出封面卡',()=>{
+    /* 断言用 DOM 特征（class 值引号结尾）；CSS 实例样式与脚本字面量无条件出现在产物里，裸类名会误命中 */
+    const fall=Gen.build(proj([{...base,cover:''}]),{isPreview:true});
+    expect(fall).toContain('-cvbnr"');
+    expect(fall).not.toContain('-cvcard"');
+    const banner=Gen.build(proj([{...base,entry:'banner'}]),{isPreview:true});
+    expect(banner).toContain('-cvbnr"');
+    expect(banner).not.toContain('-cvimg"');
+  });
+  it('翻页模式：rbody paged + 左右翻页按钮；条漫模式 rpgcol 无缝纵排',()=>{
+    const paged=Gen.build(proj([{...base,mode:'paged'}]),{isPreview:true});
+    expect(paged).toContain('-rbody paged');
+    expect(paged).toContain('data-opg="comic-prev">');
+    expect(paged).toContain('data-opg="comic-next">');
+    expect(paged).not.toContain('-rpgcol"');
+    const strip=Gen.build(proj([base]),{isPreview:true});
+    expect(strip).toContain('-rpgcol"');
+    expect(strip).not.toContain('data-opg="comic-prev">');
+  });
+  it('多实例：两块 comic 各自热区/覆盖层 bk0、bk1 配对，脚本全页一份',()=>{
+    const html=Gen.build(proj([base,{...base,pages:[{url:'q.png',cap:''}]}]),{isPreview:true});
+    expect(html).toContain('data-comic="bk0"');
+    expect(html).toContain('data-comic="bk1"');
+    expect(html.match(/-rbody strip/g).length).toBe(2);
+    expect(html.match(/function openRd/g).length).toBe(1);
+  });
+  it('双轨宏：title/页 URL/页说明 预览替换、导出保留',()=>{
+    const p=proj([{...base,title:'{{char}}的第 1 话',pages:[{url:'https://x/{{user}}.png',cap:'{{char}}出场'}]}]);
+    p.macros=[{k:'char',v:'艾莉丝'},{k:'user',v:'旅人'}];
+    const prev=Gen.build(p,{isPreview:true});
+    expect(prev).toContain('艾莉丝的第 1 话');
+    expect(prev).toContain('src="https://x/旅人.png"');
+    expect(prev).toContain('艾莉丝出场');
+    const exp=Gen.build(p,{isPreview:false});
+    expect(exp).toContain('{{char}}的第 1 话');
+    expect(exp).toContain('src="https://x/{{user}}.png"');
+    expect(exp).toContain('{{char}}出场');
+  });
+  it('页 URL 全空不输出任何入口与覆盖层（DOM 无实例配对属性；脚本全量注入属预期）',()=>{
+    const html=Gen.build(proj([{...base,pages:[{url:'',cap:''}]}]),{isPreview:true});
+    expect(html).not.toContain('data-comic="bk0"');
+    expect(html).not.toContain('comic-reader" data-comic');
+  });
+  it('运行时脚本锚点：打开/关闭/翻页/键盘与页码注入',()=>{
+    const html=Gen.build(proj([{...base,mode:'paged'}]),{isPreview:false});
+    expect(html).toContain('comic-open');
+    expect(html).toContain("closest('[data-opg=\"comic-close\"]')");
+    expect(html).toContain("e.key==='Escape'");
+    expect(html).toContain("e.key==='ArrowLeft'");
+    expect(html).toContain("classList.toggle('onp',k===i)");
+    expect(html).toContain("(i+1)+' / '+n");
+    expect(html).toContain("('共 '+n+' 页')");
+  });
+  it('页加载失败占位（onerror 加 perr 类）与标题转义',()=>{
+    const html=Gen.build(proj([{...base,title:'<b>x</b>',pages:[{url:'p1.png',cap:''}]}]),{isPreview:true});
+    expect(html).toContain("onerror=\"this.parentNode.classList.add('perr')\"");
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
+  });
+  it('auditCompat：comic 页 URL 含 http:// 报混合内容提示',()=>{
+    const p=proj([{...base,pages:[{url:'http://x/p1.png',cap:''}]}]);
+    expect(Gen.auditCompat(p).items.some(x=>/http:\/\//.test(x.msg))).toBe(true);
+  });
+});

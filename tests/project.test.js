@@ -36,6 +36,16 @@ describe('Project.normalize 规范化',()=>{
     expect(g.leaveText).toBe(BLOCK_DEFS.gate.create().leaveText);
     expect(g.logo).toBe(BLOCK_DEFS.gate.create().logo);
   });
+  it('comic 缺 entry/mode/pages 等字段补默认值（旧工程兼容）',()=>{
+    const p={name:'t',blocks:[{type:'comic',enabled:true}]};
+    Project.normalize(p);
+    const c=p.blocks.find(b=>b.type==='comic');
+    const proto=BLOCK_DEFS.comic.create();
+    expect(c.entry).toBe(proto.entry);
+    expect(c.mode).toBe(proto.mode);
+    expect(c.cover).toBe('');
+    expect(Array.isArray(c.pages)).toBe(true);
+  });
   it('已有区块的 enabled 不被覆盖',()=>{
     const p={name:'t',blocks:[{type:'welcome',enabled:true}]};
     Project.normalize(p);
