@@ -24,7 +24,7 @@
 
 ## extension 分支（酒馆扩展形态）
 
-main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json` / `ext/index.js` / `ext/overlay.css` / `ext/README.md` / `ext-build.js` / `tool.html` 产物），以 iframe 全屏内嵌工具 + `__OPG_EXT__` 桥（`src/js/ui/extBridge.js` 的写入角色卡能力只在桥存在时激活，独立版休眠）。**同步配方**：`git checkout extension && git merge main && npm run build:ext && npm run lint && npm test` → 提交推送（tool.html 是产物，merge 后必须重建再提交）；`manifest.json` 的 version 手动与 `package.json` 对齐。安装方式见 `ext/README.md`（Install extension 填仓库 URL + 分支名 `extension`）。胶水层改动勿反向 merge 回 main（main 无 manifest/ext，保持纯本地单文件形态）。
+main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json` / `ext/index.js` / `ext/overlay.css` / `ext/README.md` / `ext-build.js` / `tool.html` 产物），以 iframe 全屏内嵌工具 + `__OPG_EXT__` 桥（`src/js/ui/extBridge.js` 的写入角色卡能力只在桥存在时激活，独立版休眠）。**同步配方**：双击根目录 `sync-extension.bat`（工作区需干净；自动完成 checkout extension → merge main → build:ext 重建 tool.html → lint/test → 提交推送 → 切回原分支；合并冲突自动中止回退）。手动等价流程：`git checkout extension && git merge main && npm run build:ext && npm run lint && npm test` → 提交推送（tool.html 是产物，merge 后必须重建再提交）；`manifest.json` 的 version 手动与 `package.json` 对齐。安装方式见 `ext/README.md`（Install extension 填仓库 URL + 分支名 `extension`）。胶水层改动勿反向 merge 回 main（main 无 manifest/ext，保持纯本地单文件形态）。
 
 ## 模块地图（src/js js 文件 + index.html + tool.css）
 
