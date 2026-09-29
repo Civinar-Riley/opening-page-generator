@@ -1,0 +1,10 @@
+{
+  "display_name": "开场页工坊（Opening Page Generator）",
+  "loading_order": 100,
+  "js": "ext/index.js",
+  "css": "ext/overlay.css",
+  "author": "Civinar-Riley",
+  "version": "1.12.0",
+  "homePage": "https://github.com/Civinar-Riley/opening-page-generator",
+  "auto_update": false
+}

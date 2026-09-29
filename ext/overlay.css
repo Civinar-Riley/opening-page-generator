@@ -1,0 +1,58 @@
+/* 开场页工坊扩展：全屏 overlay 与内嵌工具 iframe */
+#opg-ext-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  flex-direction: column;
+}
+
+#opg-ext-overlay .opg-ext-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #191b22;
+  border-bottom: 1px solid #363a45;
+  color: #e4e2dd;
+}
+
+#opg-ext-overlay .opg-ext-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+#opg-ext-overlay .opg-ext-hint {
+  flex: 1;
+  font-size: 12px;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#opg-ext-overlay .opg-ext-frame {
+  flex: 1;
+  border: 0;
+  width: 100%;
+  background: #0f0e0e;
+}
+
+/* overlay 打开时锁定酒馆页面滚动 */
+body.opg-ext-lock {
+  overflow: hidden;
+}
+
+/* 扩展抽屉面板内的说明文字 */
+#opg-ext-panel .opg-ext-desc {
+  font-size: 12px;
+  opacity: 0.75;
+  margin: 4px 0 8px;
+  line-height: 1.6;
+}
+
+#opg-ext-panel #opg-ext-open {
+  width: 100%;
+}
