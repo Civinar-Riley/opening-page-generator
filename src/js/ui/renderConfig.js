@@ -938,7 +938,7 @@ export function renderBlockBody(container,b,i){
             <input data-cmf="${pi}.cap" value="${esc(pg.cap??'')}" placeholder="说明(可选)">
             <button type="button" data-cmdel="${pi}" style="background:none;border:none;color:var(--err);font-size:14px">✕</button></div>`;
         });
-        h+=`<button type="button" class="btn ghost small" data-cmadd="1" style="margin-top:6px">＋ 添加一页</button>
+        h+=`<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><button type="button" class="btn ghost small" data-cmadd="1">＋ 添加一页</button>${b.pages.some(pg=>pg.url)?`<button type="button" class="btn danger small" data-cmclear="1">🗑 清空全部页面</button>`:''}<span style="flex:1"></span>${b.pages.length?`<span style="font-size:11px;color:var(--txt2)">共 ${b.pages.length} 页</span>`:''}</div>
           <details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--acc)">📋 批量导入（每行一个 URL，一次生成全部页）</summary>
           <textarea data-cmimp placeholder="每行一个图片 URL 按页序粘贴；行内可用 | 追加该页说明" style="margin-top:6px"></textarea>
           <button type="button" class="btn small" data-cmimprun="1" style="margin-top:6px">解析并替换全部页</button>
@@ -955,6 +955,18 @@ export function renderBlockBody(container,b,i){
           build();
           UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();
           toast('已导入 '+b.pages.length+' 页');
+        });
+        /* 一键清空：删除导入的漫画页（封面/标题保留），可 Ctrl+Z 撤销 */
+        const clear=container.querySelector('[data-cmclear]');
+        if(clear)clear.addEventListener('click',async()=>{
+          const n=b.pages.filter(pg=>pg.url).length;
+          if(!n){toast('没有可清空的页面');return}
+          if(!await confirmModal(`确定清空全部 ${n} 页漫画？封面与标题保留（Ctrl+Z 可撤销）。`))return;
+          Project.saveSnapshot();
+          b.pages=[];
+          build();
+          UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();
+          toast('已清空 '+n+' 页');
         });
       };
       build();
