@@ -2,6 +2,7 @@
 import { $, esc, copyText, download, highlightCode, toast } from '../utils.js';
 import { Project } from '../project.js';
 import { Gen } from '../gen/index.js';
+import { hasBridge, openCardWriter } from './extBridge.js';
 
 export function renderExport(){
   const p=Project.cur,col=$('#exportCol');col.innerHTML='';
@@ -33,11 +34,14 @@ export function renderExport(){
       <button class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
       <button class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
       <button class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
+      ${hasBridge()?'<button class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
     </div><pre></pre>`;
   $('pre',box1).innerHTML=hlDoc(fenced);
   $('#exp1CopyFenced',box1).onclick=()=>{if(guard())copyText(fenced)};
   $('#exp1CopyRaw',box1).onclick=()=>{if(guard())copyText(fullDoc)};
   $('#exp1Dl',box1).onclick=()=>{if(guard())download(`${p.name}-开场白版.html`,fullDoc)};
+  const toCardBtn=$('#exp1ToCard',box1);
+  if(toCardBtn)toCardBtn.onclick=()=>{if(guard())openCardWriter(fenced)};
   col.appendChild(box1);
 
   /* ④ 兼容审查报告：与 ① 导出自检并列（提示级避坑清单，不阻断复制/下载；报告只算一次） */
