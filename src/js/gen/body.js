@@ -416,8 +416,9 @@ export function body(p,px,blocks,isPreview){
           break;
         }
         case 'gacha':{
+          /* 编辑器提示用全角｜分隔，解析时统一归一为半角（描述内含 | 的由 slice(2).join 还原） */
           const cards=String(b.cards??'').split('\n').map(s=>s.trim()).filter(Boolean)
-            .map(l=>{const seg=l.split('|');return [(seg[0]||'').trim(),(seg[1]||'').trim(),seg.slice(2).join('|').trim()]});
+            .map(l=>{const seg=l.replace(/｜/g,'|').split('|');return [(seg[0]||'').trim(),(seg[1]||'').trim(),seg.slice(2).join('|').trim()]});
           if(cards.length){
             out+=`  <div class="${px}-gacha">\n`;
             if(b.title)out+=`    <div class="${px}-gachahd">${esc(tx(b.title))}</div>\n`;
@@ -428,7 +429,7 @@ export function body(p,px,blocks,isPreview){
   var root=document.currentScript.previousElementSibling;if(!root)return;
   var card=root.querySelector('[data-opg="gcard"]'),front=root.querySelector('[data-opg="gfront"]');
   if(!card||!front)return;
-  var CARDS=${jssx(tx(cards))};
+  var CARDS=${jssx(cards.map(c=>c.map(tx)))};
   var RAR={ssr:['#f5c56b','rgba(245,197,107,.3)'],sr:['#b89cff','rgba(184,156,255,.3)'],r:['#7db8e8','rgba(125,184,232,.3)'],n:['#8a8a99','rgba(138,138,153,.25)']};
   function draw(){
     var c=CARDS[Math.floor(Math.random()*CARDS.length)];if(!c)return;
@@ -457,7 +458,7 @@ export function body(p,px,blocks,isPreview){
 (function(){
   var msg=document.currentScript.previousElementSibling;if(!msg)return;
   var btn=msg.previousElementSibling;if(!btn)return;
-  var LINES=${jssx(tx(secrets))},N=${cnt},n=0;
+  var LINES=${jssx(secrets.map(tx))},N=${cnt},n=0;
   btn.addEventListener('click',function(){
     n++;
     if(n<N){btn.title='再点 '+(N-n)+' 次……';return}

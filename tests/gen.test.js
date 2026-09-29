@@ -447,6 +447,7 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
       new Function(probe)();
       const f=globalThis.__f;
       expect(f.stripTags('<status>情绪：平静</status>正文开始<status/>')).toBe(' 正文开始 ');
+      expect(f.stripTags('</status>半截闭标签正文')).toBe(' 半截闭标签正文');
       expect(f.stripTags('普通文本')).toBe('普通文本');
       expect(f.extractNames('姓名：林晚\n<角色名>沈之衍</角色名>\n时间：清晨\n林晚：你来了。')).toEqual(['林晚','沈之衍']);
       expect(f.extractNames('没有名字的普通文本')).toEqual([]);
@@ -847,5 +848,45 @@ describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
     expect(html).not.toMatch(/-gcurcover\{[^}]*background:/); /* 背景不在封面本体上 */
     expect(html).toContain('-gcurcover{pointer-events:none;visibility:hidden'); /* 揭开后整面退出 */
     expect(html).toContain('-gcurcover::before{opacity:0}'); /* 背景层随幕布滑出淡出 */
+  });
+});
+
+describe('Gen.build 审计修复回归（v1.13.0）',()=>{
+  it('gacha：tx 逐字段应用，运行时拿到二维数组而非逗号拼接字符串（预览与导出双轨）',()=>{
+    const base={type:'gacha',enabled:true,title:'卡池',buttonText:'抽',cards:'SSR｜命运之刃｜{{char}}的剑\nXYZ｜神秘卡｜?'};
+    const exp=Gen.build(proj([base]),{isPreview:false});
+    expect(exp).toContain('var CARDS=[["SSR","命运之刃","{{char}}的剑"],["XYZ","神秘卡","?"]]');
+    expect(exp).not.toContain('var CARDS="');
+    const prev=Gen.build(proj([{...base,cards:'SSR｜命运之刃｜{{char}}的剑'}]),{isPreview:true});
+    expect(prev).toContain('var CARDS=[["SSR","命运之刃","');
+    expect(prev).toContain('的剑"]]');
+    expect(prev).not.toContain('var CARDS="');
+  });
+  it('egg：LINES 为字符串数组且宏逐条应用（导出保留宏）',()=>{
+    const exp=Gen.build(proj([{type:'egg',enabled:true,hint:'✦',count:5,lines:'彩蛋甲\n彩蛋乙'}]),{isPreview:false});
+    expect(exp).toContain('var LINES=["彩蛋甲","彩蛋乙"],N=5,');
+    expect(exp).not.toContain('var LINES="');
+  });
+  it('封面墙：运行时重建带 -gwallitem 类（有 API 环境加载即重建不掉样式）；当前项徽标为复合选择器',()=>{
+    const html=Gen.build(proj([{type:'greetings',enabled:true,cardStyle:'wall',placeholderList:'a\nb'}]),{isPreview:false});
+    expect(html).toContain("PX+'-gitem'+(WALL?' '+PX+'-gwallitem':'')");
+    expect(html).toMatch(/-gwallitem\.opg-[\w]+-gcur \.opg-[\w]+-gnum/);
+    expect(html).not.toMatch(/-gwallitem \.opg-[\w]+-gcur/);
+  });
+  it('stripTags：三条正则（成对/孤立开/孤立闭）齐备',()=>{
+    const code=Gen.build(proj([{type:'greetings',enabled:true,excludedTags:'status',placeholderList:'a'}]),{isPreview:false}).match(/<script>([\s\S]*?)<\/script>/)[1];
+    const stripLines=code.split('\n').filter(l=>l.includes("t=t.replace(new RegExp('<"));
+    expect(stripLines.length).toBe(3);
+    /* 产物里反斜杠双写（模板转义层），用程序化拼装断言第三个正则以 '<\\/'+tag 开头 */
+    const bs=String.fromCharCode(92);
+    expect(stripLines[2]).toContain("new RegExp('<"+bs+bs+"/'+tag+'"+bs+bs+"s*>','gi')");
+  });
+  it('auditCompat：不同 id 不误报重复（回归：match/g 取错捕获组），相同 id 报出名字',()=>{
+    const p=defaultProject('t');
+    const fb=p.blocks.find(b=>b.type==='freehtml');fb.enabled=true;
+    fb.html='<div id="aaa"></div><div id="bbb"></div>';
+    expect(Gen.auditCompat(p).items.some(x=>/重复 id/.test(x.msg))).toBe(false);
+    fb.html='<div id="aaa"></div><div id="aaa"></div>';
+    expect(Gen.auditCompat(p).items.some(x=>/重复 id（aaa）/.test(x.msg))).toBe(true);
   });
 });

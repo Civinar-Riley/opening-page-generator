@@ -44,10 +44,13 @@ document.addEventListener('click',async e=>{
     case 'factory-reset':{
       /* 清空所有本地数据并恢复初始状态：三次递进确认。
          key 扫描放到确认之后，并先阻断防抖保存定时器——否则确认期间
-         pending 的 saveDebounced 会在清空后把旧数据写回（重置假失败） */
+         pending 的 saveDebounced 会在清空后把旧数据写回（重置假失败）。
+         清空到 reload 之间还有 600ms 空窗：期间任何触发保存的操作会把
+         内存里的旧数据整体写回，故置阻断标志让 save/saveDebounced 直接短路 */
       if(!await confirmModal('⚠️ 即将清空本地数据并恢复初始状态。\n将删除：全部工程、我的模板、主题偏好。\n\n确定继续？','重置本地数据 1/3'))return;
       if(!await confirmModal('第二次确认：以上数据删除后无法恢复。\n建议先「导出工程」备份需要保留的内容。\n\n确定继续？','重置本地数据 2/3'))return;
       if(!await confirmModal('最后一次确认：真的要清空全部本地数据吗？\n此操作不可撤销！','重置本地数据 3/3'))return;
+      Project._resetting=true;
       clearTimeout(Project._svT);
       const keys=[];
       for(let i=0;i<localStorage.length;i++){
@@ -56,7 +59,7 @@ document.addEventListener('click',async e=>{
       }
       keys.forEach(k=>localStorage.removeItem(k));
       toast('已清空，正在恢复初始状态…');
-      setTimeout(()=>location.reload(),600);
+      location.reload();
       break;
     }
   }

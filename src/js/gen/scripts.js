@@ -197,8 +197,16 @@ export function script(p,px){
   /* ---------- 切换到对应开场白：先把卡的开场白同步进第 0 楼 swipes，
      再按映射的 swipe_id 切换（setChatMessages 支持整体 swipes 与 swipe_id）。
      切换后重读第 0 楼校验 swipe_id：酒馆在切换被拦截/失败时不一定抛错，
-     静默重读才能发现；校验通过才触发联动音轨 ---------- */
-  async function goGreeting(i){
+     静默重读才能发现；校验通过才触发联动音轨（无法确认时也不播）。
+     busy 串行化：连点两个选项会让两次切换交错 await，先点的重读看到后写的
+     swipe_id，产生假「消息页未切换」警报 ---------- */
+  var _goBusy=false;
+  function goGreeting(i){
+    if(_goBusy)return;
+    _goBusy=true;
+    _goGreeting(i).finally(function(){_goBusy=false});
+  }
+  async function _goGreeting(i){
     if(hasFn('setChatMessages')){
       try{
         var d=await getSwipes();
@@ -213,7 +221,8 @@ export function script(p,px){
         var r=setChatMessages([{message_id:0,swipe_id:target}]);
         if(r&&typeof r.then==='function')await r;
         var v=await getChatMsg0();
-        if(v&&typeof v.swipe_id==='number'&&v.swipe_id!==target){note('消息页未切换，请重试');return}
+        if(!v||typeof v.swipe_id!=='number'){loadGreetings();return}
+        if(v.swipe_id!==target){note('消息页未切换，请重试');return}
         playGreetAudio(i);
         loadGreetings();return;
       }catch(e){console.warn('[开场页] setChatMessages 切换失败',e);note('切换开场白失败：'+((e&&e.message)||e))}
@@ -228,7 +237,7 @@ export function script(p,px){
   var TITLE_WB=${jss(titleWb||'')},TITLE_ENTRY=${jss(titleEntry||'')};
   /* 封面墙/联动音轨/排除标签/人名开关（按开场白序号对应，见 gen 层 script()） */
   var TAGS=${jss(tags)},META=${jss(meta)},NAMES=${jss(showNames)},WALL=${jss(wall)};
-  /* 剥除作者配置的排除标签：整块元素连内容删掉，自闭合/孤立开标签单独删
+  /* 剥除作者配置的排除标签：整块元素连内容删掉；自闭合/孤立开、孤立闭标签单独删
      （标签名已经 gen 侧白名单校验，无需再转义正则元字符） */
   function stripTags(text){
     var t=String(text||'');
@@ -236,6 +245,7 @@ export function script(p,px){
       var tag=TAGS[k];
       t=t.replace(new RegExp('<'+tag+'(\\\\s[^<>]*)?>[\\\\s\\\\S]*?<\\\\/'+tag+'\\\\s*>','gi'),' ');
       t=t.replace(new RegExp('<'+tag+'(?:\\\\s[^<>]*)?\\\\/?>','gi'),' ');
+      t=t.replace(new RegExp('<\\\\/'+tag+'\\\\s*>','gi'),' ');
     }
     return t;
   }
@@ -339,7 +349,7 @@ export function script(p,px){
     d.list.forEach(function(msg,i){
       var td=(titleMap&&titleMap[i])?titleMap[i]:extractTitleDesc(msg);
       var btn=document.createElement('button');
-      btn.type='button';btn.className=PX+'-gitem'+(i===d.cur?' '+PX+'-gcur':'');
+      btn.type='button';btn.className=PX+'-gitem'+(WALL?' '+PX+'-gwallitem':'')+(i===d.cur?' '+PX+'-gcur':'');
       btn.setAttribute('data-opg','g');btn.setAttribute('data-i',i);
       var main=document.createElement('span');main.className=PX+'-gmain';
       var t1=document.createElement('span');t1.className=PX+'-gtitle';t1.textContent=td.title;

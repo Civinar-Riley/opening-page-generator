@@ -71,11 +71,15 @@ function _showModal({title='',msg='',input=false,defaultVal=''}){
       r.querySelector('.opg-modal-cancel').removeEventListener('click',onCancel);
       r.querySelector('.opg-modal-overlay').removeEventListener('click',onCancel);
       inp.removeEventListener('keydown',onKey);
+      document.removeEventListener('keydown',onDocKey);
       resolve(val);
     }
     function onOk(){close(input?inp.value:true)}
     function onCancel(){close(input?null:false)}
     function onKey(e){if(e.key==='Enter')onOk();if(e.key==='Escape')onCancel()}
+    /* 确认框（非输入）此前无法用 Esc 取消——document 级监听补齐；输入框场景仍走 onKey（Enter 提交） */
+    function onDocKey(e){if(e.key==='Escape'){e.stopPropagation();onCancel()}}
+    document.addEventListener('keydown',onDocKey);
     r.querySelector('.opg-modal-ok').addEventListener('click',onOk);
     r.querySelector('.opg-modal-cancel').addEventListener('click',onCancel);
     r.querySelector('.opg-modal-overlay').addEventListener('click',onCancel);

@@ -131,7 +131,8 @@
 | appendInexistentScriptButtons / getButtonEvent | 静默跳过按钮注册（页内列表仍可点选，功能不受影响） |
 | SillyTavern.callGenericPopup | 点按钮弹 note「未检测到弹出输入，请直接点击页内列表选项」 |
 | playAudio / pauseAudio（音频 API） | BGM 回落本地 `<audio>` 播放器（多楼层可能各自播放） |
-| setChatMessages 切换后校验不符 | 弹 note「消息页未切换，请重试」（列表照常刷新） |
+| setChatMessages 切换后校验不符 | 弹 note「消息页未切换，请重试」（列表随后由轮询/事件刷新） |
+| 重读第 0 楼失败（无法确认切换状态） | 不触发联动音轨，列表照常刷新 |
 | 宿主文档不可达（全跨域隔离） | 开场白联动音轨降级挂本楼 iframe，切换开场白后随楼层重建停止 |
 | toastr | 降级自绘 note 浮层（视觉差异仅此而已） |
 | 全部缺失（普通浏览器） | 静态占位内容完整可见，无任何报错 |
