@@ -71,8 +71,9 @@ if errorlevel 1 goto fail_on_ext
 echo.
 echo [5/6] 提交产物改动并推送 origin/extension...
 git add -A
+rem diff --quiet 有差异时退出码 1：有暂存改动才提交（条件曾写反，导致 tool.html 改动漏提交并卡住切回）
 git diff --cached --quiet
-if not errorlevel 1 git commit -m "chore: 重建 tool.html（同步 main@%SHORT%）"
+if errorlevel 1 git commit -m "chore: 重建 tool.html（同步 main@%SHORT%）"
 git push origin extension
 if errorlevel 1 goto fail_on_ext
 echo ✓ 已推送（若上方显示 Everything up-to-date 表示远端本就最新）。
