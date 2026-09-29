@@ -9,6 +9,7 @@ import { renderConfig, renderBlockBody } from './renderConfig.js';
 import { hasBridge } from './extBridge.js';
 import { renderExport } from './renderExport.js';
 import { renderAI } from './renderAI.js';
+import { renderNh } from './renderNh.js';
 import { renderHelp } from './renderHelp.js';
 
 const UI={
@@ -26,6 +27,7 @@ const UI={
     /* 各页隔离渲染：单页异常不影响其他页与预览 */
     try{this.renderExport()}catch(e){console.error('[导出页] 渲染失败',e);toast('导出页渲染失败：'+e.message)}
     try{this.renderAI()}catch(e){console.error('[AI页] 渲染失败',e);toast('AI 页渲染失败：'+e.message)}
+    try{this.renderNh()}catch(e){console.error('[导入页] 渲染失败',e);toast('漫画导入页渲染失败：'+e.message)}
     try{this.renderHelp()}catch(e){console.error('[说明页] 渲染失败',e);toast('说明页渲染失败：'+e.message)}
     this.refreshPreview();
   },
@@ -118,7 +120,7 @@ const UI={
 };
 
 /* 页面方法挂载（UI 初始化后执行，页面模块顶层不触碰 UI 值，循环 import 安全） */
-Object.assign(UI,{renderConfig,renderBlockBody,renderExport,renderAI,renderHelp});
+Object.assign(UI,{renderConfig,renderBlockBody,renderExport,renderAI,renderNh,renderHelp});
 
 /* ================================================================
  * 页签切换 + 拖拽排序 + 启动
@@ -126,7 +128,7 @@ Object.assign(UI,{renderConfig,renderBlockBody,renderExport,renderAI,renderHelp}
 /* 页签自定义顺序（localStorage 持久化；⟲ 重置随前缀清空恢复默认）。
    默认：模板配置第一、使用说明最后，其余保持声明顺序 */
 const TAB_ORDER_KEY='openingPageGen_v1_tabOrder';
-const TAB_DEFAULT_ORDER=['pageConfig','pagePreview','pageExport','pageAI','pageHelp'];
+const TAB_DEFAULT_ORDER=['pageConfig','pagePreview','pageExport','pageAI','pageNh','pageHelp'];
 function applyTabOrder(order){
   const bar=$('#tabs');
   const map={};

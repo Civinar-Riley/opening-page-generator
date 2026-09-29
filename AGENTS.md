@@ -19,6 +19,8 @@
 | `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 |
 | `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
+| `npm run nh -- <画廊URL\|ID> [--skip-last N] [--pages a-b]` | nhentai 画廊直链单次导出到剪贴板（`scripts/nh-import.mjs`） |
+| `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端 |
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功 → **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
 
