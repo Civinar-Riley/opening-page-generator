@@ -18,8 +18,13 @@
 | `npm run build` | 构建 `dist/index.html`（压缩版） |
 | `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 |
+| `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功 → **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
+
+## extension 分支（酒馆扩展形态）
+
+main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json` / `ext/index.js` / `ext/overlay.css` / `ext/README.md` / `ext-build.js` / `tool.html` 产物），以 iframe 全屏内嵌工具 + `__OPG_EXT__` 桥（`src/js/ui/extBridge.js` 的写入角色卡能力只在桥存在时激活，独立版休眠）。**同步配方**：`git checkout extension && git merge main && npm run build:ext && npm run lint && npm test` → 提交推送（tool.html 是产物，merge 后必须重建再提交）；`manifest.json` 的 version 手动与 `package.json` 对齐。安装方式见 `ext/README.md`（Install extension 填仓库 URL + 分支名 `extension`）。胶水层改动勿反向 merge 回 main（main 无 manifest/ext，保持纯本地单文件形态）。
 
 ## 模块地图（src/js js 文件 + index.html + tool.css）
 
