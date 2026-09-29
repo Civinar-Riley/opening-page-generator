@@ -618,19 +618,23 @@ export function renderBlockBody(container,b,i){
         </select></div>
         ${bind('text','中间文字（可选，留空则使用默认符号）')}`;
       break;
-    case 'greetings':
-      html=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 酒馆运行时以<strong>角色卡当前开场白</strong>（<code>getCharacter('current').first_messages</code>）为准实时渲染——卡里删掉的开场白立即从列表消失；点击跳转时自动把新增开场白同步进聊天第 0 楼再切换。选项显示<strong>标题 + 描述预览</strong>：默认自动提取（首行作标题），配置标题库世界书后按「序号|标题|描述」覆盖。</div>
-        ${area('placeholderList','预览占位列表（每行一个，可用 ｜ 分隔标题与描述）')}
-        <div class="row2">${chk('showTitle','显示小节标题')}</div>
+    case 'greetings':{
+      if(!Array.isArray(b.entries))b.entries=[];
+      const build=()=>{
+        let h=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 酒馆运行时以<strong>角色卡当前开场白</strong>（<code>getCharacter('current').first_messages</code>）为准实时渲染——卡里删掉的开场白立即从列表消失；点击跳转时自动把新增开场白同步进聊天第 0 楼再切换。选项显示<strong>标题 + 描述预览</strong>：默认自动提取（首行作标题），配置标题库世界书后按「序号|标题|描述」覆盖。</div>
+        ${area('placeholderList','预览占位列表（每行一个，可用 ｜ 分隔标题、描述与人物名）')}
+        <div class="row2">${chk('showTitle','显示小节标题')}${chk('showNames','显示自动提取的人物名')}</div>
         ${bind('title','小节标题文字（列表上方强调色小字）')}
         <div class="row2">
           <div><label>标题库世界书名（可选）</label><input data-bkey="${i}.titleWb" value="${esc(b.titleWb||'')}" placeholder="留空则自动提取"></div>
           <div><label>标题库条目名 (comment)</label><input data-bkey="${i}.titleEntry" value="${esc(b.titleEntry||'开场白标题库')}"></div>
         </div>
         <div style="font-size:11px;color:var(--txt2);margin:4px 0">标题库条目内容每行格式：<code>序号|标题|描述</code>，序号从 1 开始（对应第 1 个开场白）。</div>
+        ${bind('excludedTags','排除标签（逗号/顿号分隔，自动提取标题、描述、人名前剥除，如 status,设定）')}
         <div><label>选项风格</label><select data-bkey="${i}.cardStyle">
-          <option value="card"${b.cardStyle!=='list'?' selected':''}>卡片式（底色块 + 边框 + 悬浮位移）</option>
+          <option value="card"${b.cardStyle==='card'?' selected':''}>卡片式（底色块 + 边框 + 悬浮位移）</option>
           <option value="list"${b.cardStyle==='list'?' selected':''}>列表式（左侧竖线 + 紧凑行）</option>
+          <option value="wall"${b.cardStyle==='wall'?' selected':''}>封面墙（大图海报网格，无图回落渐变占位）</option>
         </select></div>
         <div><label>点击行为</label><select data-bkey="${i}.clickAction">
           <option value="go"${b.clickAction!=='insert'&&b.clickAction!=='send'&&b.clickAction!=='button'?' selected':''}>点击选项 → 切换到对应开场白（推荐，直接跳转 swipe 分支）</option>
@@ -638,8 +642,31 @@ export function renderBlockBody(container,b,i){
           <option value="send"${b.clickAction==='send'?' selected':''}>选中后点按钮 → 直接发送（/send）</option>
           <option value="button"${b.clickAction==='button'?' selected':''}>页内列表 + 注入酒馆按钮（输入序号快速跳转，极简页适用）</option>
         </select></div>
-        ${bind('buttonText','按钮文字（发送模式发送钮 / 按钮模式注册钮名）')}`;
+        ${bind('buttonText','按钮文字（发送模式发送钮 / 按钮模式注册钮名）')}
+        <div style="margin-top:8px"><label>封面与音轨（按开场白序号对应）</label></div>`;
+        b.entries.forEach((en,ei)=>{
+          h+=`<div style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:4px 0">
+            <div style="display:flex;align-items:center"><span style="font-size:11px;color:var(--accent);font-weight:600">第 ${ei+1} 个开场白</span><button type="button" data-gedel="${ei}" style="margin-left:auto;background:none;border:none;color:var(--err);font-size:14px">✕</button></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0">
+              <input data-gef="${ei}.cover" value="${esc(en.cover||'')}" placeholder="封面图 URL（可空）">
+              <input data-gef="${ei}.audio" value="${esc(en.audio||'')}" placeholder="联动音轨 URL（可空）">
+            </div></div>`;
+        });
+        h+=`<div style="font-size:11px;color:var(--txt2);margin:4px 0">序号对应角色卡开场白顺序，开场白数多于配置项时多余项用默认样式；联动音轨在<strong>点击切换开场白成功后</strong>播放（挂宿主文档，切换楼层不中断），选中未配音轨的开场白时停止。与 BGM 区块同时使用会叠播，请自行取舍。</div>
+        <button type="button" class="btn ghost small" data-geadd="1" style="margin-top:6px">＋ 添加一项</button>`;
+        container.innerHTML=h;
+      };
+      build();
+      bindListEditor(container,b.entries,{
+        delAttr:'gedel',addAttr:'geadd',fieldAttr:'gef',build,
+        confirmMsg:'删除该项的封面与音轨配置？',
+        createItem:()=>({cover:'',audio:''}),
+        afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
+        afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
+        afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
+      });
       break;
+    }
     case 'clockbar':
       html=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 实时时钟栏：导出后由酒馆的 <code>{{weekday}}</code> <code>{{isotime}}</code> 宏动态显示当前时间。内容支持宏与内联 HTML（可用上方 🧚 图标选择器插入 FA 动效图标）。</div>
         ${area('text','栏内容（支持宏 + HTML）')}

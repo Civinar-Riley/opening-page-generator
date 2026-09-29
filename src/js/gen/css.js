@@ -151,15 +151,37 @@ ${bk} .${px}-gitem:hover::after{opacity:1;color:${th.accent};transform:translate
 ${bk} .${px}-gcur::after{opacity:1;color:${th.accent}}
 ${bk} .${px}-gtitle{display:block;font-weight:600}
 ${bk} .${px}-gdesc{display:block;font-size:11px;opacity:.7;margin-top:2px;line-height:1.4;font-weight:400}
+${bk} .${px}-gnames{display:block;font-size:11px;color:${th.accent};margin-top:3px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 ${bk} .${px}-ghead{font-size:12px;font-weight:600;color:${th.accent};letter-spacing:2px;margin:12px 0 6px}
 ${bk} .${px}-gsend{margin-top:10px;width:100%;padding:10px;border:none;border-radius:8px;background:${th.primary};color:#fff;font-size:14px;cursor:pointer}
 ${bk} .${px}-gsend:hover{filter:brightness(1.15)}
 `;
-          /* 卡片风格外挂：左缘竖条 hover 自顶向下展开（列表风格已有 border-left，不重复输出） */
-          if(b.cardStyle!=='list')s+=`
+          /* 卡片风格外挂：左缘竖条 hover 自顶向下展开（仅 card；list 自带 border-left，wall 为纵向海报卡不适用） */
+          if(b.cardStyle==='card')s+=`
 ${bk} .${px}-gitem{position:relative;overflow:hidden}
 ${bk} .${px}-gitem::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:linear-gradient(to bottom,${th.accent},${th.accent}44);transform:scaleY(0);transform-origin:top;transition:transform .3s cubic-bezier(.4,0,.2,1)}
 ${bk} .${px}-gitem:hover::before{transform:scaleY(1)}
+`;
+          /* 封面墙：16:9 海报网格，无图回落主题渐变 + 大序号水印，当前项描边柔光 */
+          if(b.cardStyle==='wall')s+=`
+${bk} .${px}-glist{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+${bk} .${px}-gitem{flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:10px;background:rgba(255,255,255,.06)}
+${bk} .${px}-gitem:hover{transform:translateY(-2px);background:rgba(255,255,255,.11)}
+${bk} .${px}-gwallitem::after{display:none}
+${bk} .${px}-gcoverwrap{position:relative;display:block;aspect-ratio:16/9;overflow:hidden}
+${bk} .${px}-gcover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+${bk} .${px}-gcoverwrap::after{content:"";position:absolute;left:0;right:0;bottom:0;height:45%;background:linear-gradient(to top,rgba(0,0,0,.5),transparent);pointer-events:none}
+${bk} .${px}-gcoverph{position:absolute;inset:0;background:linear-gradient(160deg,${th.primary},${th.accent}55)}
+${bk} .${px}-gcoverph::before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.13) 50%,transparent 58%)}
+${bk} .${px}-gphnum{position:absolute;right:8px;bottom:-7px;font-size:46px;font-weight:700;line-height:1;color:rgba(255,255,255,.2)}
+${bk} .${px}-gwallitem .${px}-gnum{position:absolute;top:6px;left:6px;z-index:1;min-width:0;font-size:12px;line-height:1;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;opacity:1}
+${bk} .${px}-gwallitem .${px}-gcur .${px}-gnum,${bk} .${px}-gwallitem:hover .${px}-gnum{color:${th.accent}}
+${bk} .${px}-gwallitem .${px}-gmain{padding:8px 10px 10px}
+${bk} .${px}-gwallitem .${px}-gtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+${bk} .${px}-gwallitem .${px}-gdesc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+${bk} .${px}-gcur{box-shadow:0 0 0 1.5px ${th.accent},0 6px 18px ${th.accent}33}
+@media(max-width:430px){${bk} .${px}-glist{grid-template-columns:repeat(2,1fr);gap:8px}}
+@media(prefers-reduced-motion:reduce){${bk} .${px}-gitem{transition:none!important}}
 `;
           if(b.cardStyle==='list')s+=`
 ${bk} .${px}-gitem{background:transparent;border:none;border-left:3px solid ${th.primary}66;border-radius:0;padding:7px 12px}

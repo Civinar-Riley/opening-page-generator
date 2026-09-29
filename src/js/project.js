@@ -123,6 +123,7 @@ const Project={
       Object.keys(proto).forEach(k=>{if(b[k]===undefined)b[k]=proto[k]});
       if(b.type==='profile'&&!Array.isArray(b.characters))b.characters=[{name:'{{char}}',desc:'',tags:'',avatar:''}];
       if(b.type==='gallery'&&!Array.isArray(b.images))b.images=[];
+      if(b.type==='greetings'&&!Array.isArray(b.entries))b.entries=[];
     });
   },
   /* 旧版工程结构迁移：角色简介区从「世界书拉取+占位值」迁移为「手动多角色」；

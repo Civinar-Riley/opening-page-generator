@@ -41,7 +41,7 @@ const BLOCK_DEFS={
   profile:{name:'角色简介区',icon:'👤',create:()=>({showAvatar:true,showName:true,showDesc:true,showTags:true,avatarRound:true,
     characters:[{name:'{{char}}',desc:'这里显示角色简介，可添加多个角色。',tags:'女主角,神秘,温柔',avatar:'',avatarMode:'manual'}]})},
   disclaimer:{name:'免责声明区',icon:'⚠️',create:()=>({text:'本角色卡内容纯属虚构，由 AI 生成，仅供娱乐。',style:'collapse'})},
-  greetings:{name:'开场白选择区',icon:'💌',create:()=>({cardStyle:'card',clickAction:'go',buttonText:'开始',titleWb:'',titleEntry:'开场白标题库',showTitle:false,title:'开场选择',
+  greetings:{name:'开场白选择区',icon:'💌',create:()=>({cardStyle:'card',clickAction:'go',buttonText:'开始',titleWb:'',titleEntry:'开场白标题库',showTitle:false,title:'开场选择',showNames:true,excludedTags:'',entries:[],
     placeholderList:'宁静的清晨｜晨光洒进房间，新的一天开始了\n雨夜的邂逅｜一场大雨，命运的相遇\n命运的转折｜故事迎来了关键的抉择时刻'})},
   quote:{name:'开场引言',icon:'📜',create:()=>({text:'每一个选择，都是另一段人生的开始。',source:''})},
   gallery:{name:'图片展示区',icon:'🖼️',create:()=>({images:[{url:'',cap:''}],cols:'3'})},

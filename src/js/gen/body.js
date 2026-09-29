@@ -89,11 +89,24 @@ export function body(p,px,blocks,isPreview){
           if(b.showTitle&&b.title)out+=`  <div class="${px}-ghead">${esc(tx(b.title))}</div>\n`;
           out+=`  <div class="${px}-glist" data-opg="glist">\n`;
           const items=tx(b.placeholderList).split('\n').map(s=>s.trim()).filter(Boolean);
+          const wall=b.cardStyle==='wall';
           items.forEach((it,i)=>{
             const sep=it.includes('｜')?'｜':(it.includes('|')?'|':null);
-            const title=sep?it.split(sep)[0].trim():it;
-            const desc=sep?it.split(sep).slice(1).join(sep).trim():'';
-            out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||(i+1)}</span><span class="${px}-gmain"><span class="${px}-gtitle">${esc(title)}</span>${desc?`<span class="${px}-gdesc">${esc(desc)}</span>`:''}</span></button>\n`;
+            const parts=sep?it.split(sep):[it];
+            const title=parts[0].trim();
+            /* 三段以上：末段作人物名、中间段回拼为描述（两段行为与旧版一致） */
+            const names=sep&&parts.length>=3?parts[parts.length-1].trim():'';
+            const desc=sep?(parts.length>=3?parts.slice(1,-1).join(sep):parts.slice(1).join(sep)).trim():'';
+            const cover=(Array.isArray(b.entries)&&b.entries[i]&&b.entries[i].cover)||'';
+            const main=`<span class="${px}-gmain"><span class="${px}-gtitle">${esc(title)}</span>${desc?`<span class="${px}-gdesc">${esc(desc)}</span>`:''}${names?`<span class="${px}-gnames">${esc(names)}</span>`:''}</span>`;
+            if(wall){
+              /* 渐变回落层垫底，img 加载失败隐藏后自然露出占位（无需 JS 交换） */
+              out+=`    <button type="button" class="${px}-gitem ${px}-gwallitem" data-opg="g" data-i="${i}"><span class="${px}-gcoverwrap"><span class="${px}-gcoverph"><span class="${px}-gphnum">${GNUM[i]||(i+1)}</span></span>`;
+              if(cover)out+=`<img class="${px}-gcover" src="${esc(tx(cover))}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+              out+=`<span class="${px}-gnum">${GNUM[i]||(i+1)}</span></span>${main}</button>\n`;
+            }else{
+              out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||(i+1)}</span>${main}</button>\n`;
+            }
           });
           out+=`  </div>\n`;
           if(b.clickAction==='send'){

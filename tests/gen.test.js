@@ -363,6 +363,106 @@ describe('Gen.build greetings 中文数字序号与箭头',()=>{
   });
 });
 
+describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11.0）',()=>{
+  const gBase={type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',showNames:true,excludedTags:'',entries:[],placeholderList:'宁静的清晨｜晨光洒进房间\n雨夜的邂逅｜一场大雨'};
+  it('wall：占位渲染封面图 + 渐变回落垫底 + 序号徽标，无封面项露出占位水印',()=>{
+    const b={...gBase,cardStyle:'wall',entries:[{cover:'https://x/1.png',audio:''},{cover:'',audio:''}]};
+    const html=Gen.build(proj([b]),{isPreview:true});
+    expect(html).toContain('-gwallitem');
+    expect(html).toContain('-gcover" src="https://x/1.png"');
+    expect(html).toContain("onerror=\"this.style.display='none'\"");
+    expect(html).toContain('-gcoverph');
+    expect(html).toContain('-gphnum">贰</span>');
+    expect(html).toContain('-gnum">壹</span>');
+  });
+  it('wall：CSS 网格/16:9 封面/430px 两列断点/reduced-motion 兜底，且左缘竖条外挂不再作用于 wall',()=>{
+    const html=Gen.build(proj([{...gBase,cardStyle:'wall'}]),{isPreview:true});
+    expect(html).toContain('repeat(auto-fill,minmax(160px,1fr))');
+    expect(html).toContain('aspect-ratio:16/9');
+    expect(html).toContain('@media(max-width:430px)');
+    expect(html).toContain('linear-gradient(160deg');
+    expect(html).not.toContain('-gitem::before{content:"";position:absolute;top:0;left:0;width:3px');
+    const motionless=Gen.build(proj([{...gBase,cardStyle:'wall'}]),{isPreview:true});
+    expect(motionless).toContain('prefers-reduced-motion:reduce');
+  });
+  it('card/list 样式不受影响（左缘竖条仍属 card，list 保持竖线行）',()=>{
+    const card=Gen.build(proj([{...gBase,cardStyle:'card'}]),{isPreview:true});
+    expect(card).toContain('-gitem::before{content:"";position:absolute;top:0;left:0;width:3px');
+    const list=Gen.build(proj([{...gBase,cardStyle:'list'}]),{isPreview:true});
+    expect(list).toContain('border-left:3px solid');
+    expect(list).not.toContain('-gcoverph');
+  });
+  it('占位行第三段作人物名渲染 gnames；两段行行为与旧版一致',()=>{
+    const html=Gen.build(proj([{...gBase,placeholderList:'晨光｜新的一天｜林晚\n雨夜｜相遇'}]),{isPreview:true});
+    expect(html).toContain('-gnames">林晚</span>');
+    expect(html).toContain('-gtitle">晨光</span>');
+    expect(html).toContain('-gdesc">新的一天</span>');
+    expect(html).toContain('-gdesc">相遇</span>');
+    expect(html).not.toContain('-gnames">相遇');
+  });
+  it('排除标签 gen 侧解析注入 TAGS（全角逗号/顿号切分、剥 <> 前后缀、非法项过滤、去重），运行时 extractTitleDesc 先剥除',()=>{
+    const b={...gBase,excludedTags:'status, 设定，<world>、;;bad tag!'};
+    const html=Gen.build(proj([b]),{isPreview:false});
+    expect(html).toContain('var TAGS=["status","设定","world"]');
+    expect(html).toContain('text=stripTags(text)');
+    expect(html).toContain("new RegExp('<'+tag+'(\\\\s[^<>]*)?>[\\\\s\\\\S]*?<\\\\/'+tag+'\\\\s*>','gi')");
+  });
+  it('人名提取：运行时含 extractNames 与 gnames 渲染分支，showNames 开关注入 NAMES',()=>{
+    const on=Gen.build(proj([{...gBase}]),{isPreview:false});
+    expect(on).toContain('function extractNames');
+    expect(on).toContain("PX+'-gnames'");
+    expect(on).toContain('NAMES=true');
+    const off=Gen.build(proj([{...gBase,showNames:false}]),{isPreview:false});
+    expect(off).toContain('NAMES=false');
+  });
+  it('切换校验：setChatMessages 后重读第 0 楼，不符弹「消息页未切换」；按钮模式序号直传卡索引（修复双重映射）',()=>{
+    const html=Gen.build(proj([gBase]),{isPreview:false});
+    expect(html).toContain('消息页未切换，请重试');
+    expect(html).toContain('await goGreeting(n-1)');
+    expect(html).not.toContain('d.map?d.map[n-1]');
+  });
+  it('联动音轨：META 注入 + 宿主文档挂载标记 + 穿透与降级结构',()=>{
+    const b={...gBase,entries:[{cover:'',audio:'https://x/a.mp3'},{cover:'',audio:''}]};
+    const html=Gen.build(proj([b]),{isPreview:false});
+    expect(html).toContain('META=[{"cover":"","audio":"https://x/a.mp3"},{"cover":"","audio":""}]');
+    expect(html).toContain('data-opg-greet-audio');
+    expect(html).toContain('function hostDoc()');
+    expect(html).toContain('w.parent.document');
+    expect(html).toContain('playGreetAudio(i)');
+    expect(html).toContain('stopGreetAudio()');
+  });
+  it('行为验证：stripTags 剥除 / extractNames 三层启发式 / 楼内降级音频建立与停止',async()=>{
+    const b={...gBase,cardStyle:'wall',excludedTags:'status',entries:[{cover:'',audio:'https://x/a.mp3'}],placeholderList:'a'};
+    const code=Gen.build(proj([b]),{isPreview:false}).match(/<script>([\s\S]*?)<\/script>/)[1];
+    const start=code.indexOf('(function(){'),li=code.lastIndexOf('})();');
+    /* 开头接 IIFE 返回值与尾部挂载须用不同变量：返回值 undefined 会覆盖尾部挂载 */
+    const probe='globalThis.__iife=(function(){'+code.slice(start+'(function(){'.length,li)+'globalThis.__f={stripTags,extractNames,playGreetAudio,hostDoc};})();';
+    const doc={hidden:false,querySelector:()=>null,getElementById:()=>({querySelector:()=>null,addEventListener(){},setAttribute(){}}),addEventListener(){},body:null};
+    const created=[];
+    doc.createElement=tag=>{const el={tag,style:{},attrs:{},src:'',loop:false,parentNode:null,play:()=>Promise.resolve(),pause(){},setAttribute:(k,v)=>{el.attrs[k]=v},getAttribute:k=>el.attrs[k]};created.push(el);return el};
+    doc.body={appendChild:el=>{el.parentNode=doc.body},removeChild:el=>{el.parentNode=null}};
+    const {document:origDoc,window:origWin,setInterval:origSi}=globalThis;
+    globalThis.document=doc;globalThis.window={document:doc};globalThis.setInterval=()=>0;
+    try{
+      new Function(probe)();
+      const f=globalThis.__f;
+      expect(f.stripTags('<status>情绪：平静</status>正文开始<status/>')).toBe(' 正文开始 ');
+      expect(f.stripTags('普通文本')).toBe('普通文本');
+      expect(f.extractNames('姓名：林晚\n<角色名>沈之衍</角色名>\n时间：清晨\n林晚：你来了。')).toEqual(['林晚','沈之衍']);
+      expect(f.extractNames('没有名字的普通文本')).toEqual([]);
+      expect(f.hostDoc()).toBe(doc);
+      f.playGreetAudio(0);
+      expect(created.length).toBe(1);
+      expect(created[0].attrs['data-opg-greet-audio']).toBe('');
+      expect(created[0].src).toBe('https://x/a.mp3');
+      f.playGreetAudio(5);
+      expect(created[0].parentNode).toBe(null);
+      /* 让 IIFE 尾部 loadTitleMap().then(loadGreetings) 的微任务链在 stub 还原前排空 */
+      await new Promise(r=>setTimeout(r,0));
+    }finally{globalThis.document=origDoc;globalThis.window=origWin;globalThis.setInterval=origSi}
+  });
+});
+
 describe('Gen.build 视觉细节升级（入场动效/选区/灯箱/倒计时/流光）',()=>{
   it('全局包：入场渐显 stagger + ::selection/焦点主题化 + 全局 reduced-motion 豁免',()=>{
     const html=Gen.build(proj([{type:'divider',enabled:true,style:'plain'}]),{isPreview:false});

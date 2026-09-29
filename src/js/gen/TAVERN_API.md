@@ -16,6 +16,7 @@
 8. **楼层本地交互状态必然复位**：楼层 iframe 在重渲染、swipe、刷新后整体重建，组件内折叠/标签页/揭示等用户操作状态**不可持久化**——文档不得声称"记住用户选择"，需记忆的需求应写回聊天数据（当前产物不做）
 9. **重读本楼原文用 `getChatMessages(getCurrentMessageId())[0]?.message`**：正则 `$1` 向 HTML 传内容与对原始消息调 `formatAsDisplayedMessage`（会二次执行宏与正则）均为废弃做法，禁止采用
 10. **外层标签命名**：依赖标签定位的产物标记须是卡内唯一的 ASCII 小写标识符（字母开头，仅字母/数字/下划线/短横线），**禁用 `think`/`thinking`/`content`**（与预设职责冲突）
+11. **宿主文档音频挂载（开场白联动音轨专用，`gen/scripts.js` `playGreetAudio`）**：楼层 iframe 在 swipe 后整体重建，楼内 `<audio>` 随之销毁——「选中开场白后持续播放」的音轨必须挂到顶层文档。做法：从 runner iframe 向上遍历 `window.parent`（≤8 层，逐层 `void w.parent.document` 试探，抛 SecurityError 即停在当前层），把 `<audio data-opg-greet-audio>`（loop、`display:none`）挂到可达的最顶层文档；同标记幂等复用（楼层重建后新实例接管旧元素，不叠挂）。**生命周期**：楼层重建后音频继续播放属**预期行为**（作为开场 BGM 延续），不注册宿主事件监听做清理；选中未配音轨的开场白时停止并移除元素；宿主不可达（全跨域）时自然降级挂本楼（切楼即停）。工具预览 iframe 无酒馆 API，联动音轨不会触发；仅在点击切换开场白成功且校验通过后播放（用户手势上下文内，无自动播放限制问题）
 
 ## 接口优先级（选择原则）
 
@@ -42,7 +43,7 @@
 - 使用处：`gen/scripts.js` `getChatMsg0()`
 
 ### 3. setChatMessages —— 切换开场白（写入第 0 楼）
-- 用途：点击开场白选项后跳转。两种形态：`[{message_id:0, swipes:[...] }]` 整体同步（卡里新增而聊天缺的开场白先补进去）；`[{message_id:0, swipe_id:n}]` 按映射索引切换
+- 用途：点击开场白选项后跳转。两种形态：`[{message_id:0, swipes:[...] }]` 整体同步（卡里新增而聊天缺的开场白先补进去）；`[{message_id:0, swipe_id:n}]` 按映射索引切换。**切换后重读 `getChatMessages(0,…)` 校验 `swipe_id` 是否已到目标**——酒馆在切换被拦截/失败时不一定抛错，静默重读才能发现；不符弹 `note('消息页未切换，请重试')`，校验通过才触发联动音轨
 - 签名：`setChatMessages(msgs)` → 同步或 `Promise`
 - 守卫与降级：`hasFn('setChatMessages')`；失败 `note('切换开场白失败：…')`；**API 缺失时仅提示**（`/swipe` 命令只支持 left/right，无法按序号切换，故不做替代实现）
 - 使用处：`gen/scripts.js` `goGreeting(i)`
@@ -130,6 +131,8 @@
 | appendInexistentScriptButtons / getButtonEvent | 静默跳过按钮注册（页内列表仍可点选，功能不受影响） |
 | SillyTavern.callGenericPopup | 点按钮弹 note「未检测到弹出输入，请直接点击页内列表选项」 |
 | playAudio / pauseAudio（音频 API） | BGM 回落本地 `<audio>` 播放器（多楼层可能各自播放） |
+| setChatMessages 切换后校验不符 | 弹 note「消息页未切换，请重试」（列表照常刷新） |
+| 宿主文档不可达（全跨域隔离） | 开场白联动音轨降级挂本楼 iframe，切换开场白后随楼层重建停止 |
 | toastr | 降级自绘 note 浮层（视觉差异仅此而已） |
 | 全部缺失（普通浏览器） | 静态占位内容完整可见，无任何报错 |
 
