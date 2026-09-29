@@ -6,6 +6,7 @@
  *   3. console-log    console.log/debug 残留（error/warn 属合法诊断，不报）
  *   4. todo-fixme     TODO/FIXME 标记残留
  *   5. undef-ident    调用位未定义标识符（文件内无声明且非白名单全局——防漏 import/typo，曾漏过 renderConfig 的 replaceAllInString）
+ *   6. html-comment   JS 源码含 '<!--' 字面序列——触发 HTML script 双转义状态机（build.js 闸门同因），必须用 '\u003c' 转义或字符串拆接
  * 注：各规则已对当前代码库校准（零误报）；新增规则前先在本地验证不产生假阳性。
  */
 const fs=require('fs'),path=require('path');
@@ -186,6 +187,19 @@ function checkUndefIdent(file,src,lines){
   }
 }
 
+/* ---------- 规则 6：JS 源码 '<!--' 字面序列 ----------
+ * HTML 解析器在 script 内容中遇 '<!--' 进入转义态，其后任何 '<script' 进入双转义态，
+ * 双转义态里 </script> 不再闭合脚本——bundle 整体被吞且零报错（v1.13.0 白屏事故）。
+ * 直接对源码文本做 indexOf 检查（含注释/字符串/正则内——它们编译后都会原样进 bundle） */
+function checkHtmlCommentInJs(file,src,lines){
+  let idx=src.indexOf('<!--');
+  while(idx!==-1){
+    const line=src.slice(0,idx).split('\n').length;
+    issues.push({file,line,rule:'html-comment',level:'error',msg:'JS 源码含 \'<!--\' 字面序列（HTML script 双转义坑），用 \'\\u003c\' 转义或字符串拆接替代'});
+    idx=src.indexOf('<!--',idx+1);
+  }
+}
+
 for(const file of files){
   const src=fs.readFileSync(file,'utf8');
   const lines=src.split('\n');
@@ -195,6 +209,7 @@ for(const file of files){
   checkConsoleLog(rel,src,lines);
   checkTodoFIXME(rel,src,lines);
   checkUndefIdent(rel,src,lines);
+  checkHtmlCommentInJs(rel,src,lines);
 }
 
 /* 输出 */

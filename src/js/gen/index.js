@@ -125,7 +125,10 @@ ${comp}
     /* 占位列表按竖线切分字段：正文自带 ｜/| 会误切，换成近似字形 */
     const sepSan=s=>s.replace(/[｜|]/g,'│');
     return (Array.isArray(texts)?texts:[]).map(x=>strip(String(x??'')).replace(/\r/g,'')).map(t=>{
-      const ls=t.split('\n').map(s=>s.trim()).filter(s=>s&&s.indexOf('<!--')!==0&&s.indexOf('```')!==0);
+      /* '\u003c' 转义会被 esbuild minify 还原成字面 '<'，改用 join 拼接（minify 不折叠，产物与
+         工具 bundle 均不出现 HTML 注释开启序列——避免 HTML script 双转义坑，惯例见 build.js 闸门） */
+      const HCC=['<!','--'].join('');
+      const ls=t.split('\n').map(s=>s.trim()).filter(s=>s&&s.indexOf(HCC)!==0&&s.indexOf('```')!==0);
       if(!ls.length)return '';
       let title=ls[0].replace(/^#+\s*/,'');if(title.length>20)title=title.slice(0,20)+'…';
       let desc=ls.slice(1).join(' ');if(desc.length>=48)desc=desc.slice(0,48)+'…';
