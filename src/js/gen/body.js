@@ -85,6 +85,31 @@ export function body(p,px,blocks,isPreview){
           }
           break;
         }
+        case 'comic':{
+          const pgs=Array.isArray(b.pages)?b.pages.filter(x=>x.url):[];
+          if(pgs.length){
+            const cid=`bk${i}`; /* 实例标识：热区与覆盖层配对（多实例互不串扰） */
+            const paged=b.mode==='paged';
+            if(b.entry==='banner'||!b.cover){
+              out+=`  <div class="${px}-cvbnr" data-opg="comic-open" data-comic="${cid}" role="button" tabindex="0"><span aria-hidden="true">📖</span><span>${esc(tx(b.buttonText||'📖 点击阅读漫画'))}</span><span class="${px}-cvbgo" aria-hidden="true">▶</span></div>\n`;
+            }else{
+              out+=`  <div class="${px}-cvwrap">\n    <div class="${px}-cvcard" data-opg="comic-open" data-comic="${cid}" role="button" tabindex="0">\n      <img class="${px}-cvimg" src="${esc(tx(b.cover))}" alt="" loading="lazy" onerror="this.style.display='none'">\n      <span class="${px}-cvpgs">${pgs.length} 页</span>\n      <span class="${px}-cvbelt"><span class="${px}-cvbt">${esc(tx(b.title))}</span><span class="${px}-cvgo">▶ 点击阅读</span></span>\n    </div>\n  </div>\n`;
+            }
+            /* 阅读器覆盖层：页面列表每实例独立，故每实例各输出一份；打开/翻页由全页一份的脚本委托 */
+            out+=`  <div class="${px}-reader" data-opg="comic-reader" data-comic="${cid}" aria-hidden="true">\n`;
+            out+=`    <div class="${px}-rbar"><span class="${px}-rtitle">${esc(tx(b.title))}</span><span class="${px}-rpage" data-opg="comic-pageinfo"></span><button type="button" class="${px}-rclose" data-opg="comic-close" aria-label="关闭">✕</button></div>\n`;
+            out+=`    <div class="${px}-rbody ${paged?'paged':'strip'}">\n`;
+            if(!paged)out+=`      <div class="${px}-rpgcol">\n`;
+            pgs.forEach(pg=>{
+              out+=`      <figure class="${px}-rpg"><img data-opg="comic-page" src="${esc(tx(pg.url))}" alt="" loading="lazy" onerror="this.parentNode.classList.add('perr')">${pg.cap?`<figcaption class="${px}-rpgcap">${esc(tx(pg.cap))}</figcaption>`:''}</figure>\n`;
+            });
+            if(!paged)out+=`      </div>\n`;
+            out+=`    </div>\n`;
+            if(paged)out+=`    <div class="${px}-rnav"><button type="button" data-opg="comic-prev">‹ 上一页</button><button type="button" data-opg="comic-next">下一页 ›</button></div>\n`;
+            out+=`  </div>\n`;
+          }
+          break;
+        }
         case 'greetings':{
           if(b.showTitle&&b.title)out+=`  <div class="${px}-ghead">${esc(tx(b.title))}</div>\n`;
           out+=`  <div class="${px}-glist" data-opg="glist">\n`;

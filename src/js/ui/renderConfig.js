@@ -914,6 +914,60 @@ export function renderBlockBody(container,b,i){
         ${bind('hint','遮罩提示文字（每段遮罩上居中显示）')}
         ${area('lines','揭示文本（每行一段，支持宏）')}`;
       break;
+    case 'comic':{
+      if(!Array.isArray(b.pages))b.pages=[];
+      const build=()=>{
+        let h=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">📌 点击封面/横幅打开全屏阅读器（✕ 或 Esc 关闭，翻页模式支持键盘 ←→）。图片用图床直链即可；页数多时用「批量导入」一次粘贴全部 URL。</div>
+          <div class="row2">
+            <div><label>入口形态</label><select data-bkey="${i}.entry">
+              <option value="cover"${b.entry!=='banner'?' selected':''}>封面卡片（留空封面自动回落横幅）</option>
+              <option value="banner"${b.entry==='banner'?' selected':''}>横幅按钮</option>
+            </select></div>
+            <div><label>阅读模式</label><select data-bkey="${i}.mode">
+              <option value="strip"${b.mode!=='paged'?' selected':''}>条漫 · 上下滚动</option>
+              <option value="paged"${b.mode==='paged'?' selected':''}>翻页 · 左右切换</option>
+            </select></div>
+          </div>
+          ${bind('title','标题（封面书腰与阅读器顶栏显示，支持宏）')}
+          ${bind('cover','封面图 URL（入口为封面卡片时显示）')}
+          ${bind('buttonText','横幅按钮文字')}`;
+        b.pages.forEach((pg,pi)=>{
+          h+=`<div style="display:grid;grid-template-columns:26px 1fr 110px 30px;gap:6px;margin:4px 0;align-items:center">
+            <span style="font-size:11px;color:var(--txt2);text-align:center">${pi+1}</span>
+            <input data-cmf="${pi}.url" value="${esc(pg.url)}" placeholder="第 ${pi+1} 页图片 URL https://...">
+            <input data-cmf="${pi}.cap" value="${esc(pg.cap??'')}" placeholder="说明(可选)">
+            <button type="button" data-cmdel="${pi}" style="background:none;border:none;color:var(--err);font-size:14px">✕</button></div>`;
+        });
+        h+=`<button type="button" class="btn ghost small" data-cmadd="1" style="margin-top:6px">＋ 添加一页</button>
+          <details style="margin-top:10px"><summary style="cursor:pointer;font-size:12px;color:var(--acc)">📋 批量导入（每行一个 URL，一次生成全部页）</summary>
+          <textarea data-cmimp placeholder="每行一个图片 URL 按页序粘贴；行内可用 | 追加该页说明" style="margin-top:6px"></textarea>
+          <button type="button" class="btn small" data-cmimprun="1" style="margin-top:6px">解析并替换全部页</button>
+          <div style="font-size:11px;color:var(--txt2);margin-top:4px">现有页会被覆盖（先弹确认）。</div></details>`;
+        container.innerHTML=h;
+        /* 批量导入：局部监听挂在本次 build 新建的按钮上（container 每次重建，无重复绑定） */
+        const run=container.querySelector('[data-cmimprun]');
+        if(run)run.addEventListener('click',async()=>{
+          const ta=container.querySelector('[data-cmimp]');
+          const lines=String(ta?ta.value:'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+          if(!lines.length){toast('请先粘贴图片 URL（每行一个）');return}
+          if(b.pages.some(pg=>pg.url)&&!await confirmModal(`批量导入将覆盖现有的 ${b.pages.length} 页，确定？`))return;
+          b.pages=lines.map(l=>{const[v,c]=l.split('|');return{url:v.trim(),cap:(c||'').trim()}});
+          build();
+          UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();
+          toast('已导入 '+b.pages.length+' 页');
+        });
+      };
+      build();
+      bindListEditor(container,b.pages,{
+        delAttr:'cmdel',addAttr:'cmadd',fieldAttr:'cmf',build,
+        confirmMsg:'删除该页？',
+        createItem:()=>({url:'',cap:''}),
+        afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
+        afterAdd:()=>{Project.save();Project.saveSnapshot()},
+        afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
+      });
+      break;
+    }
   }
   if(html)container.innerHTML=html;
   /* 预设模板下拉框 */

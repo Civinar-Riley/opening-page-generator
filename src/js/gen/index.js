@@ -2,7 +2,7 @@
 import { uid } from '../utils.js';
 import { css } from './css.js';
 import { body } from './body.js';
-import { script, lightbox, bgmScript, parseExcludedTags } from './scripts.js';
+import { script, lightbox, comicReader, bgmScript, parseExcludedTags } from './scripts.js';
 
 const Gen={
   /** 容器唯一前缀。同一工程导出的组件共用一个 id */
@@ -42,6 +42,7 @@ const Gen={
       if(!b||!b.enabled)return;
       const urls=[];
       if(b.type==='gallery'&&Array.isArray(b.images))b.images.forEach(x=>{if(x&&x.url)urls.push(x.url)});
+      if(b.type==='comic'){if(b.cover)urls.push(b.cover);if(Array.isArray(b.pages))b.pages.forEach(x=>{if(x&&x.url)urls.push(x.url)})}
       if(b.type==='profile'&&Array.isArray(b.characters))b.characters.forEach(c=>{if(c&&c.avatar)urls.push(c.avatar)});
       if(b.type==='decor'&&b.bgType==='image'&&b.bgImage)urls.push(b.bgImage);
       if(urls.some(u=>/^http:\/\//i.test(u)))items.push({level:'提示',msg:`区块 #${i+1}（${b.type}）使用了 http:// 图片——https 部署的酒馆会因混合内容策略拦截不显示，建议换 https 图源`});
@@ -76,7 +77,7 @@ const Gen={
     const blocks=p.blocks.filter(b=>b.enabled);
     const cssStr=css(p,px,blocks);
     const html=body(p,px,blocks,isPreview);
-    const js=(isPreview?'':script(p,px))+lightbox(px)+bgmScript(px);
+    const js=(isPreview?'':script(p,px))+lightbox(px)+comicReader(px)+bgmScript(px);
     return `<div id="${px}" class="${px}-root">\n<style>\n${cssStr}\n</style>\n${html}\n${js}\n</div>`;
   },
 

@@ -30,6 +30,75 @@ export function lightbox(px){
 <\/script>`;
 }
 
+export function comicReader(px){
+    /* 漫画阅读器：纯 DOM 无 API 依赖，全页注入一份靠守卫空转。
+       打开热区 data-comic="bkN" 与覆盖层配对（多实例互不串扰）；
+       cur 记录当前打开实例，天然互斥；翻页状态存楼内内存，楼层重建自动复位 */
+    return `<script>
+(function(){
+  var PX=${jss(px)};
+  var root=document.getElementById(PX);
+  if(!root)return;
+  var cur=null,curIdx=0;
+  var rbodyOf=function(rd){var b=rd.getElementsByClassName(PX+'-rbody')[0];return b};
+  var pagedOf=function(rd){var b=rbodyOf(rd);return !!(b&&b.classList.contains('paged'))};
+  function show(rd,i){
+    var pgs=rd.querySelectorAll('[data-opg="comic-page"]'),n=pgs.length;
+    if(!n)return;
+    if(i<0)i=0;if(i>n-1)i=n-1;
+    curIdx=i;
+    var paged=pagedOf(rd);
+    if(paged){
+      for(var k=0;k<n;k++)pgs[k].classList.toggle('onp',k===i);
+      var pv=rd.querySelector('[data-opg="comic-prev"]'),nx=rd.querySelector('[data-opg="comic-next"]');
+      if(pv)pv.disabled=i<=0;
+      if(nx)nx.disabled=i>=n-1;
+    }
+    var info=rd.querySelector('[data-opg="comic-pageinfo"]');
+    if(info)info.textContent=paged?(i+1)+' / '+n:('共 '+n+' 页');
+  }
+  function openRd(rd){
+    if(cur)closeRd();
+    cur=rd;rd.classList.add('on');rd.setAttribute('aria-hidden','false');
+    show(rd,0);
+  }
+  function closeRd(){
+    if(!cur)return;
+    cur.classList.remove('on');cur.setAttribute('aria-hidden','true');
+    cur=null;
+  }
+  root.addEventListener('click',function(ev){
+    var op=ev.target.closest('[data-opg="comic-open"]');
+    if(op){
+      var rd=root.querySelector('[data-opg="comic-reader"][data-comic="'+op.getAttribute('data-comic')+'"]');
+      if(rd)openRd(rd);
+      return;
+    }
+    if(!cur)return;
+    if(ev.target.closest('[data-opg="comic-close"]')){closeRd();return}
+    if(ev.target.closest('[data-opg="comic-prev"]')){show(cur,curIdx-1);return}
+    if(ev.target.closest('[data-opg="comic-next"]')){show(cur,curIdx+1);return}
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&e.target&&e.target.closest){
+      var f=e.target.closest('[data-opg="comic-open"]');
+      if(f){
+        var rd=root.querySelector('[data-opg="comic-reader"][data-comic="'+f.getAttribute('data-comic')+'"]');
+        if(rd)openRd(rd);
+        return;
+      }
+    }
+    if(!cur)return;
+    if(e.key==='Escape'){closeRd();return}
+    if(pagedOf(cur)){
+      if(e.key==='ArrowLeft')show(cur,curIdx-1);
+      else if(e.key==='ArrowRight')show(cur,curIdx+1);
+    }
+  });
+})();
+<\/script>`;
+}
+
 export function bgmScript(px){
     return `<script>
 (function(){

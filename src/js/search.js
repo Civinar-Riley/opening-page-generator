@@ -23,6 +23,12 @@ export function collectSearchMatches(blocks,kw){
           matches.push({blockIdx:bi,path:`区块 #${bi+1} → 图片 ${ii+1}`,field:k,subIdx:ii,subField:k,parent:'images'});
       });
     });
+    if(Array.isArray(b.pages))b.pages.forEach((pg,pi)=>{
+      ['url','cap'].forEach(k=>{
+        if(typeof pg[k]==='string'&&pg[k].toLowerCase().includes(lkw))
+          matches.push({blockIdx:bi,path:`区块 #${bi+1} → 漫画页 ${pi+1}`,field:k,subIdx:pi,subField:k,parent:'pages'});
+      });
+    });
     if(Array.isArray(b.tracks))b.tracks.forEach((tr,ti)=>{
       ['name','url'].forEach(k=>{
         if(typeof tr[k]==='string'&&tr[k].toLowerCase().includes(lkw))
@@ -67,6 +73,9 @@ export function replaceAllInProject(project,kw,repl){
     });
     if(Array.isArray(b.images))b.images.forEach(im=>{
       ['url','cap'].forEach(k=>{if(typeof im[k]==='string')im[k]=doReplace(im[k])});
+    });
+    if(Array.isArray(b.pages))b.pages.forEach(pg=>{
+      ['url','cap'].forEach(k=>{if(typeof pg[k]==='string')pg[k]=doReplace(pg[k])});
     });
     if(Array.isArray(b.tracks))b.tracks.forEach(tr=>{
       ['name','url'].forEach(k=>{if(typeof tr[k]==='string')tr[k]=doReplace(tr[k])});
