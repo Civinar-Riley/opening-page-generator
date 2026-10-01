@@ -567,15 +567,32 @@ describe('Gen.build 新增五区块（更新日志/闸门/解码/卡池/彩蛋�
     expect(html).toContain('-gatebtn">进入');
     expect(html).toContain('-gateck:checked');
   });
-  it('decode：动效开启输出解码脚本，motion=off 只出纯文本',()=>{
+  it('decode：动效开启输出解码脚本（初始隐藏+id锚点），motion=off 只出纯文本',()=>{
     const p=proj([{type:'decode',enabled:true,lines:'信号接入'}]);
+    const px=Gen.prefix(p);
     const on=Gen.build(p,{isPreview:false});
-    expect(on).toContain('-decl">信号接入');
+    expect(on).toContain('-decl" style="opacity:0">信号接入');
     expect(on).toContain('GLYPHS');
+    expect(on).toContain(`id="${px}-dec0"`);
+    expect(on).toContain(`var ID='${px}-dec0'`); /* id 锚点：脚本被渲染器移动/重排后仍能找到容器 */
     p.theme.motion='off';
     const off=Gen.build(p,{isPreview:false});
     expect(off).toContain('-decl">信号接入');
     expect(off).not.toContain('GLYPHS');
+    expect(off).not.toContain('opacity:0'); /* 纯静态路径不隐藏，正文直接可见 */
+  });
+  it('decode：同类多实例 id 唯一，脚本锚点各归各',()=>{
+    const p=proj([
+      {type:'divider',enabled:true,style:'plain'},
+      {type:'decode',enabled:true,lines:'一'},
+      {type:'decode',enabled:true,lines:'二'},
+    ]);
+    const px=Gen.prefix(p);
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain(`id="${px}-dec1"`);
+    expect(html).toContain(`id="${px}-dec2"`);
+    expect(html).toContain(`var ID='${px}-dec1'`);
+    expect(html).toContain(`var ID='${px}-dec2'`);
   });
   it('gacha：卡池数据注入脚本与稀有度回落路径',()=>{
     const html=Gen.build(proj([{type:'gacha',enabled:true,title:'卡池',buttonText:'抽',cards:'SSR｜命运之刃｜描述\nXYZ｜神秘卡｜?'}]),{isPreview:false});
@@ -587,8 +604,11 @@ describe('Gen.build 新增五区块（更新日志/闸门/解码/卡池/彩蛋�
   });
   it('egg：宏双轨（预览替换/导出保留）与计次阈值注入',()=>{
     const base={type:'egg',enabled:true,hint:'✦',count:5,lines:'「{{user}}」'};
-    const prev=Gen.build(proj([base]),{isPreview:true});
-    expect(prev).toContain('-egg" data-opg="egg"');
+    const p=proj([base]);
+    const px=Gen.prefix(p);
+    const prev=Gen.build(p,{isPreview:true});
+    expect(prev).toContain(`-egg" id="${px}-egg0" data-opg="egg"`);
+    expect(prev).toContain(`-eggmsg" id="${px}-eggmsg0" data-opg="eggmsg"`);
     expect(prev).toContain('旅行者');
     const exp=Gen.build(proj([base]),{isPreview:false});
     expect(exp).toContain('{{user}}');

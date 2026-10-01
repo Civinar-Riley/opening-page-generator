@@ -498,9 +498,9 @@ export function renderConfig(){
     });
   }
 
-  /* 实时预览面板（配置页右侧 + 预览页共用渲染） */
-  this.mountPreview($('#livePreviewSlot'));
-  if($('#pagePreview .preview-col'))this.mountPreview($('#pagePreview .preview-col'));
+  /* 实时预览面板（配置页右侧 + 预览页共用渲染）；两 slot 的 iframe id 必须不同（DOM 唯一性） */
+  this.mountPreview($('#livePreviewSlot'),'previewFrameLive');
+  if($('#pagePreview .preview-col'))this.mountPreview($('#pagePreview .preview-col'),'previewFrame');
 }
 
 /* ---------- 区块编辑器 ---------- */

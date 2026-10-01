@@ -1,4 +1,4 @@
-# 企鹅的酒馆开场页生成器 v1.17.0
+# 企鹅的酒馆开场页生成器 v1.17.1
 
 为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡生成开场页组件的本地可视化工具。
 

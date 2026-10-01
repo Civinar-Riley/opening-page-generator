@@ -41,7 +41,9 @@ const UI={
     sel.onchange=e=>Project.select(e.target.value);
   },
 
-  mountPreview(slot){
+  /* slot 间 iframe id 必须唯一（配置页实时预览与预览页各挂一个）：
+     同 id 违反 DOM 规范，全局 getElementById 永远命中第一个，排障与后续全局查询都会踩坑 */
+  mountPreview(slot,id){
     if(!slot||slot.dataset.mounted)return;
     slot.dataset.mounted='1';
     slot.innerHTML=`<div id="previewWrap" class="preview-wrap">
@@ -55,12 +57,12 @@ const UI={
         <span style="flex:1"></span>
         <button class="btn ghost small" id="btnRefresh">↻ 刷新（重掷随机宏）</button>
       </div>
-      <div id="previewStage" class="preview-stage"><iframe id="previewFrame" sandbox="allow-scripts allow-same-origin"></iframe></div>
+      <div id="previewStage" class="preview-stage"><iframe id="${id}" sandbox="allow-scripts allow-same-origin"></iframe></div>
     </div>`;
     $('#segDevice',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.mode=e.target.dataset.v;this.refreshPreview();Project.save()}});
     $('#segTheme',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.theme=e.target.dataset.v;this.refreshPreview();Project.save()}});
     $('#btnRefresh',slot).addEventListener('click',()=>{this._lastPreviewKey='';Macros.resetCache();this.refreshPreview()});
-    $('#previewFrame',slot).addEventListener('load',()=>this.fitPreviewHeight($('#previewFrame',slot)));
+    $('#'+id,slot).addEventListener('load',()=>this.fitPreviewHeight($('#'+id,slot)));
   },
 
   fitPreviewHeight(frame,always){
@@ -91,7 +93,7 @@ const UI={
     const p=Project.cur;if(!p)return;
     /* 只刷新当前活动页的预览，避免不可见 iframe 的重复重建开销 */
     const pg=$('.page.active');if(!pg)return;
-    const frame=$('#previewFrame',pg);if(!frame)return;
+    const frame=$('iframe[id^="previewFrame"]',pg);if(!frame)return;
     $$('#segDevice button',pg).forEach(b=>b.classList.toggle('active',b.dataset.v===p.preview.mode));
     $$('#segTheme button',pg).forEach(b=>b.classList.toggle('active',b.dataset.v===p.preview.theme));
     frame.style.width=p.preview.mode==='mobile'?'430px':'100%';
