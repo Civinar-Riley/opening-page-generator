@@ -3,7 +3,23 @@ import { describe, it, expect } from 'vitest';
 import { parseApiJson, parseGalleryHtml, buildPageUrls, parsePageExpr, applyPageFilter, extractGalleryId } from '../scripts/nh-lib.mjs';
 
 describe('nh-lib parseApiJson',()=>{
-  it('API JSON → mediaId + 每页扩展名映射（j/p/g → jpg/png/gif），页码从 1 起',()=>{
+  it('v2 API JSON（pages[].number+path）→ mediaId + 扩展名取自 path，页码用 number',()=>{
+    const g=parseApiJson({media_id:'987559',num_pages:3,pages:[
+      {number:1,path:'galleries/987559/1.jpg',width:1050,height:1500},
+      {number:2,path:'galleries/987559/2.png',width:1050,height:1500},
+      {number:3,path:'galleries/987559/3.gif',width:500,height:500},
+    ]});
+    expect(g.mediaId).toBe('987559');
+    expect(g.total).toBe(3);
+    expect(g.pages).toEqual([{page:1,ext:'jpg'},{page:2,ext:'png'},{page:3,ext:'gif'}]);
+  });
+  it('v2：number 缺失按序兜底；path 无扩展名回退 jpg；error 形状（404）返回 null',()=>{
+    const g=parseApiJson({media_id:'9',pages:[{path:'galleries/9/1.jpg'},{path:'galleries/9/x'},{number:5,path:'galleries/9/5.GIF'}]});
+    expect(g.pages).toEqual([{page:1,ext:'jpg'},{page:2,ext:'jpg'},{page:5,ext:'gif'}]);
+    expect(g.total).toBe(3);
+    expect(parseApiJson({error:'Gallery not found'})).toBeNull();
+  });
+  it('旧版 API JSON（images.pages[].t）仍兼容：j/p/g → jpg/png/gif，页码从 1 起',()=>{
     const g=parseApiJson({media_id:'9',images:{pages:[{t:'j',w:1280,h:1810},{t:'p',w:1280,h:1810},{t:'g',w:500,h:500}]}});
     expect(g.mediaId).toBe('9');
     expect(g.total).toBe(3);
@@ -13,6 +29,7 @@ describe('nh-lib parseApiJson',()=>{
     expect(parseApiJson({media_id:'1',images:{pages:[{t:'x'}]}}).pages[0].ext).toBe('jpg');
     expect(parseApiJson({images:{pages:[{t:'j'}]}})).toBeNull();
     expect(parseApiJson({media_id:'1',images:{pages:[]}})).toBeNull();
+    expect(parseApiJson({media_id:'1',pages:[]})).toBeNull();
     expect(parseApiJson(null)).toBeNull();
     expect(parseApiJson('str')).toBeNull();
   });

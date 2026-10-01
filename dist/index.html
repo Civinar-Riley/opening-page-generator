@@ -68,7 +68,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script>window.OPG_VERSION='1.17.1';</script>
+<script>window.OPG_VERSION='1.17.2';</script>
 <script>
 (()=>{var H=(t,e,n)=>()=>{if(n)throw n[0];try{return t&&(e=t(t=0)),e}catch(a){throw n=[a],a}};var Gt=(t,e)=>()=>{try{return e||t((e={exports:{}}).exports,e),e.exports}catch(n){throw e=0,n}};function A(t){let e=b("#toast");e.textContent=t,e.classList.add("show"),clearTimeout(e._tm),e._tm=setTimeout(()=>e.classList.remove("show"),1800)}function be(t){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(()=>A("已复制到剪贴板"));return}let e=document.createElement("textarea");e.value=t,document.body.appendChild(e),e.select();try{document.execCommand("copy"),A("已复制到剪贴板")}catch(n){A("复制失败，请手动选择复制")}e.remove()}function pe(t,e){let n=document.createElement("a");n.href=URL.createObjectURL(new Blob([e],{type:"application/octet-stream"})),n.download=t,n.click(),setTimeout(()=>URL.revokeObjectURL(n.href),1e3)}function Yt(){if(se)return;se=document.createElement("div"),se.className="opg-modal-root",se.innerHTML=`<div class="opg-modal-overlay"></div>
     <div class="opg-modal-box">

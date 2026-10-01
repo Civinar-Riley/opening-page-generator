@@ -1,18 +1,29 @@
 /* nhentai 画廊导入核心库：解析 / 直链构造 / 页码过滤纯函数（零依赖，无 Node 内置模块，
    供 CLI（nh-import.mjs）、vitest、工具 UI（esbuild bundle）三方安全 import）。
    直链规律：大图 https://i.nhentai.net/galleries/{media_id}/{页}.{jpg|png|gif}（页码从 1 起），
-   缩略图同结构域为 t{n}.nhentai.net 且文件名带 t 后缀。API 不可用时解析画廊 HTML：
-   og:image meta 给出 media_id，gallerythubs 缩略图序列给出每页扩展名。 */
+   缩略图同结构域为 t{n}.nhentai.net 且文件名带 t 后缀。v2 API（/api/v2/galleries/{id}）不可用时
+   解析画廊 HTML：og:image meta 给出 media_id，gallerythubs 缩略图序列给出每页扩展名。 */
 
 const EXT_MAP={j:'jpg',p:'png',g:'gif'};
 
-/** API JSON（/api/gallery/{id} 响应）→ {mediaId,total,pages:[{page,ext}]}；结构不符返回 null */
+/** API JSON（/api/v2/galleries/{id} 响应；兼容旧版 /api/gallery/{id} 结构）→ {mediaId,total,pages:[{page,ext}]}；
+    结构不符返回 null。v2 形状：pages[].{number,path}（扩展名在 path 尾段，直链文件名与 path 一致）；
+    旧版形状：images.pages[].{t,w,h}（t 码 j/p/g）——上游 2026-10 起 403 弃用旧端点，保留解析仅作兼容 */
 export function parseApiJson(json){
   if(!json||typeof json!=='object')return null;
   const mediaId=String(json.media_id??'');
-  const arr=json.images&&Array.isArray(json.images.pages)?json.images.pages:null;
+  const v2=Array.isArray(json.pages)?json.pages:null;
+  const legacy=v2?null:(json.images&&Array.isArray(json.images.pages)?json.images.pages:null);
+  const arr=v2||legacy;
   if(!mediaId||!arr||!arr.length)return null;
-  const pages=arr.map((x,i)=>({page:i+1,ext:EXT_MAP[x&&x.t]||'jpg'}));
+  const pages=arr.map((x,i)=>{
+    if(v2){
+      const m=String((x&&x.path)||'').match(/\.(\w{2,5})$/);
+      const num=+x.number;
+      return {page:(Number.isFinite(num)&&num>0)?num:i+1,ext:m?m[1].toLowerCase():'jpg'};
+    }
+    return {page:i+1,ext:EXT_MAP[x&&x.t]||'jpg'};
+  });
   return {mediaId,total:pages.length,pages};
 }
 

@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { parseApiJson, parseGalleryHtml, buildPageUrls, applyPageFilter, extractGalleryId } from './nh-lib.mjs';
 
 const VERSION=JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)),'..','package.json'),'utf8')).version;
-const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
 const HOST='127.0.0.1';
 const DEFAULT_PORT=8765;
 
@@ -28,20 +28,21 @@ async function get(url,timeout=15000){
   }finally{clearTimeout(timer)}
 }
 
-/** 抓取画廊：API 优先（结构化最稳），403/非 JSON 回落解析 HTML；单画廊最多 2 个上游请求 */
+/** 抓取画廊：v2 API 优先（2026-10 起旧版 /api/gallery 已 403 弃用），403/非 JSON 回落解析 HTML；
+    单画廊最多 2 个上游请求。HTML 页对脚本请求被 Cloudflare 拦截（403），仅作兜底尝试 */
 export async function fetchGallery(input){
   const id=extractGalleryId(input);
   if(!id)throw new Error('无法识别画廊 ID——请给 nhentai.net/g/数字/ 完整链接或纯数字 ID');
   let apiErr='';
   try{
-    const r=await get(`https://nhentai.net/api/gallery/${id}`);
+    const r=await get(`https://nhentai.net/api/v2/galleries/${id}`);
     if(r.status===200){
       try{
         const g=parseApiJson(JSON.parse(r.text));
         if(g)return {...g,id,source:'api'};
       }catch(_){/* 非 JSON（如 CF 挑战页）走回落 */}
     }
-    apiErr=`API 返回 HTTP ${r.status}`;
+    apiErr=r.status===404?'API 返回 HTTP 404（画廊不存在或已下架）':`API 返回 HTTP ${r.status}`;
   }catch(e){apiErr=e.message}
   /* 回落：画廊 HTML 页（og:image + 缩略图序列） */
   let htmlErr='';
@@ -53,7 +54,7 @@ export async function fetchGallery(input){
       htmlErr='页面解析不到图片数据（结构可能变化或被防护拦截）';
     }else htmlErr=`页面返回 HTTP ${r.status}`;
   }catch(e){htmlErr=e.message}
-  throw new Error(`抓取失败——${apiErr}；回落解析也失败：${htmlErr}。若浏览器能打开而脚本不能，多为 Cloudflare 拦截：先在浏览器访问一次 nhentai 过验证后重试，或改用手动粘贴直链。`);
+  throw new Error(`抓取失败——${apiErr}；回落解析也失败：${htmlErr}。脚本流量被 Cloudflare 拦截时浏览器能打开也没用：改用手动粘贴直链（浏览器 F12 看图片地址，规律 i.nhentai.net/galleries/{media_id}/{页}.{jpg|png|gif}）。`);
 }
 
 /** URL 列表写入系统剪贴板；返回 null 成功，失败返回提示标记 */
