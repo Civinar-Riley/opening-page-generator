@@ -31,10 +31,10 @@ export function renderExport(){
     <div style="font-size:12px;color:var(--txt2);margin:6px 0">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此这里导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签。</div>
     ${auditLine}${auditHints.length?`<div style="font-size:12px;color:var(--txt2);margin:4px 0">提示：${esc(auditHints.map(x=>x.msg).join('；'))}</div>`:''}
     <div class="export-actions">
-      <button class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
-      <button class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
-      <button class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
-      ${hasBridge()?'<button class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
+      <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
+      <button type="button" class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
+      <button type="button" class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
+      ${hasBridge()?'<button type="button" class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
     </div><pre></pre>`;
   $('pre',box1).innerHTML=hlDoc(fenced);
   $('#exp1CopyFenced',box1).onclick=()=>{if(guard())copyText(fenced)};
@@ -70,8 +70,8 @@ export function renderExport(){
     <div class="row2">
       <div><label>标记文本（正则查找目标，避免与正文重复）</label><input id="markerInput" value="${esc(p.marker||'【开场页】')}"></div>
       <div style="display:flex;align-items:flex-end;gap:8px">
-        <button class="btn small" id="markerCopy">📋 复制标记</button>
-        <button class="btn small" id="rxDownload">💾 下载正则脚本 .json</button>
+        <button type="button" class="btn small" id="markerCopy">📋 复制标记</button>
+        <button type="button" class="btn small" id="rxDownload">💾 下载正则脚本 .json</button>
       </div>
     </div>
     <div class="row2">
@@ -119,8 +119,8 @@ export function renderExport(){
     <div class="row2">
       <div><label>图片直链 URL（仅图片模式，https 开头；留空自动回退文字按钮）</label><input id="bhImg" value="${esc(bhCfg.img||'')}" placeholder="https://…"></div>
       <div style="display:flex;align-items:flex-end;gap:8px">
-        <button class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
-        <button class="btn small" id="bhDownload">💾 下载角色脚本 .json</button>
+        <button type="button" class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
+        <button type="button" class="btn small" id="bhDownload">💾 下载角色脚本 .json</button>
       </div>
     </div>
     <div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">使用：酒馆 → 扩展 → 酒馆助手 → 角色脚本 → 导入本 JSON 并启用。之后把第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即回到开场页；开场页本身（第 0 张）不会出现按钮，点返回会顺带停掉开场白联动音轨。原理上按钮必须由独立角色脚本注入（swipe 切换会销毁楼层 iframe，开场页自己的脚本活不到那时候）。</div>

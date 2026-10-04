@@ -17,7 +17,7 @@
 | `npm test`（等价 `npx vitest run`） | 全部单元测试——**任何改动后必须全过** |
 | `npm run build` | 构建 `dist/index.html`（压缩版） |
 | `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
-| `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 |
+| `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 / `<button>` 缺显式 type |
 | `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
 | `npm run nh -- <画廊URL\|ID> [--skip-last N] [--pages a-b]` | nhentai 画廊直链单次导出到剪贴板（`scripts/nh-import.mjs`） |
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端 |
@@ -51,7 +51,7 @@ main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json
 | `src/js/gen/css.js` | 产物 CSS：容器作用域 + 各区块实例样式（`.opg-{id}-bk{i}` 用 display:contents 隔离，支持同类多实例） |
 | `src/js/gen/body.js` | 产物 HTML：逐区块渲染；`tx`（预览替换宏）/`raw`（导出保留宏）双轨；含倒计时/粒子内联脚本（无 API 依赖） |
 | `src/js/gen/scripts.js` | 产物运行时：lightbox / BGM 播放器 / 酒馆助手交互（开场白列表/切换/标题库）——全部带 API 守卫与降级 |
-| `lint.js` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（词法预清洗后查调用位 `foo(`——文件内无声明且非白名单全局）/ localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记；各规则已对代码库校准（零误报），新增规则前先在本地验证 |
+| `lint.js` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（词法预清洗后查调用位 `foo(`——文件内无声明且非白名单全局）/ localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 / `<button>` 缺显式 type（原始文本扫描，含字符串内 HTML 与 src/index.html）；各规则已对代码库校准（零误报），新增规则前先在本地验证 |
 
 ## 数据流
 
@@ -67,7 +67,7 @@ localStorage（openingPageGen_* 键）
 
 ## 硬约束（红线）
 
-1. **组件库 `COMP_LIB`**（defs.js，55+ 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器两个特例（IIFE 局部作用域）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（renderConfig）
+1. **组件库 `COMP_LIB`**（defs.js，55+ 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器/点击切换消息三个特例（IIFE 局部作用域 + `data-bound` 防重绑，交互一律 addEventListener 禁用内联 onclick）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（renderConfig）
 2. **gen 产物自包含**：style+script 全内联；容器 `opg-{id}` 前缀隔离；同类区块多实例用 `display:contents` 作用域层（`.opg-{id}-bk{i}`）
 3. **宏双轨**：`gen/body.js` 的 `tx`（预览经 Macros.apply 替换）/`raw`（导出原样保留交酒馆解析）——新增区块渲染必须双轨支持，只写一边会让预览或导出失真
 4. **工具 UI 主题**：`tool.css` 的 `html[data-theme='x']` 块必须覆盖**全部令牌**（`:root` 的全部令牌，含 `--star-c`——星夜主题星点背景依赖）+ `#topbar/#tabs/#main` z-index 三件套（若用 body::before 纹理层）；`bronze` 是 `:root` 默认，不挂 data-theme 属性

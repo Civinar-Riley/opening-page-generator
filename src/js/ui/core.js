@@ -49,13 +49,13 @@ const UI={
     slot.innerHTML=`<div id="previewWrap" class="preview-wrap">
       <div id="previewToolbar" class="preview-toolbar">
         <div class="seg" id="segDevice">
-          <button data-v="mobile">📱 手机</button><button data-v="pc">🖥 PC</button>
+          <button type="button" data-v="mobile">📱 手机</button><button type="button" data-v="pc">🖥 PC</button>
         </div>
         <div class="seg" id="segTheme">
-          <button data-v="dark">🌙 暗色</button><button data-v="light">☀️ 亮色</button>
+          <button type="button" data-v="dark">🌙 暗色</button><button type="button" data-v="light">☀️ 亮色</button>
         </div>
         <span style="flex:1"></span>
-        <button class="btn ghost small" id="btnRefresh">↻ 刷新（重掷随机宏）</button>
+        <button type="button" class="btn ghost small" id="btnRefresh">↻ 刷新（重掷随机宏）</button>
       </div>
       <div id="previewStage" class="preview-stage"><iframe id="${id}" sandbox="allow-scripts allow-same-origin"></iframe></div>
     </div>`;

@@ -26,13 +26,13 @@ function _ensureModal(){
   _modalRoot=document.createElement('div');
   _modalRoot.className='opg-modal-root';
   _modalRoot.innerHTML=`<div class="opg-modal-overlay"></div>
-    <div class="opg-modal-box">
+    <div class="opg-modal-box" role="dialog" aria-modal="true">
       <div class="opg-modal-title"></div>
       <div class="opg-modal-msg"></div>
       <input type="text" class="opg-modal-input" style="display:none">
       <div class="opg-modal-btns">
-        <button class="opg-modal-btn opg-modal-cancel">取消</button>
-        <button class="opg-modal-btn opg-modal-ok">确定</button>
+        <button type="button" class="opg-modal-btn opg-modal-cancel">取消</button>
+        <button type="button" class="opg-modal-btn opg-modal-ok">确定</button>
       </div>
     </div>`;
   document.body.appendChild(_modalRoot);

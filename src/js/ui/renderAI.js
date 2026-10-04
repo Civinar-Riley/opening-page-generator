@@ -5,6 +5,9 @@ import { Project } from '../project.js';
 import { UI } from './core.js';
 import { resolveAiChannel, tavernGenerate } from './extBridge.js';
 
+/* 会话内暂存 Key：勾掉「在本机记住 Key」时 Key 只活在本模块内存，不进 localStorage（导出剔除逻辑照旧） */
+let _sessionKey='';
+
 export function renderAI(){
   const p=Project.cur,col=$('#aiCol');
   /* 连接模式：桥存在且宿主暴露酒馆生成通道（TavernHelper.generateRaw）时可选「酒馆当前连接」，
@@ -21,11 +24,12 @@ export function renderAI(){
         ?`<div style="font-size:12px;color:var(--txt2)">✓ 生成将走酒馆当前连接的模型与参数（经酒馆助手 <code>generateRaw</code> 静默生成，不带预设与世界书污染）。在酒馆里连好 API 即可，无需下方配置。</div>`
         :`<div class="row3">
         <div><label>API Base URL</label><input id="aiBase" value="${esc(p.ai.baseURL)}" placeholder="https://api.openai.com/v1"></div>
-        <div><label>API Key（仅明文本地保存，导出工程不含）</label><input id="aiKey" type="text" autocomplete="off" value="${esc(p.ai.apiKey)}" placeholder="sk-..."></div>
+        <div><label>API Key（勾选「记住」才落盘，导出工程不含）</label><div style="display:flex;gap:6px"><input id="aiKey" type="password" autocomplete="new-password" value="${esc(p.ai.apiKey||_sessionKey)}" placeholder="sk-..." style="min-width:0"><button type="button" class="btn ghost small" id="aiKeyEye" title="显示 / 隐藏 Key">👁</button></div></div>
         <div><label>模型（下拉选择）</label><select id="aiModel"></select></div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button type="button" class="btn ghost small" id="aiFetchModels">🔄 获取模型列表</button>
+        <label class="inline-check" title="取消勾选后 Key 仅存于本页会话内存，刷新页面即失效，不写入 localStorage"><input type="checkbox" id="aiRemember"${p.ai.rememberKey===false?'':' checked'}>在本机记住 Key</label>
         <span class="hint">填好 URL 与 Key 后点击，拉取 /models 填充上方下拉；此操作只读模型列表，不发送对话请求</span>
       </div>`}
     </div>
@@ -34,7 +38,7 @@ export function renderAI(){
       <div><label>描述你想要的内容（如：一个带角色好感度进度条的展示栏）</label>
       <textarea id="aiPrompt" style="min-height:70px" placeholder="例：生成一个音乐播放器样式的框，显示角色「正在收听」的歌曲名，带闪烁的音符装饰"></textarea></div>
       <div style="margin-top:10px;display:flex;gap:8px">
-        <button class="btn" id="aiGenHtml">✨ 生成（写入自由 HTML 区）</button>
+        <button type="button" class="btn" id="aiGenHtml">✨ 生成（写入自由 HTML 区）</button>
         <span style="align-self:center;font-size:12px;color:var(--txt2)">提示：生成后自动填入「自由 HTML 区」并启用该区块</span>
       </div>
     </div>
@@ -42,7 +46,7 @@ export function renderAI(){
       <h3>② 主题风格调整</h3>
       <div><label>描述想要的风格（AI 输出配色/风格参数回填主题）</label>
       <textarea id="aiStylePrompt" style="min-height:56px" placeholder="例：红白撞色，和风庄重感"></textarea></div>
-      <div style="margin-top:10px"><button class="btn" id="aiGenStyle">🎨 生成主题配色</button></div>
+      <div style="margin-top:10px"><button type="button" class="btn" id="aiGenStyle">🎨 生成主题配色</button></div>
     </div>
     <div class="card">
       <h3>输出 <span id="aiStatus" class="status-dot"></span></h3>
@@ -61,7 +65,25 @@ export function renderAI(){
     renderModelSel();
 
     $('#aiBase',col).addEventListener('input',function(){p.ai.baseURL=this.value.trim();Project.saveDebounced()});
-    $('#aiKey',col).addEventListener('change',function(){p.ai.apiKey=this.value.trim();Project.save()});
+    $('#aiKey',col).addEventListener('change',function(){
+      const v=this.value.trim();
+      _sessionKey=v;
+      if($('#aiRemember',col).checked){p.ai.apiKey=v;Project.save()}
+      else if(p.ai.apiKey){p.ai.apiKey='';Project.save()} /* 关闭记住时清掉已落盘的旧 Key */
+    });
+    $('#aiRemember',col).addEventListener('change',function(){
+      p.ai.rememberKey=this.checked;
+      /* 勾上：把会话内的 Key 立即落盘；勾掉：清掉已落盘的 Key（输入框里的值仍在，继续可用） */
+      if(this.checked)p.ai.apiKey=_sessionKey||$('#aiKey',col).value.trim();
+      else p.ai.apiKey='';
+      Project.save();
+    });
+    $('#aiKeyEye',col).addEventListener('click',function(){
+      const inp=$('#aiKey',col);
+      const show=inp.type==='password';
+      inp.type=show?'text':'password';
+      this.textContent=show?'🙈':'👁';
+    });
     $('#aiModel',col).addEventListener('change',function(){p.ai.model=this.value;Project.save()});
 
     /* 拉取模型列表（只读 /models，不发送对话请求） */
@@ -71,8 +93,11 @@ export function renderAI(){
       if(!base||!key){toast('请先填写 API Base URL 和 Key');return}
       const out=$('#aiOut'),dot=$('#aiStatus');
       this.disabled=true;const oldTxt=this.textContent;this.textContent='⏳ 获取中…';
+      /* 超时保护：90 秒无响应自动中止（对话生成在 call() 内另有 120 秒带逐块重置的超时） */
+      const ac=new AbortController();
+      const timer=setTimeout(()=>ac.abort(),90000);
       try{
-        const res=await fetch(base+'/models',{headers:{'Authorization':'Bearer '+key}});
+        const res=await fetch(base+'/models',{headers:{'Authorization':'Bearer '+key},signal:ac.signal});
         if(!res.ok)throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,200));
         const j=await res.json();
         let list=Array.isArray(j?.data)?j.data.map(m=>m.id||m.name||m):(Array.isArray(j)?j:[]);
@@ -85,8 +110,8 @@ export function renderAI(){
         toast('模型列表已更新');
       }catch(err){
         dot.className='status-dot status-err';
-        out.textContent='❌ 获取模型列表失败：'+err.message;
-      }finally{this.disabled=false;this.textContent=oldTxt}
+        out.textContent='❌ 获取模型列表失败：'+(err.name==='AbortError'?'请求超时（90 秒无响应，已自动中止）':err.message);
+      }finally{clearTimeout(timer);this.disabled=false;this.textContent=oldTxt}
     };
   }
 
@@ -99,7 +124,7 @@ export function renderAI(){
 1. 输出一个最外层<div>，内部可含<style>，所有class必须以 "opg-ai-" 前缀命名；
 2. 禁止使用全局选择器(如 *、body、html)、禁止 id 选择器、禁止 <script> 脚本与外部资源依赖，禁止内联事件属性(onclick等)；
 3. 适配暗色背景：文字用近白色避免深底深字；主体不脱离文档流，不用 vh/vw 撑高度，不产生横向滚动；
-4. 可点击元素用真实 <button>/<label> 并给 hover/focus 反馈；字号不小于 12px，点击区域足够大（触屏可用）；
+4. 可点击元素用真实 <button type="button">/<label> 并给 hover/focus 反馈；字号不小于 12px，点击区域足够大（触屏可用）；
 5. 引用的图片/音频 URL 必须是真实可用的 https:// 链接，背景必须同时有纯色或渐变兜底；不用系统外的花哨字体，给系统字体回退；
 6. 内容可能为空时写出空态提示文案；装饰不得遮挡正文；
 7. 不留未完成占位、省略号或假占位符；输出前自查：标签全部闭合、class 前缀正确、无遗漏占位；只输出代码本身，不要解释，不要markdown代码块包裹。`;
@@ -123,7 +148,8 @@ export function renderAI(){
         return null;
       }
     }
-    const apiKey=p.ai.apiKey;
+    /* Key 取值：关掉「记住」时用会话内存里的（落盘值已被清空） */
+    const apiKey=p.ai.rememberKey===false?_sessionKey:(p.ai.apiKey||_sessionKey);
     if(!apiKey||!p.ai.baseURL){out.textContent='⚠️ 请先填写 API Base URL 和 Key';dot.className='status-dot status-warn';return null}
     dot.className='status-dot status-ok';out.textContent='';
     /* 超时保护：120 秒无响应自动中止，防止永久挂起 */

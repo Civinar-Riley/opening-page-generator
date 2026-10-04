@@ -5,7 +5,7 @@ import { Gen } from '../src/js/gen/index.js';
 import { Macros } from '../src/js/macros.js';
 import { defaultProject } from '../src/js/defs.js';
 
-const SCRIPT_OK=new Set(['音乐播放器','交互计数器']); /* 既有/重构特例：自带 IIFE 脚本（局部作用域、opg- 类名隔离） */
+const SCRIPT_OK=new Set(['音乐播放器','交互计数器','点击切换消息']); /* 既有/重构特例：自带 IIFE 脚本（局部作用域、opg- 类名隔离、data-bound 防重绑） */
 
 describe('COMP_LIB 组件库硬约束',()=>{
   it('全部组件有 cat 且分类合法',()=>{

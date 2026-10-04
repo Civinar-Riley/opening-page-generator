@@ -21,6 +21,14 @@ describe('Project.normalize 规范化',()=>{
     Project.normalize(q);
     expect(q.backHome).toEqual({mode:'img',text:'← 返回开场页',img:''});
   });
+  it('ai.rememberKey 缺失补默认 true（v1.19 Key 记住开关）',()=>{
+    const p={name:'测试',ai:{baseURL:'https://x/v1'}};
+    Project.normalize(p);
+    expect(p.ai.rememberKey).toBe(true);
+    const q={name:'测试',ai:{rememberKey:false}};
+    Project.normalize(q);
+    expect(q.ai.rememberKey).toBe(false);
+  });
   it('存量工程缺新增区块时补入且默认停用（v1.9 五区块）',()=>{
     const p=defaultProject('t');
     p.blocks=p.blocks.filter(b=>!['changelog','gate','decode','gacha','egg'].includes(b.type));

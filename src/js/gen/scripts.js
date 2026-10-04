@@ -323,8 +323,7 @@ export function script(p,px){
     }
     return t;
   }
-  /* 人物名提取（思路借鉴外部开场白选择器，实现为精简自研版）：
-     显式字段 → 成对标签 → 冒号说话人归属（剥标签后 + 元数据/代词黑名单），去重上限 3 */
+  /* 人物名提取：显式字段 → 成对标签 → 冒号说话人归属（剥标签后 + 元数据/代词黑名单），去重上限 3 */
   function extractNames(text){
     /* '\u003c' 转义断开 HTML 注释开启序列（HTML script 双转义坑，惯例同上方 jss），正则语义等价 */
     var raw=stripTags(String(text||'')).replace(/\\u003c!--[\\s\\S]*?-->/g,' ');
