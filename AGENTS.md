@@ -1,7 +1,7 @@
 # AGENTS.md — AI 协作指南
 
 > 本文件写给在本仓库工作的 AI 编码助手。动手前先通读「硬约束」与「常见任务配方」——约束是红线，不是建议。
-> 作者工作方式：本地编辑，git 直推 `origin/main`（HTTPS + 凭据管理器免密，经本地代理；无 PR / 分支流程，历史以本地为准，必要时 `--force-with-lease` 覆盖），验证闭环以本地 lint + 测试 + 构建为准。提交身份为仓库级 `Civinar-Riley` noreply 邮箱。
+> 作者工作方式：本地编辑，git 直推 `origin/main`（HTTPS + 凭据管理器免密，经本地代理 `127.0.0.1:7897`——已写入项目级 `git config http.proxy/https.proxy` 覆盖全局的 7900；推送连不上时先确认 7897 代理是否在运行；无 PR / 分支流程，历史以本地为准，必要时 `--force-with-lease` 覆盖），验证闭环以本地 lint + 测试 + 构建为准。提交身份为仓库级 `Civinar-Riley` noreply 邮箱。
 
 ## 项目概述
 
