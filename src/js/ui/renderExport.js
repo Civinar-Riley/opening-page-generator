@@ -26,15 +26,20 @@ export function renderExport(){
     :`<div style="font-size:12px;color:var(--danger,#e07070);margin:4px 0">✗ 自检未通过（${audit.problems.filter(x=>x.level==='阻断').length} 项阻断）：${esc(audit.problems.map(x=>x.msg).join('；'))}</div>`;
   const auditHints=audit.problems.filter(x=>x.level==='提示');
   const guard=()=>{const b=audit.problems.find(x=>x.level==='阻断');if(b){toast('自检未通过：'+b.msg);return false}return true};
+  /* 工程数据体积：localStorage 约 5MB 上限的显式预警（导出即备份的场景下最容易看到） */
+  const dataKB=(JSON.stringify(p).length/1024).toFixed(0);
+  const dataColor=dataKB>1024?'var(--danger,#e07070)':dataKB>512?'#e0a040':'var(--txt2)';
+  const dataHint=dataKB>1024?'（超 1MB——接近浏览器存储上限，建议拆分工程或精简图片/HTML）':dataKB>512?'（偏大，注意增长）':'';
   const box1=document.createElement('div');box1.className='card export-box';
   box1.innerHTML=`<h3>① 开场白版 <span class="hint">整段贴进 first_mes 或 alternate_greetings，保留 \`\`\` 围栏与 body 标签</span></h3>
     <div style="font-size:12px;color:var(--txt2);margin:6px 0">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此这里导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签。</div>
     ${auditLine}${auditHints.length?`<div style="font-size:12px;color:var(--txt2);margin:4px 0">提示：${esc(auditHints.map(x=>x.msg).join('；'))}</div>`:''}
+    <div style="font-size:12px;color:${dataColor};margin:4px 0">📦 工程数据体积 ${dataKB} KB${dataHint}</div>
     <div class="export-actions">
-      <button class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
-      <button class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
-      <button class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
-      ${hasBridge()?'<button class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
+      <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
+      <button type="button" class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
+      <button type="button" class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
+      ${hasBridge()?'<button type="button" class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
     </div><pre></pre>`;
   $('pre',box1).innerHTML=hlDoc(fenced);
   $('#exp1CopyFenced',box1).onclick=()=>{if(guard())copyText(fenced)};
@@ -70,8 +75,8 @@ export function renderExport(){
     <div class="row2">
       <div><label>标记文本（正则查找目标，避免与正文重复）</label><input id="markerInput" value="${esc(p.marker||'【开场页】')}"></div>
       <div style="display:flex;align-items:flex-end;gap:8px">
-        <button class="btn small" id="markerCopy">📋 复制标记</button>
-        <button class="btn small" id="rxDownload">💾 下载正则脚本 .json</button>
+        <button type="button" class="btn small" id="markerCopy">📋 复制标记</button>
+        <button type="button" class="btn small" id="rxDownload">💾 下载正则脚本 .json</button>
       </div>
     </div>
     <div class="row2">
@@ -103,4 +108,44 @@ export function renderExport(){
     Project.save();
   });
   col.appendChild(rx);
+
+  /* ③ 返回开场页脚本：生成可直接导入酒馆助手的角色脚本 JSON（非首页注入返回按钮）
+     配置持久化在 p.backHome（仿 p.marker），保证切页后输入不丢 */
+  const bhx=document.createElement('div');bhx.className='card export-box';
+  const bhCfg=p.backHome||{};
+  bhx.innerHTML=`<h3>③ 返回开场页脚本 <span class="hint">酒馆助手角色脚本：切到其它开场白后，第0楼末尾出现「返回开场页」按钮</span></h3>
+    <div class="row2">
+      <div><label>按钮样式</label><select id="bhMode">
+        <option value="text">文字按钮（套用工程主题色）</option>
+        <option value="img">图片按钮（图床直链）</option>
+      </select></div>
+      <div><label>按钮文字（图片模式作 alt）</label><input id="bhText" value="${esc(bhCfg.text||'← 返回开场页')}"></div>
+    </div>
+    <div class="row2">
+      <div><label>图片直链 URL（仅图片模式，https 开头；留空自动回退文字按钮）</label><input id="bhImg" value="${esc(bhCfg.img||'')}" placeholder="https://…"></div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button type="button" class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
+        <button type="button" class="btn small" id="bhDownload">💾 下载角色脚本 .json</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">使用：酒馆 → 扩展 → 酒馆助手 → 角色脚本 → 导入本 JSON 并启用。之后把第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即回到开场页；开场页本身（第 0 张）不会出现按钮，点返回会顺带停掉开场白联动音轨。原理上按钮必须由独立角色脚本注入（swipe 切换会销毁楼层 iframe，开场页自己的脚本活不到那时候）。</div>
+    <pre></pre>`;
+  const bhJson=()=>JSON.stringify(Gen.backHomeScript(p),null,2);
+  const bhRefresh=()=>{$('pre',bhx).innerHTML=hlDoc(bhJson())};
+  const bhMode=$('#bhMode',bhx),bhText=$('#bhText',bhx),bhImg=$('#bhImg',bhx);
+  bhMode.value=bhCfg.mode==='img'?'img':'text';
+  const bhSyncImg=()=>{bhImg.parentElement.style.display=bhMode.value==='img'?'':'none'};
+  bhSyncImg();
+  const bhPersist=()=>{
+    p.backHome={mode:bhMode.value,text:bhText.value,img:bhImg.value.trim()};
+    Project.save();
+    bhRefresh();
+  };
+  bhMode.addEventListener('change',()=>{bhSyncImg();bhPersist()});
+  bhText.addEventListener('change',bhPersist);
+  bhImg.addEventListener('change',bhPersist);
+  $('#bhCopy',bhx).onclick=()=>copyText(bhJson());
+  $('#bhDownload',bhx).onclick=()=>download(`backhome-开场页-${p.name}.json`,bhJson());
+  bhRefresh();
+  col.appendChild(bhx);
 }

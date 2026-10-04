@@ -323,8 +323,7 @@ export function script(p,px){
     }
     return t;
   }
-  /* 人物名提取（思路借鉴外部开场白选择器，实现为精简自研版）：
-     显式字段 → 成对标签 → 冒号说话人归属（剥标签后 + 元数据/代词黑名单），去重上限 3 */
+  /* 人物名提取：显式字段 → 成对标签 → 冒号说话人归属（剥标签后 + 元数据/代词黑名单），去重上限 3 */
   function extractNames(text){
     /* '\u003c' 转义断开 HTML 注释开启序列（HTML script 双转义坑，惯例同上方 jss），正则语义等价 */
     var raw=stripTags(String(text||'')).replace(/\\u003c!--[\\s\\S]*?-->/g,' ');
@@ -519,9 +518,8 @@ export function script(p,px){
   loadTitleMap().then(loadGreetings);
 
   /* ---------- 按钮模式：注册酒馆脚本按钮 + 输入序号跳转 ----------
-     思路借鉴外部「快速切换开局」脚本（只学思路不抄代码）：把切换能力注册成
-     酒馆助手按钮栏的脚本按钮，点击后弹输入要序号（1 开始），范围校验后走与
-     页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
+     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入要序号（1 开始），
+     范围校验后走与页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
      页内列表照常渲染：无 API/注册失败环境降级为占位列表，功能静默跳过 */
   if(ACT==='button'){
     var BTN=${jss(btnName)};

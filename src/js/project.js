@@ -9,10 +9,11 @@ import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject } from './de
  * @property {string} name - 工程名
  * @property {string} createdAt - 创建时间（ISO）
  * @property {string} marker - 正则脚本标记文本
+ * @property {{mode:string,text:string,img:string}} backHome - 返回开场页角色脚本配置（mode: text=主题色文字按钮 img=图片按钮）
  * @property {import('./defs.js').ThemeConfig} theme - 主题配置
  * @property {import('./defs.js').Block[]} blocks - 区块列表（数组顺序即渲染顺序）
  * @property {import('./defs.js').Macro[]} macros - 自定义宏
- * @property {{baseURL:string,apiKey:string,model:string,models:string[]}} ai - AI 助手配置
+ * @property {{baseURL:string,apiKey:string,model:string,models:string[],rememberKey:boolean}} ai - AI 助手配置（rememberKey=false 时 Key 仅存会话内存，不落盘）
  * @property {{mode:string,theme:string}} preview - 预览面板状态
  */
 
@@ -97,6 +98,8 @@ const Project={
   normalize(p){
     const def=defaultProject(p.name||'');
     if(!p.marker)p.marker=def.marker;
+    if(!p.backHome||typeof p.backHome!=='object')p.backHome={};
+    Object.keys(def.backHome).forEach(k=>{if(p.backHome[k]===undefined)p.backHome[k]=def.backHome[k]});
     if(!p.theme||typeof p.theme!=='object')p.theme={};
     /* 旧工程的 followTavern 布尔映射为新四路跟随开关的 text 项（必须在通用合并前，
        否则会被 def.theme.follow 的全 false 默认值覆盖导致跟随静默失效） */
@@ -106,7 +109,7 @@ const Project={
     if(!Array.isArray(p.macros))p.macros=[{k:'char',v:'{{char}}'},{k:'user',v:'{{user}}'}];
     if(!p.ai||typeof p.ai!=='object')p.ai={};
     delete p.ai.keyMode;delete p.ai.keyEnc; /* 旧版加密/不保存模式已移除，清理残留字段 */
-    ['baseURL','apiKey','model','models'].forEach(k=>{if(p.ai[k]===undefined)p.ai[k]=def.ai[k]});
+    ['baseURL','apiKey','model','models','rememberKey'].forEach(k=>{if(p.ai[k]===undefined)p.ai[k]=def.ai[k]});
     if(!p.preview||typeof p.preview!=='object')p.preview={};
     ['mode','theme'].forEach(k=>{if(p.preview[k]===undefined)p.preview[k]=def.preview[k]});
     delete p.statusbar; /* 状态栏生成器已移除，清理旧存档/导入数据中的残留节点 */
@@ -149,9 +152,11 @@ const Project={
       localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
       localStorage.setItem(this.LS_CUR,this.cur?.id||'');
     }catch(e){
-      /* 配额超限（多为超大图片/HTML 内容）：提示但不中断界面 */
+      /* 配额超限（超大图片/HTML）或隐私模式禁写：显式报错 + 强提示（数据仅存内存，关闭即失） */
       clearTimeout(this._qTip);
-      this._qTip=setTimeout(()=>toast('⚠️ 保存失败：浏览器存储空间不足，请精简图片/HTML 内容或删除旧工程'),200);
+      const size=(JSON.stringify(this.list).length/1024).toFixed(0);
+      console.error('[Project] localStorage 写入失败（工程数据约 '+size+' KB）:',e);
+      this._qTip=setTimeout(()=>toast('⚠️ 保存失败（数据约 '+size+' KB，仅存于内存，关闭页面即丢失）——请精简内容或立即「导出工程」备份',6000),200);
     }
   },
   /* 高频输入路径用防抖保存，避免每次按键全量序列化所有工程 */

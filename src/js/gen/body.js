@@ -207,14 +207,14 @@ export function body(p,px,blocks,isPreview){
         case 'countdown':{
           const tgt=String(b.target||'');
           const done=esc(tx(b.doneText||''));
-          out+=`  <div class="${px}-cd" data-target="${esc(tgt)}" data-done="${done}">\n`;
+          out+=`  <div class="${px}-cd" id="${px}-cd${i}" data-target="${esc(tgt)}" data-done="${done}">\n`;
           out+=`    <div class="${px}-cd-title">${esc(tx(b.title||''))}</div>\n`;
           out+=`    <div class="${px}-cd-val" data-opg="cdv">--</div>\n`;
           out+=`  </div>\n`;
           /* 内联脚本每秒刷新；目标时间取访问者本地时间，与酒馆时区无关 */
           out+=`  <script>
 (function(){
-  var el=document.currentScript.previousElementSibling;if(!el)return;
+  var el=document.getElementById('${px}-cd${i}')||(document.currentScript&&document.currentScript.previousElementSibling);if(!el)return;
   var v=el.querySelector('[data-opg="cdv"]');if(!v)return;
   var t=new Date(el.getAttribute('data-target')||'').getTime();
   if(isNaN(t)){v.textContent='⚠️ 未设置目标时间';return}
@@ -271,8 +271,8 @@ export function body(p,px,blocks,isPreview){
           const effect=b.effect||'meteor';
           const notes=['♪','♫','♩','♬'];
           const notesStr=notes.join('');
-          out+=`  <div class="${px}-fx" data-fx="${esc(effect)}" data-count="${count}" data-speed="${spd}" data-opacity="${op}" data-notes="${notesStr}"></div>\n`;
-          out+=`  <script>\n(function(){var c=document.currentScript.previousElementSibling;if(!c)return;var type=c.dataset.fx,n=+c.dataset.count||30,spd=+c.dataset.speed||1,op=+c.dataset.opacity||.8,notes=(c.dataset.notes||'♪♫♩♬').split('');var ns=['meteor','snow','rain'];for(var i=0;i<n;i++){var p=document.createElement('div');p.className='${px}-fx-p';var dur=(2+Math.random()*4)/spd;if(ns.indexOf(type)>=0)p.style.animationDuration=dur+'s';else p.style.animationDuration=(1.5+Math.random()*3)/spd+'s';p.style.animationDelay=(-Math.random()*dur)+'s';p.style.opacity=op;p.style.setProperty('--op',op);if(type==='note'){p.textContent=notes[Math.floor(Math.random()*notes.length)];p.style.setProperty('--s',(12+Math.random()*10)+'px');}else if(type==='meteor'){var s=12+Math.random()*20;p.style.width='2px';p.style.height=s+'px';}else{var sz=type==='fog'?1:(2+Math.random()*5);p.style.setProperty('--s',sz+'px');if(type==='firefly'){p.style.setProperty('--dx',(Math.random()*60-30)+'px');p.style.setProperty('--dy',(Math.random()*60-30)+'px');}else if(type==='ember'){p.style.background='#'+(Math.floor(Math.random()*3)+6)+''+(Math.floor(Math.random()*6))+'0';}}var r=Math.random()*100,pct=Math.random()*100;if(ns.indexOf(type)>=0){p.style.left=pct+'%';p.style.top='-20px';}else if(type==='fog'){p.style.top=(20+Math.random()*60)+'%';p.style.left='-200px';}else{p.style.left=pct+'%';p.style.top=r+'%';}c.appendChild(p);}})();\n  <\/script>\n`;
+          out+=`  <div class="${px}-fx" id="${px}-fx${i}" data-fx="${esc(effect)}" data-count="${count}" data-speed="${spd}" data-opacity="${op}" data-notes="${notesStr}"></div>\n`;
+          out+=`  <script>\n(function(){var c=document.getElementById('${px}-fx${i}')||(document.currentScript&&document.currentScript.previousElementSibling);if(!c)return;var type=c.dataset.fx,n=+c.dataset.count||30,spd=+c.dataset.speed||1,op=+c.dataset.opacity||.8,notes=(c.dataset.notes||'♪♫♩♬').split('');var ns=['meteor','snow','rain'];for(var i=0;i<n;i++){var p=document.createElement('div');p.className='${px}-fx-p';var dur=(2+Math.random()*4)/spd;if(ns.indexOf(type)>=0)p.style.animationDuration=dur+'s';else p.style.animationDuration=(1.5+Math.random()*3)/spd+'s';p.style.animationDelay=(-Math.random()*dur)+'s';p.style.opacity=op;p.style.setProperty('--op',op);if(type==='note'){p.textContent=notes[Math.floor(Math.random()*notes.length)];p.style.setProperty('--s',(12+Math.random()*10)+'px');}else if(type==='meteor'){var s=12+Math.random()*20;p.style.width='2px';p.style.height=s+'px';}else{var sz=type==='fog'?1:(2+Math.random()*5);p.style.setProperty('--s',sz+'px');if(type==='firefly'){p.style.setProperty('--dx',(Math.random()*60-30)+'px');p.style.setProperty('--dy',(Math.random()*60-30)+'px');}else if(type==='ember'){p.style.background='#'+(Math.floor(Math.random()*3)+6)+''+(Math.floor(Math.random()*6))+'0';}}var r=Math.random()*100,pct=Math.random()*100;if(ns.indexOf(type)>=0){p.style.left=pct+'%';p.style.top='-20px';}else if(type==='fog'){p.style.top=(20+Math.random()*60)+'%';p.style.left='-200px';}else{p.style.left=pct+'%';p.style.top=r+'%';}c.appendChild(p);}})();\n  <\/script>\n`;
           break;
         }
         case 'qa':{
@@ -318,7 +318,7 @@ export function body(p,px,blocks,isPreview){
           const gt=['curtain','seal','vault','scan','age'].includes(b.theme)?b.theme:'classic';
           const ckCls={classic:'gateck',age:'gageck',curtain:'gcurck',seal:'gsealck',vault:'gvaultck',scan:'gscanck'}[gt];
           const ckId=`${px}-bk${i}-gateck`;
-          out+=`  <div class="${px}-gate${gt==='age'?' '+px+'-gateage':''}">\n`;
+          out+=`  <div class="${px}-gate${gt==='age'?' '+px+'-gateage':''}" id="${px}-gate${i}">\n`;
           out+=`    <input type="checkbox" id="${ckId}" class="${px}-${ckCls}">\n`;
           if(gt==='curtain'){
             out+=`    <label for="${ckId}" class="${px}-gcurcover">\n`;
@@ -371,7 +371,7 @@ export function body(p,px,blocks,isPreview){
                脚本内无反引号与字面 ${}、闭合标签转义（约束 7）；API 契约见 TAVERN_API.md §4/§6/§10 */
             out+=`  <script>
 (function(){
-  var root=document.currentScript.parentNode;if(!root)return;
+  var root=document.getElementById('${px}-gate${i}')||(document.currentScript&&document.currentScript.parentNode);if(!root)return;
   var ck=root.querySelector('.${px}-gageck');if(!ck)return;
   function note(m){
     try{if(typeof toastr!=='undefined'&&toastr&&typeof toastr.info==='function'){toastr.info(m,'',{timeOut:2200});return}}catch(e){}
@@ -407,34 +407,50 @@ export function body(p,px,blocks,isPreview){
         case 'decode':{
           const dlines=String(b.lines??'').split('\n').map(s=>s.trim()).filter(Boolean);
           if(dlines.length){
-            out+=`  <div class="${px}-dec">\n`;
-            dlines.forEach(l=>{out+=`    <div class="${px}-decl">${esc(tx(l))}</div>\n`});
+            /* 解码文本是唯一「藏正文全靠脚本」的区块：渲染环境不执行/剥除内联脚本时
+               （innerHTML 注入、DOMPurify 消毒等），正文会原样裸露——脚本路径下每行
+               初始 opacity:0，由脚本揭开；不执行则保持隐藏（不剧透，行高不塌陷）。
+               motion=off 纯静态路径不隐藏、不出脚本，正文直接可见 */
+            const hide=!motionOff?' style="opacity:0"':'';
+            out+=`  <div class="${px}-dec" id="${px}-dec${i}">\n`;
+            dlines.forEach(l=>{out+=`    <div class="${px}-decl"${hide}>${esc(tx(l))}</div>\n`});
             out+=`  </div>\n`;
             if(!motionOff)out+=`  <script>
 (function(){
-  var root=document.currentScript.previousElementSibling;if(!root)return;
-  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  var GLYPHS='!<>-_\\\\/[]{}=+*^?#________\\u30a1\\u30a2\\u30a3\\u30a4\\u30a501';
-  var els=root.children,t0=null;
-  function run(el,delay){
-    var fin=el.textContent,len=fin.length;
-    el.textContent='\\u00a0';
-    setTimeout(function(){
-      var start=null;
-      function frame(ts){
-        if(start===null)start=ts;
-        var p=Math.min((ts-start)/900,1),lock=Math.floor(p*len),s='';
-        for(var i=0;i<len;i++){
-          var ch=fin[i];
-          s+=(i<lock||ch===' '||ch==='\\n')?ch:GLYPHS[Math.floor(Math.random()*GLYPHS.length)];
+  /* id 锚点优先（脚本被渲染器移动/重排后仍能找到容器），currentScript 兄弟锚点兜底；
+     两者都落空（脚本被移到容器之前）时等整树解析完再按 id 锚定一次 */
+  var ID='${px}-dec${i}';
+  function mount(root){
+    var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var GLYPHS='!<>-_\\\\/[]{}=+*^?#________\\u30a1\\u30a2\\u30a3\\u30a4\\u30a501';
+    var els=root.children;
+    function run(el,delay){
+      var fin=el.textContent;
+      /* 减少动效：不动画不闪烁，直接揭开成品文本（行是初始隐藏的，必须显式恢复） */
+      if(reduce){el.style.opacity='1';return}
+      var chars=Array.from(fin),len=chars.length; /* Array.from 按码点拆分，emoji 不被拆成乱码 */
+      el.textContent='\\u00a0';
+      setTimeout(function(){
+        var start=null;
+        function frame(ts){
+          if(start===null)start=ts;
+          var p=Math.min((ts-start)/900,1),lock=Math.floor(p*len),s='';
+          for(var k=0;k<len;k++){
+            var ch=chars[k];
+            s+=(k<lock||ch===' '||ch==='\\n')?ch:GLYPHS[Math.floor(Math.random()*GLYPHS.length)];
+          }
+          el.textContent=s;
+          if(p<1)requestAnimationFrame(frame);else{el.textContent=fin;el.style.opacity='1'}
         }
-        el.textContent=s;
-        if(p<1)requestAnimationFrame(frame);else el.textContent=fin;
-      }
-      requestAnimationFrame(frame);
-    },delay);
+        el.style.opacity='1';
+        requestAnimationFrame(frame);
+      },delay);
+    }
+    Array.prototype.forEach.call(els,function(el,d){run(el,d*260)});
   }
-  Array.prototype.forEach.call(els,function(el,i){run(el,i*260)});
+  var root=document.getElementById(ID)||(document.currentScript&&document.currentScript.previousElementSibling);
+  if(root)mount(root);
+  else document.addEventListener('DOMContentLoaded',function(){var r=document.getElementById(ID);if(r)mount(r)});
 })();
   <\/script>\n`;
           }
@@ -445,13 +461,13 @@ export function body(p,px,blocks,isPreview){
           const cards=String(b.cards??'').split('\n').map(s=>s.trim()).filter(Boolean)
             .map(l=>{const seg=l.replace(/｜/g,'|').split('|');return [(seg[0]||'').trim(),(seg[1]||'').trim(),seg.slice(2).join('|').trim()]});
           if(cards.length){
-            out+=`  <div class="${px}-gacha">\n`;
+            out+=`  <div class="${px}-gacha" id="${px}-gacha${i}">\n`;
             if(b.title)out+=`    <div class="${px}-gachahd">${esc(tx(b.title))}</div>\n`;
             out+=`    <div class="${px}-gstage" data-opg="gstage"><div class="${px}-gcard" data-opg="gcard"><div class="${px}-gface ${px}-gback">🎴<span>${esc(tx(b.buttonText||'点击抽取'))}</span></div><div class="${px}-gface ${px}-gfront" data-opg="gfront"></div></div></div>\n`;
             out+=`  </div>\n`;
             out+=`  <script>
 (function(){
-  var root=document.currentScript.previousElementSibling;if(!root)return;
+  var root=document.getElementById('${px}-gacha${i}')||(document.currentScript&&document.currentScript.previousElementSibling);if(!root)return;
   var card=root.querySelector('[data-opg="gcard"]'),front=root.querySelector('[data-opg="gfront"]');
   if(!card||!front)return;
   var CARDS=${jssx(cards.map(c=>c.map(tx)))};
@@ -477,12 +493,12 @@ export function body(p,px,blocks,isPreview){
           const cnt=Math.max(2,Math.min(20,Number.isFinite(+b.count)?+b.count:5));
           const secrets=String(b.lines??'').split('\n').map(s=>s.trim()).filter(Boolean);
           if(secrets.length){
-            out+=`  <button type="button" class="${px}-egg" data-opg="egg">${esc(tx(b.hint||'✦'))}</button>\n`;
-            out+=`  <div class="${px}-eggmsg" data-opg="eggmsg"></div>\n`;
+            out+=`  <button type="button" class="${px}-egg" id="${px}-egg${i}" data-opg="egg">${esc(tx(b.hint||'✦'))}</button>\n`;
+            out+=`  <div class="${px}-eggmsg" id="${px}-eggmsg${i}" data-opg="eggmsg"></div>\n`;
             out+=`  <script>
 (function(){
-  var msg=document.currentScript.previousElementSibling;if(!msg)return;
-  var btn=msg.previousElementSibling;if(!btn)return;
+  var msg=document.getElementById('${px}-eggmsg${i}')||(document.currentScript&&document.currentScript.previousElementSibling);if(!msg)return;
+  var btn=document.getElementById('${px}-egg${i}')||msg.previousElementSibling;if(!btn)return;
   var LINES=${jssx(secrets.map(tx))},N=${cnt},n=0;
   btn.addEventListener('click',function(){
     n++;
@@ -500,7 +516,7 @@ export function body(p,px,blocks,isPreview){
           const blines=String(b.lines??'').split('\n').map(s=>s.trim()).filter(Boolean);
           if(blines.length){
             const hint=esc(tx(b.hint||'点击显示'));
-            out+=`  <div class="${px}-brv">\n`;
+            out+=`  <div class="${px}-brv" id="${px}-brv${i}">\n`;
             blines.forEach(l=>{
               out+=`    <div class="${px}-seg" data-opg="seg"><div class="${px}-segc">${esc(tx(l))}</div><div class="${px}-segh">${hint}</div></div>\n`;
             });
@@ -509,7 +525,7 @@ export function body(p,px,blocks,isPreview){
                预览宏已替换、导出保留原样（tx 双轨），揭示交互两端一致 */
             out+=`  <script>
 (function(){
-  var root=document.currentScript.previousElementSibling;if(!root)return;
+  var root=document.getElementById('${px}-brv${i}')||(document.currentScript&&document.currentScript.previousElementSibling);if(!root)return;
   Array.prototype.forEach.call(root.querySelectorAll('[data-opg="seg"]'),function(seg){
     seg.addEventListener('click',function(){seg.classList.add('on')});
   });

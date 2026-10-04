@@ -22,6 +22,63 @@ describe('Gen.regexScript 标记正则',()=>{
   });
 });
 
+describe('Gen.backHomeScript 返回开场页角色脚本（v1.18.0）',()=>{
+  it('JSON 形状与酒馆助手角色脚本导出格式一致且可序列化回环',()=>{
+    const s=Gen.backHomeScript(defaultProject('t'));
+    expect(s.type).toBe('script');
+    expect(s.enabled).toBe(true);
+    expect(s.name).toContain('t');
+    expect(s.id).toBeTruthy();
+    expect(typeof s.content).toBe('string');
+    expect(s.button).toEqual({enabled:false,buttons:[]});
+    expect(s.data).toEqual({});
+    expect(s.export_with).toEqual({data:true,button:true});
+    expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+  });
+  it('content 含切换调用、API 守卫、宿主注入与音轨清理关键片段',()=>{
+    const c=Gen.backHomeScript(defaultProject('t')).content;
+    expect(c).toContain("setChatMessages([{message_id:0,swipe_id:0}],{refresh:'affected'})");
+    expect(c).toContain("hasFn('getChatMessages')");
+    expect(c).toContain("typeof window[n]==='function'");
+    expect(c).toContain('.mes[mesid="0"]');
+    expect(c).toContain('opg-backhome');
+    expect(c).toContain('tavern_events');
+    expect(c).toContain('MutationObserver');
+    expect(c).toContain('data-opg-greet-audio');
+    expect(c).toContain('← 返回开场页');
+  });
+  it('文字模式烘焙工程主题色与圆角',()=>{
+    const p=defaultProject('t');
+    p.theme.primary='#112233';p.theme.accent='#445566';p.theme.textColor='#ccddee';p.theme.radius=8;
+    const c=Gen.backHomeScript(p).content;
+    expect(c).toContain('#11223359');
+    expect(c).toContain('#445566');
+    expect(c).toContain('#ccddee');
+    expect(c).toContain('border-radius:8px');
+    expect(c).toContain("mode:'text'");
+  });
+  it('图片模式带 URL；URL 为空回退文字模式且不残留 URL',()=>{
+    const p=defaultProject('t');
+    p.backHome={mode:'img',text:'回去',img:'https://a.example/b.png'};
+    let c=Gen.backHomeScript(p).content;
+    expect(c).toContain("mode:'img'");
+    expect(c).toContain('https://a.example/b.png');
+    p.backHome={mode:'img',text:'回去',img:''};
+    c=Gen.backHomeScript(p).content;
+    expect(c).toContain("mode:'text'");
+    expect(c).not.toContain('a.example');
+    expect(c).toContain('回去');
+  });
+  it('content 不含反引号且两种模式均为合法 JS（Function 构造器解析校验）',()=>{
+    const p=defaultProject('t');
+    [p, {...p,backHome:{mode:'img',text:'回去',img:'https://a.example/b.png'}}].forEach(x=>{
+      const c=Gen.backHomeScript(x).content;
+      expect(c.includes('`')).toBe(false);
+      expect(()=>new Function(c)).not.toThrow();
+    });
+  });
+});
+
 describe('Gen.build 转义与宏',()=>{
   it('divider 自定义文字被转义（预览与导出）',()=>{
     const b={type:'divider',enabled:true,style:'plain',text:'<b>x</b>'};
@@ -567,15 +624,32 @@ describe('Gen.build 新增五区块（更新日志/闸门/解码/卡池/彩蛋�
     expect(html).toContain('-gatebtn">进入');
     expect(html).toContain('-gateck:checked');
   });
-  it('decode：动效开启输出解码脚本，motion=off 只出纯文本',()=>{
+  it('decode：动效开启输出解码脚本（初始隐藏+id锚点），motion=off 只出纯文本',()=>{
     const p=proj([{type:'decode',enabled:true,lines:'信号接入'}]);
+    const px=Gen.prefix(p);
     const on=Gen.build(p,{isPreview:false});
-    expect(on).toContain('-decl">信号接入');
+    expect(on).toContain('-decl" style="opacity:0">信号接入');
     expect(on).toContain('GLYPHS');
+    expect(on).toContain(`id="${px}-dec0"`);
+    expect(on).toContain(`var ID='${px}-dec0'`); /* id 锚点：脚本被渲染器移动/重排后仍能找到容器 */
     p.theme.motion='off';
     const off=Gen.build(p,{isPreview:false});
     expect(off).toContain('-decl">信号接入');
     expect(off).not.toContain('GLYPHS');
+    expect(off).not.toContain('opacity:0'); /* 纯静态路径不隐藏，正文直接可见 */
+  });
+  it('decode：同类多实例 id 唯一，脚本锚点各归各',()=>{
+    const p=proj([
+      {type:'divider',enabled:true,style:'plain'},
+      {type:'decode',enabled:true,lines:'一'},
+      {type:'decode',enabled:true,lines:'二'},
+    ]);
+    const px=Gen.prefix(p);
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain(`id="${px}-dec1"`);
+    expect(html).toContain(`id="${px}-dec2"`);
+    expect(html).toContain(`var ID='${px}-dec1'`);
+    expect(html).toContain(`var ID='${px}-dec2'`);
   });
   it('gacha：卡池数据注入脚本与稀有度回落路径',()=>{
     const html=Gen.build(proj([{type:'gacha',enabled:true,title:'卡池',buttonText:'抽',cards:'SSR｜命运之刃｜描述\nXYZ｜神秘卡｜?'}]),{isPreview:false});
@@ -587,8 +661,11 @@ describe('Gen.build 新增五区块（更新日志/闸门/解码/卡池/彩蛋�
   });
   it('egg：宏双轨（预览替换/导出保留）与计次阈值注入',()=>{
     const base={type:'egg',enabled:true,hint:'✦',count:5,lines:'「{{user}}」'};
-    const prev=Gen.build(proj([base]),{isPreview:true});
-    expect(prev).toContain('-egg" data-opg="egg"');
+    const p=proj([base]);
+    const px=Gen.prefix(p);
+    const prev=Gen.build(p,{isPreview:true});
+    expect(prev).toContain(`-egg" id="${px}-egg0" data-opg="egg"`);
+    expect(prev).toContain(`-eggmsg" id="${px}-eggmsg0" data-opg="eggmsg"`);
     expect(prev).toContain('旅行者');
     const exp=Gen.build(proj([base]),{isPreview:false});
     expect(exp).toContain('{{user}}');

@@ -1,0 +1,35 @@
+# 发布流水线：push v* tag 自动构建并创建 GitHub Release（挂 dist 产物 + 自动更新日志）。
+# 发版配方见 AGENTS.md：bump version → commit → git tag v1.x.0 → push --tags
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install chromium --with-deps
+      - run: npm run smoke
+      - run: node scripts/pack-helper.mjs
+      # 产物挂成 Release asset：带版本名的自描述文件名
+      - name: Rename artifact
+        run: cp dist/index.html "opg-${GITHUB_REF_NAME}.html"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            opg-*.html
+            dist-nh/opg-nh-helper-*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true

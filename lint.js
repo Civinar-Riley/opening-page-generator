@@ -7,6 +7,7 @@
  *   4. todo-fixme     TODO/FIXME 标记残留
  *   5. undef-ident    调用位未定义标识符（文件内无声明且非白名单全局——防漏 import/typo，曾漏过 renderConfig 的 replaceAllInString）
  *   6. html-comment   JS 源码含 '<!--' 字面序列——触发 HTML script 双转义状态机（build.js 闸门同因），必须用 '\u003c' 转义或字符串拆接
+ *   7. button-type    <button> 必须显式 type="button"（表单内默认 submit，回车/点击可能触发表单提交丢数据；扫 JS 字符串内 HTML 与 src/index.html）
  * 注：各规则已对当前代码库校准（零误报）；新增规则前先在本地验证不产生假阳性。
  */
 const fs=require('fs'),path=require('path');
@@ -200,6 +201,20 @@ function checkHtmlCommentInJs(file,src,lines){
   }
 }
 
+/* ---------- 规则 7：<button> 缺显式 type ----------
+ * 表单内 button 默认 type="submit"，回车/点击会触发表单提交导致页面重载丢数据。
+ * 对原始文本扫描（含 JS 模板字符串/组件常量里的 HTML——它们编译后原样进产物；
+ * scrubLex 会把字符串置空所以不能用清洗后的文本）。\stype= 前置空白限定，
+ * 避免把 data-type= 等复合属性误当 type。 */
+function checkButtonType(file,src){
+  const re=/<button(?![^>]*\stype\s*=)[\s>]/g;
+  let m;
+  while((m=re.exec(src))){
+    const line=src.slice(0,m.index).split('\n').length;
+    issues.push({file,line,rule:'button-type',level:'error',msg:'<button> 缺 type 属性（统一 type="button"，防表单默认 submit）'});
+  }
+}
+
 for(const file of files){
   const src=fs.readFileSync(file,'utf8');
   const lines=src.split('\n');
@@ -210,7 +225,11 @@ for(const file of files){
   checkTodoFIXME(rel,src,lines);
   checkUndefIdent(rel,src,lines);
   checkHtmlCommentInJs(rel,src,lines);
+  checkButtonType(rel,src);
 }
+/* 规则 7 补扫工具壳 HTML（walk 只收 .js，index.html 单独扫） */
+const shellHtml=path.join(ROOT,'index.html');
+if(fs.existsSync(shellHtml))checkButtonType('src/index.html',fs.readFileSync(shellHtml,'utf8'));
 
 /* 输出 */
 let errCount=0,warnCount=0;

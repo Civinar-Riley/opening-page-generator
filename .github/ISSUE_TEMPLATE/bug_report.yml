@@ -1,0 +1,42 @@
+name: 问题反馈（Bug）
+description: 工具行为不符合预期时提交——版本信息必填，方便定位
+labels: ['bug']
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 工具版本
+      description: 顶栏 logo 右侧「v1.20.0 · 构建于 …」或「使用说明」页顶部
+      placeholder: 'v1.20.0 · 构建于 2026-10-04'
+    validations:
+      required: true
+  - type: input
+    id: tavern-helper
+    attributes:
+      label: 酒馆助手（TavernHelper）版本
+      description: 酒馆 → 扩展 → 酒馆助手 里可见；不涉及酒环境的问题可填「无关」
+      placeholder: '例：4.6.2 / 无关'
+    validations:
+      required: true
+  - type: dropdown
+    id: env
+    attributes:
+      label: 使用环境
+      options:
+        - 酒馆内（独立单文件版 dist/index.html）
+        - 酒馆内（extension 扩展版）
+        - 纯浏览器直接打开（无酒馆）
+        - 工具本身的问题（与酒馆无关）
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 怎么操作会出现问题？最好带截图
+      placeholder: |
+        1. 打开…
+        2. 点击…
+        3. 实际看到…（期望是…）
+    validations:
+      required: true

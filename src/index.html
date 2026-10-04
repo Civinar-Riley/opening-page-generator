@@ -4,26 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>企鹅的酒馆开场页生成器</title>
+<!-- favicon 内联 SVG（emoji 即图标）：保持单文件自包含，换图标改这里的 emoji 或换成 base64 PNG -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐧</text></svg>">
 <link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="./css/tool.css">
 </head>
 <body>
 
 <div id="topbar">
-  <span class="logo">企鹅 · 酒馆开场页生成器</span>
+  <span class="logo">企鹅 · 酒馆开场页生成器<span class="ver">v__OPG_VERSION__ · 构建于 __OPG_BUILD_DATE__</span></span>
   <select id="projectSelect" title="切换工程"></select>
-  <button class="btn small" data-action="project-new">新建</button>
-  <button class="btn ghost small" data-action="project-dup">复制</button>
-  <button class="btn ghost small" data-action="project-tpl">存为模板</button>
-  <button class="btn ghost small" data-action="project-rename">重命名</button>
-  <button class="btn danger small" data-action="project-del">删除</button>
-  <button class="btn ghost small" data-action="project-save">💾 保存</button>
+  <button type="button" class="btn small" data-action="project-new">新建</button>
+  <button type="button" class="btn ghost small" data-action="project-dup">复制</button>
+  <button type="button" class="btn ghost small" data-action="project-tpl">存为模板</button>
+  <button type="button" class="btn ghost small" data-action="project-rename">重命名</button>
+  <button type="button" class="btn danger small" data-action="project-del">删除</button>
+  <button type="button" class="btn ghost small" data-action="project-save">💾 保存</button>
   <select id="themeSelect" title="工具主题"></select>
   <span style="flex:1"></span>
-  <button class="btn ghost small" data-action="project-export">导出工程</button>
-  <button class="btn ghost small" data-action="project-import">导入工程</button>
-  <button class="btn danger small" data-action="factory-reset" title="清空所有本地数据并恢复初始状态（三次确认）">⟲ 重置</button>
+  <button type="button" class="btn ghost small" data-action="project-export">导出工程</button>
+  <button type="button" class="btn ghost small" data-action="project-import">导入工程</button>
+  <button type="button" class="btn danger small" data-action="factory-reset" title="清空所有本地数据并恢复初始状态（三次确认）">⟲ 重置</button>
   <input type="file" id="importFile" accept=".json" style="display:none">
 </div>
 

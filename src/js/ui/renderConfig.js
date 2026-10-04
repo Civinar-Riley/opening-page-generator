@@ -262,7 +262,7 @@ export function renderConfig(){
           <span class="arrow">▸</span>
           <label class="inline-check" style="margin:0"><input type="checkbox" data-block-en="${i}" ${b.enabled?'checked':''}></label>
           <span class="btitle">${def.icon} ${def.name}${seq}</span>
-          <span class="ord"><button data-cp="${i}" title="复制本区块" style="color:var(--acc)">⧉</button><button data-mv="up" data-i="${i}" title="上移">↑</button><button data-mv="down" data-i="${i}" title="下移">↓</button><button data-bdel="${i}" title="删除该区块" style="color:var(--err)">✕</button></span>
+          <span class="ord"><button type="button" data-cp="${i}" title="复制本区块" style="color:var(--acc)">⧉</button><button type="button" data-mv="up" data-i="${i}" title="上移">↑</button><button type="button" data-mv="down" data-i="${i}" title="下移">↓</button><button type="button" data-bdel="${i}" title="删除该区块" style="color:var(--err)">✕</button></span>
         </div><div class="block-body"></div>`;
       this.renderBlockBody(el.querySelector('.block-body'),b,i);
       /* 点击 label/按钮/把手不触发折叠 */
@@ -445,11 +445,11 @@ export function renderConfig(){
   /* 宏卡片 */
   const macroCard=document.createElement('div');macroCard.className='card';
   const renderMacros=()=>{
-    macroCard.innerHTML=`<h3>🔮 宏预览替换 <span class="hint">仅影响预览，导出代码保留原始宏</span></h3><div id="macroRows"></div><button class="btn ghost small" id="addMacro">＋ 添加宏</button>`;
+    macroCard.innerHTML=`<h3>🔮 宏预览替换 <span class="hint">仅影响预览，导出代码保留原始宏</span></h3><div id="macroRows"></div><button type="button" class="btn ghost small" id="addMacro">＋ 添加宏</button>`;
     const rows=$('#macroRows',macroCard);
     Project.cur.macros.forEach((m,i)=>{
       const r=document.createElement('div');r.className='macro-row';
-      r.innerHTML=`<input type="text" data-mk="${i}" value="${esc(m.k)}" placeholder="宏名(如char)"><div style="display:flex;gap:6px;flex:1;min-width:0"><input type="text" data-mv2="${i}" value="${esc(m.v)}" placeholder="预览替换值" style="flex:1;min-width:0"></div><button data-del="${i}">✕</button>`;
+      r.innerHTML=`<input type="text" data-mk="${i}" value="${esc(m.k)}" placeholder="宏名(如char)"><div style="display:flex;gap:6px;flex:1;min-width:0"><input type="text" data-mv2="${i}" value="${esc(m.v)}" placeholder="预览替换值" style="flex:1;min-width:0"></div><button type="button" data-del="${i}">✕</button>`;
       rows.appendChild(r);
     });
   };
@@ -498,9 +498,9 @@ export function renderConfig(){
     });
   }
 
-  /* 实时预览面板（配置页右侧 + 预览页共用渲染） */
-  this.mountPreview($('#livePreviewSlot'));
-  if($('#pagePreview .preview-col'))this.mountPreview($('#pagePreview .preview-col'));
+  /* 实时预览面板（配置页右侧 + 预览页共用渲染）；两 slot 的 iframe id 必须不同（DOM 唯一性） */
+  this.mountPreview($('#livePreviewSlot'),'previewFrameLive');
+  if($('#pagePreview .preview-col'))this.mountPreview($('#pagePreview .preview-col'),'previewFrame');
 }
 
 /* ---------- 区块编辑器 ---------- */
