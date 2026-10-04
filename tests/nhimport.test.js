@@ -1,6 +1,6 @@
 /* nhentai 导入核心库单元测试（纯函数，不打真实网络） */
 import { describe, it, expect } from 'vitest';
-import { parseApiJson, parseGalleryHtml, buildPageUrls, parsePageExpr, applyPageFilter, extractGalleryId } from '../scripts/nh-lib.mjs';
+import { parseApiJson, parseGalleryHtml, buildPageUrls, parsePageExpr, applyPageFilter, extractGalleryId, parseProxyUrl } from '../scripts/nh-lib.mjs';
 
 describe('nh-lib parseApiJson',()=>{
   it('v2 API JSON（pages[].number+path）→ mediaId + 扩展名取自 path，页码用 number',()=>{
@@ -108,5 +108,23 @@ describe('nh-lib extractGalleryId',()=>{
     expect(extractGalleryId(' 789 ')).toBe('789');
     expect(extractGalleryId('https://example.com/a')).toBeNull();
     expect(extractGalleryId('')).toBeNull();
+  });
+});
+
+describe('nh-lib parseProxyUrl（v1.21 抓取代理）',()=>{
+  it('合法 http(s)://host:port → {protocol,host,port}',()=>{
+    expect(parseProxyUrl('http://127.0.0.1:7890')).toEqual({protocol:'http',host:'127.0.0.1',port:7890});
+    expect(parseProxyUrl('https://proxy.example.com:8080')).toEqual({protocol:'https',host:'proxy.example.com',port:8080});
+    expect(parseProxyUrl('  http://127.0.0.1:7897  ')).toEqual({protocol:'http',host:'127.0.0.1',port:7897});
+  });
+  it('非法形态 → null：缺协议/缺端口/非 http 协议/带路径/端口越界/空值',()=>{
+    expect(parseProxyUrl('127.0.0.1:7890')).toBeNull();
+    expect(parseProxyUrl('http://127.0.0.1')).toBeNull();
+    expect(parseProxyUrl('socks5://127.0.0.1:7890')).toBeNull();
+    expect(parseProxyUrl('http://127.0.0.1:7890/')).toBeNull();
+    expect(parseProxyUrl('http://127.0.0.1:0')).toBeNull();
+    expect(parseProxyUrl('http://127.0.0.1:99999')).toBeNull();
+    expect(parseProxyUrl('')).toBeNull();
+    expect(parseProxyUrl(null)).toBeNull();
   });
 });

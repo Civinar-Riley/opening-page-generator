@@ -100,3 +100,15 @@ export function applyPageFilter(total,{skipLast=0,pages=null}={}){
   for(let i=1;i<=Math.max(0,keep);i++)out.push(i);
   return out;
 }
+
+/** 代理地址解析（纯函数）：只接受 http(s)://host:port 形态（本机代理的常见写法），
+    返回 {protocol,host,port}；非法（缺协议/缺端口/带路径/空值）返回 null——
+    服务端据此决定走 CONNECT 隧道还是回落环境变量/直连 */
+export function parseProxyUrl(v){
+  const s=String(v??'').trim();
+  const m=/^(https?):\/\/([a-zA-Z0-9._-]+):(\d{1,5})$/.exec(s);
+  if(!m)return null;
+  const port=+m[3];
+  if(port<1||port>65535)return null;
+  return {protocol:m[1],host:m[2],port};
+}

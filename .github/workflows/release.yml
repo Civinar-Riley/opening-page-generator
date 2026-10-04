@@ -21,12 +21,15 @@ jobs:
       - run: npm run build
       - run: npx playwright install chromium --with-deps
       - run: npm run smoke
+      - run: node scripts/pack-helper.mjs
       # 产物挂成 Release asset：带版本名的自描述文件名
       - name: Rename artifact
         run: cp dist/index.html "opg-${GITHUB_REF_NAME}.html"
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: opg-*.html
+          files: |
+            opg-*.html
+            dist-nh/opg-nh-helper-*.zip
           generate_release_notes: true
           fail_on_unmatched_files: true

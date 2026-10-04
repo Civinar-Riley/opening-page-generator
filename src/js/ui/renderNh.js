@@ -9,12 +9,16 @@ import { Project } from '../project.js';
 import { UI } from './core.js';
 
 const SERVICE_KEY='openingPageGen_v1_nhService';
+const PROXY_KEY='openingPageGen_v1_nhProxy';
 const DEF_ADDR='http://127.0.0.1:8765';
 /* 会话级抓取结果（模块级：页签切换不丢） */
 const st={total:0,urls:[],thumbs:[],source:''};
 
 const getAddr=()=>{try{return localStorage.getItem(SERVICE_KEY)||DEF_ADDR}catch(e){return DEF_ADDR}};
 const setAddr=v=>{try{localStorage.setItem(SERVICE_KEY,v)}catch(e){}};
+/* 抓取代理：传给本机服务按次走 CONNECT 隧道出网（环境变量代理之外的普通用户路径） */
+const getProxy=()=>{try{return localStorage.getItem(PROXY_KEY)||''}catch(e){return ''}};
+const setProxy=v=>{try{localStorage.setItem(PROXY_KEY,v)}catch(e){}};
 
 /** 服务探活（3s 超时）：更新状态点、提示文案与启动/停止按钮可见性 */
 async function probe(){
@@ -96,6 +100,8 @@ export function renderNh(){
       <p class="nh-hint">通过<strong>本机辅助服务</strong>抓取 nhentai 画廊的页面直链（浏览器直连会被跨域拦截，故服务只监听本机 127.0.0.1）。未连接时点 <strong>🚀 一键启动服务</strong>（首次使用先跑一次 <code>npm run nh-install</code> 注册协议，之后浏览器会询问一次是否打开）；也可手动 <code>npm run nh-serve</code>，或单次命令 <code>npm run nh -- 画廊链接 --skip-last 3</code> 直接导出到剪贴板。抓到全本后在下方<strong>勾选要的页</strong>（末尾广告页直接取消勾选），一键写入漫画阅读器区块。</p>
       <div class="row2"><div><label>服务地址</label><input id="nhAddr" value="${esc(getAddr())}"></div>
       <div style="display:flex;align-items:flex-end"><button type="button" class="btn ghost small" id="nhProbe">检查连接</button></div></div>
+      <div class="row2"><div><label>抓取代理（服务出网用；留空=跟随系统环境变量/直连）</label><input id="nhProxy" placeholder="http://127.0.0.1:7890" value="${esc(getProxy())}"></div>
+      <div style="display:flex;align-items:flex-end"><span class="nh-hint">Clash 默认 http://127.0.0.1:7890，v2rayN 默认 http://127.0.0.1:10809。改完即抓即用，无需重启服务</span></div></div>
       <div class="row2"><div><label>画廊链接或 ID</label><input id="nhUrl" placeholder="https://nhentai.net/g/123456/ 或 123456"></div>
       <div style="display:flex;align-items:flex-end"><button type="button" class="btn" id="nhFetch">🌐 抓取页面</button></div></div>
     </div>
@@ -119,6 +125,7 @@ export function renderNh(){
     </div>`;
     /* 事件绑定（构建一次，全部挂在此处） */
     $('#nhAddr',col).addEventListener('change',function(){setAddr(this.value.trim().replace(/\/+$/,'')||DEF_ADDR);probe()});
+    $('#nhProxy',col).addEventListener('change',function(){setProxy(this.value.trim());toast(this.value.trim()?'抓取代理已更新':'抓取代理已清空（走环境变量/直连)')});
     $('#nhProbe',col).onclick=()=>probe();
     $('#nhStart',col).onclick=async function(){
       this.disabled=true;
@@ -137,8 +144,9 @@ export function renderNh(){
       /* grab 抛 service-unreachable 表示连接不上服务（网络层），与服务返回的业务错误区分开 */
       const grab=async()=>{
         const addr=$('#nhAddr',col).value.trim().replace(/\/+$/,'');
+        const proxy=getProxy();
         let res;
-        try{res=await fetch(addr+'/api/gallery?url='+encodeURIComponent(q))}
+        try{res=await fetch(addr+'/api/gallery?url='+encodeURIComponent(q)+(proxy?'&proxy='+encodeURIComponent(proxy):''))}
         catch(e){throw new Error('service-unreachable')}
         const j=await res.json();
         if(!j.ok)throw new Error(j.error||'服务返回异常');
