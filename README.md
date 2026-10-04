@@ -1,10 +1,55 @@
-# 企鹅的酒馆开场页生成器 v1.21.0
+<div align="center">
 
-为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡生成开场页组件的本地可视化工具。
+# 🐧 企鹅的酒馆开场页生成器
 
-通过拖拽、配置区块，一键生成可嵌入酒馆的开场页 HTML 代码，无需手写。
+**拖拽区块，可视化编排 SillyTavern 角色卡开场页 —— 产出自包含单文件 HTML，零手写代码、零运行时依赖**
 
-## 功能特性
+[![Release](https://img.shields.io/github/v/release/Civinar-Riley/opening-page-generator?label=%E6%9C%80%E6%96%B0%E7%89%88)](https://github.com/Civinar-Riley/opening-page-generator/releases/latest)
+[![CI](https://github.com/Civinar-Riley/opening-page-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/Civinar-Riley/opening-page-generator/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-CC%20BY--NC--SA%204.0-8a6fc3)](#-许可证)
+![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933)
+
+[📥 下载最新版](https://github.com/Civinar-Riley/opening-page-generator/releases/latest) · [✨ 功能总览](#-核心特性) · [🚀 快速开始](#-快速开始) · [📖 文档](#-更多文档)
+
+</div>
+
+---
+
+## 🤔 这是什么
+
+为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡生成**开场页组件**的本地可视化工具：把欢迎标题、粒子动效、开场白选择、漫画阅读器等区块拖拽编排成页，导出自包含 HTML 贴进 `first_mes`，由酒馆助手（TavernHelper / JS-Slash-Runner）在聊天里渲染。纯本地运行，无服务端、数据不出浏览器。
+
+| 区块类型 | 复用组件 | 官方模板 | 页面主题 | 工具主题 |
+|:---:|:---:|:---:|:---:|:---:|
+| **25** 种 | **59** 个 | **12** 套 | **6** 套 | **5** 套 |
+
+## ✨ 核心特性
+
+**🎛 编辑体验**
+
+- 拖拽排序 / 一键复制区块 / 实时预览（📱手机 · 🖥PC 宽度，🌙暗 · ☀️亮底模拟）
+- 撤销重做 20 步、区块搜索、全局搜索替换、区块预设一键套用、触屏长按拖拽
+
+**🧩 内容与美术**
+
+- 25 种区块：欢迎标题、粒子动效、开场白选择、BGM、问答折叠、倒计时、命运卡池、连击彩蛋、模糊揭示、漫画阅读器……
+- 12 套官方完整模板 + 6 套页面主题 + 5 套工具主题；入场闸门六主题（含 18+ 年龄验证）
+- 59 个可复用组件（分类 + 搜索弹窗）：对话气泡、手机聊天窗、终端窗口、求签占卜、监护仪……
+- 酒馆宏自动包装与预览：`{{random}}` `{{roll}}` `{{setvar}}` `{{isotime}}` 等
+
+**🏨 酒馆深度适配**
+
+- 开场白选择（卡片 / 列表 / 封面墙，封面图 + 联动音轨 + 标题库）＋「返回开场页」角色脚本
+- 漫画阅读器（条漫 / 翻页双模式）；漫画导入（本机服务代抓 + 页面直填代理 + 免安装独立小包）
+- BGM 切楼接续播放、头像零 JS 注入、四种导出格式、导出自检、扩展版「📤 写入角色卡」
+
+**🔐 工程与安全**
+
+- 数据全存本地；AI Key 可选不落盘、导出工程自动剔除；自由 HTML 全权限警示
+- 构建后双冒烟（静态 + 无头浏览器）、产物体积预算、[PITFALLS](PITFALLS.md) 防踩坑清单
+
+<details>
+<summary><b>📖 功能明细（25 条完整说明，点击展开）</b></summary>
 
 - **可视化编辑**：拖拽排列区块、一键复制区块、实时预览效果（📱手机 / 🖥PC 宽度、🌙暗色 / ☀️亮色底模拟）
 - **撤销/重做**：Ctrl+Z 撤销、Ctrl+Shift+Z / Ctrl+Y 重做，最多 20 步历史；Ctrl+S 立即保存
@@ -30,40 +75,50 @@
 - **酒馆深度适配**：BGM 走酒馆助手音频播放器（切楼不重播，缺失降级本地播放）；头像可选零 JS 方案（渲染器 char-avatar/user-avatar 自动注入）；主题可分别跟随酒馆正文/引用/字体/强调色；导出自检覆盖 </script> 逃逸、vw/vh 基准、position:fixed、Google Fonts 等已知坑
 - **SillyTavern 扩展版（extension 分支）**：以扩展形式内嵌酒馆运行（安装时填仓库 URL + 分支名 `extension`），导出页新增「📤 写入角色卡」——选卡直写 first_mes / 追加 alternate_greetings，免复制粘贴（覆盖模式有二次确认；写入时自动提取所选卡的实际开场白烘焙进开场白选择区静态列表，替代编辑器占位文本，可勾选关闭；独立单文件版此功能自动休眠不可见）；AI 助手可选「酒馆当前连接」直连主 AI；工坊内按 Esc 可关闭；编辑防抖窗口内被宿主拆毁时自动落盘
 
-## 快速开始
+</details>
+
+## 🚀 快速开始
 
 ### 直接使用（推荐）
 
-从 [GitHub Releases](https://github.com/Civinar-Riley/opening-page-generator/releases) 下载最新版 `opg-vX.X.X.html`（或 `dist/index.html`），双击打开即可使用，无需安装任何依赖。顶栏右侧常显版本号与构建日期，反馈问题时截图即带版本信息。
+从 [GitHub Releases](https://github.com/Civinar-Riley/opening-page-generator/releases/latest) 下载最新版 `opg-vX.X.X.html`（或 `dist/index.html`），双击打开即可使用，无需安装任何依赖。顶栏右侧常显版本号与构建日期，反馈问题时截图即带版本信息。
 
 ### 从源码构建
 
 ```bash
-# 1. 安装依赖
-npm install
-
-# 2. 构建（正式构建自动压缩 JS/CSS；watch 模式不压缩便于调试）
-npm run build
-
-# 3. 运行单元测试（组件库 / 宏引擎 / 生成引擎 / 数据迁移 / 搜索替换 / 字体检测 / 扩展桥 / 预览测高 / 工具函数）
-npm test
-
-# 4. 交付前零依赖 lint（未使用 import / 未定义标识符 / localStorage key 前缀 / console.log 残留）
-npm run lint
-
-# 5. 双冒烟：静态检查（build 后自动跑）+ 无头浏览器级冒烟（零 console.error / 页签可切 / 预览挂载）
-npm run smoke
-
-# 6. 产物在 dist/ 目录下
+npm install        # 1. 安装依赖
+npm run build      # 2. 构建（自动压缩，构建后自动跑静态冒烟）
+npm test           # 3. 单元测试（vitest）
+npm run lint       # 4. 零依赖 lint
+npm run smoke      # 5. 双冒烟：静态 + 无头浏览器（零 console.error / 页签可切 / 预览挂载）
 ```
 
-开发时可使用 watch 模式，修改 `src/` 后自动重新构建：
+产物在 `dist/` 目录下。开发用 watch 模式（改 `src/` 自动重建，不压缩便于断点调试）：
 
 ```bash
 npm run watch
 ```
 
-## 项目结构
+## 📦 发版与更新
+
+push `v*` tag 自动触发完整流水线（lint → 测试 → 构建 → 双冒烟 → 建 Release），每个 Release 挂两个资产：
+
+| 资产 | 说明 |
+|------|------|
+| `opg-vX.X.X.html` | 工具本体（单文件，下载即用） |
+| `opg-nh-helper-vX.X.X.zip` | 「漫画导入助手」独立小包（免 clone 仓库，解压 → 双击安装协议 → 工具页点启动） |
+
+## 📖 更多文档
+
+| 文档 | 内容 |
+|------|------|
+| 工具内「📖 使用说明」页 | 区块详解 / 嵌入方式 / 宏支持 / 漫画导入操作 |
+| [`src/js/gen/TAVERN_API.md`](src/js/gen/TAVERN_API.md) | 生成脚本依赖的酒馆助手 API 契约（守卫 / 降级矩阵） |
+| [`AGENTS.md`](AGENTS.md) | AI 协作指南（硬约束 / 常见任务配方 / 发版配方） |
+| [`PITFALLS.md`](PITFALLS.md) | 防踩坑清单（真实踩坑沉淀，AI 协作检查表） |
+
+<details>
+<summary><b>🗂 项目结构</b></summary>
 
 ```
 ├── src/                     # 源码（开发用）
@@ -88,12 +143,13 @@ npm run watch
 │           ├── renderConfig.js # 配置页（区块编辑器 / 拖拽 / 搜索替换 UI）
 │           ├── renderExport.js # 导出页
 │           ├── renderAI.js     # AI 助手页（连接模式分流：酒馆当前连接 / 自定义接口）
+│           ├── renderNh.js     # 漫画导入页（服务探活 / 抓取 / 勾选 / 写入区块）
 │           ├── renderHelp.js   # 说明页
 │           ├── shared.js       # 跨页辅助（列表编辑器 / 字体探测）
 │           └── extBridge.js    # 扩展版桥接（角色卡写入 / 酒馆 AI 通道探测与调用）
 ├── tests/                    # 单元测试（vitest）
 ├── dist/                     # 构建产物（单文件 HTML）
-├── scripts/                  # 辅助脚本（nhentai 导入 / 构建后静态+浏览器双冒烟）
+├── scripts/                  # 辅助脚本（nhentai 导入 / 构建后静态+浏览器双冒烟 / 助手小包打包）
 ├── .github/                  # 工作流（CI / tag 自动发版）+ issue 模板
 ├── reference/                # 外部参考资料（酒馆助手官方文档/API 类型/命令手册，只读不进构建）
 ├── build.js                  # 构建脚本
@@ -104,19 +160,26 @@ npm run watch
 └── LICENSE                   # CC BY-NC-SA 4.0
 ```
 
-## 自定义
+</details>
+
+<details>
+<summary><b>🛠 自定义与注意事项</b></summary>
+
+**自定义**
 
 - **AI 协作**：改动前先参考根目录 `AGENTS.md`（硬约束清单与常见任务配方）；实操踩坑检查表见 `PITFALLS.md`；生成脚本的酒馆助手 API 契约见 `src/js/gen/TAVERN_API.md`
 - **添加组件**：编辑 `src/js/defs.js` 中的 `COMP_LIB`
 - **添加主题预设**：编辑 `src/js/defs.js` 中的 `THEME_PRESETS`
 - **添加区块类型**：编辑 `src/js/defs.js` 的 `BLOCK_DEFS` + `BLOCK_ORDER`，渲染逻辑在 `src/js/gen/` 目录
 
-## 注意事项
+**注意事项**
 
 - 开发版 `src/index.html` 使用 ES Modules，直接双击会被浏览器 CORS 拦截，请使用构建产物或本地静态服务器
-- 构建产物 `dist/` 是自包含单文件，可直接分发给酒馆用户；每次发版在 [Releases](https://github.com/Civinar-Riley/opening-page-generator/releases) 挂产物（push `v*` tag 自动触发）
+- 构建产物 `dist/` 是自包含单文件，可直接分发给酒馆用户；每次发版在 Releases 挂产物（push `v*` tag 自动触发）
 - 工具页顶栏常显版本号与构建日期；离线打开时飞书字体 CDN 加载失败会回落系统字体，不影响任何功能
 - 酒馆需安装「酒馆助手（TavernHelper / JS-Slash-Runner）」扩展；无 API 环境下组件自动降级显示占位内容
+
+</details>
 
 ## 🙏 致谢
 
@@ -129,4 +192,8 @@ npm run watch
 
 ---
 
-🐧 感谢使用！遇到问题欢迎反馈日志截图。
+<div align="center">
+
+🐧 感谢使用！遇到问题欢迎 [提 Issue](https://github.com/Civinar-Riley/opening-page-generator/issues)（模板会引导你带上版本信息）。
+
+</div>

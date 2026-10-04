@@ -89,8 +89,8 @@ localStorage（openingPageGen_* 键）
 
 | README 位置 | 对照源 |
 |------|------|
-| 标题版本号 `v x.y.z` | `package.json` `version`（build.js 注入 `__OPG_VERSION__`） |
-| 功能特性列表（区块/组件/模板/主题数量与名称） | `defs.js`：`BLOCK_ORDER`（24）、`COMP_LIB`（59）、`BUILTIN_TEMPLATES`（12）、`THEME_PRESETS`（6）、`UI_THEMES`（5） |
+| Release 徽章（标题区，版本随 Release 自动跟随不再写死在 H1） | `package.json` `version`（build.js 注入 `__OPG_VERSION__`）+ 打 tag 前同步 bump |
+| 功能特性列表（区块/组件/模板/主题数量与名称） | `defs.js`：`BLOCK_ORDER`（25）、`COMP_LIB`（59）、`BUILTIN_TEMPLATES`（12）、`THEME_PRESETS`（6）、`UI_THEMES`（5）——「核心特性」上浮短句 + 「功能明细」折叠区存全量长说明，**两处都要核对** |
 | 功能特性新增条目 | 本次改动引入的能力（如新区块特性、新组件、闸门双主题） |
 | 项目结构树 | `src/`、`tests/`、根目录实际文件（新增/删除目录要同步，如 `reference/`；不存在的文件如 `TESTING.md` 要移除） |
 | 构建/测试命令说明 | `package.json` scripts |
