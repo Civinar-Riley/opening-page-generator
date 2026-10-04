@@ -94,13 +94,14 @@ npm run watch
 ├── build.js                  # 构建脚本
 ├── lint.js                   # 零依赖 lint
 ├── AGENTS.md                 # AI 协作指南（硬约束 / 常见任务配方）
+├── PITFALLS.md               # 防踩坑清单（真实踩坑沉淀，AI 协作检查表）
 ├── package.json
 └── LICENSE                   # CC BY-NC-SA 4.0
 ```
 
 ## 自定义
 
-- **AI 协作**：改动前先参考根目录 `AGENTS.md`（硬约束清单与常见任务配方）；生成脚本的酒馆助手 API 契约见 `src/js/gen/TAVERN_API.md`
+- **AI 协作**：改动前先参考根目录 `AGENTS.md`（硬约束清单与常见任务配方）；实操踩坑检查表见 `PITFALLS.md`；生成脚本的酒馆助手 API 契约见 `src/js/gen/TAVERN_API.md`
 - **添加组件**：编辑 `src/js/defs.js` 中的 `COMP_LIB`
 - **添加主题预设**：编辑 `src/js/defs.js` 中的 `THEME_PRESETS`
 - **添加区块类型**：编辑 `src/js/defs.js` 的 `BLOCK_DEFS` + `BLOCK_ORDER`，渲染逻辑在 `src/js/gen/` 目录
