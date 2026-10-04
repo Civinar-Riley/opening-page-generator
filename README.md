@@ -111,6 +111,11 @@ npm run watch
 - 构建产物 `dist/` 是自包含单文件，可直接分发给酒馆用户
 - 酒馆需安装「酒馆助手（TavernHelper / JS-Slash-Runner）」扩展；无 API 环境下组件自动降级显示占位内容
 
+## 🙏 致谢
+
+- @wobushirenji「非首页自动返回」角色脚本——「返回开场页脚本」功能的机制灵感来源，本工具实现为自研重写，未复制原代码
+- 酒馆助手（TavernHelper / JS-Slash-Runner）——本工具全部产物所依赖的运行时，官方文档：<https://n0vi028.github.io/JS-Slash-Runner-Doc/>
+
 ## 📄 许可证
 
 本项目采用 [CC BY-NC-SA 4.0（署名-非商业性使用-相同方式共享 4.0）](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh) 协议授权，完整法律文本见仓库中的 `LICENSE` 文件。

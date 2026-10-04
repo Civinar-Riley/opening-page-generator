@@ -118,7 +118,7 @@ localStorage（openingPageGen_* 键）
 
 ## 产物真机验证配方（酒馆环境）
 
-预览 iframe（srcdoc 模拟）通过 ≠ 真机通过。涉及酒馆 API 交互（开场白列表/切换/标题库/选项填入）的改动必须真机验证（来源五 StageDog/tavern_helper_template 工作流）：
+预览 iframe（srcdoc 模拟）通过 ≠ 真机通过。涉及酒馆 API 交互（开场白列表/切换/标题库/选项填入）的改动必须真机验证：
 
 1. 酒馆 → 扩展 → 酒馆助手，确认「实时监听-允许监听」已启用（代码→酒馆热同步的前提）
 2. 用 chrome-devtools 连接**已打开的酒馆浏览器页**（MCP 或调试端口，勿新开实例读不到真实环境）

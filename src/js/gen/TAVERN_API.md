@@ -21,7 +21,7 @@
 
 ## 接口优先级（选择原则）
 
-同一能力存在多层接口时（来源五 StageDog/tavern_helper_template AGENTS 成文），按抽象层次从高到低选择：
+同一能力存在多层接口时，按抽象层次从高到低选择：
 
 1. **酒馆助手封装接口**（本表契约所列：getChatMessages / setChatMessages / getWorldbook / triggerSlash / eventOn…）——抽象层次高、跨酒馆版本相对稳定，**永远首选**
 2. **酒馆原生导出**（`window.SillyTavern` / `getContext` / `tavern_events`）——抽象层次低、随酒馆版本漂移，仅作降级路径或封装接口缺失时的兜底（本产物仅 `tavern_events` 事件名读取一处）
@@ -68,7 +68,7 @@
 - 使用处：`gen/scripts.js` IIFE 事件注册段；`gen/body.js` 年龄验证闸门 CHAT_CHANGED 重显
 
 ### 7. appendInexistentScriptButtons + getButtonEvent —— 注册酒馆脚本按钮（开场白序号跳转）
-- 用途：开场白「按钮模式」（clickAction='button'）下向酒馆助手按钮栏注册脚本按钮，点击后输入序号（1 开始）快速跳转；页内列表照常渲染（点选切换不受影响），按钮仅作快捷方式。灵感来源外部「快速切换开局」脚本（只学思路，实现自研）
+- 用途：开场白「按钮模式」（clickAction='button'）下向酒馆助手按钮栏注册脚本按钮，点击后输入序号（1 开始）快速跳转；页内列表照常渲染（点选切换不受影响），按钮仅作快捷方式
 - 签名：`appendInexistentScriptButtons([{name,visible}])`（去重注册）；`getButtonEvent(name)` → 按钮点击事件名，配 `eventOn` 监听
 - 守卫与降级：`hasFn('appendInexistentScriptButtons') && hasFn('getButtonEvent')` 双守卫；try/catch；任一缺失 → **静默跳过注册**（页内列表仍可点选，功能不受影响）
 - 使用处：`gen/scripts.js` `script()` button 模式注册段
@@ -102,7 +102,7 @@
 
 ### 13. 已评估可用的备用接口（登记备用，产物暂未使用——启用前先真机验证）
 
-来源：TavernHelper @types 官方声明（墨月本地写卡工坊核对副本）+ 墨月前端规范实测。按「接口优先级」均属第 1 层封装接口，启用时照 §运行环境规则 3-5 守卫。
+来源：TavernHelper @types 官方声明。按「接口优先级」均属第 1 层封装接口，启用时照 §运行环境规则 3-5 守卫。
 
 | 接口 | 用途 | 签名要点 | 注意 |
 |------|------|---------|------|

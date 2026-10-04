@@ -94,7 +94,7 @@ export function renderAI(){
     p.ai.channel=this.value;Project.save();UI.renderAI();
   }));
 
-  /* 系统提示词（吸收墨月写卡工坊前端规范：安全渲染/布局边界/可访问性/输出前自查） */
+  /* 系统提示词（吸收前端规范：安全渲染/布局边界/可访问性/输出前自查） */
   const SYS_HTML=`你是酒馆(SillyTavern)角色卡内嵌HTML组件工程师。只输出一段HTML/CSS代码，规则：
 1. 输出一个最外层<div>，内部可含<style>，所有class必须以 "opg-ai-" 前缀命名；
 2. 禁止使用全局选择器(如 *、body、html)、禁止 id 选择器、禁止 <script> 脚本与外部资源依赖，禁止内联事件属性(onclick等)；

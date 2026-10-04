@@ -33,7 +33,7 @@ const Gen={
       /* 弯引号检测：正则捕获/JSON Patch 场景弯引号易与直引号混用导致匹配或解析失败 */
       if(/[“”‘’]/.test(html))items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 含中文弯引号（“”‘’）——若用于正则捕获或 JSON 数据，弯直引号不一致会导致匹配/解析失败，建议统一为直引号`});
       if(/src=["']http:\/\//i.test(html)||/url\(["']?http:\/\//i.test(html))items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 引用了 http:// 图片——https 部署的酒馆会因混合内容策略拦截不显示，建议换 https 图源`});
-      /* 墨月前端规范避坑（废弃做法清单）：二次格式化与楼层数据注入 HTML */
+      /* 前端规范避坑（废弃做法清单）：二次格式化与楼层数据注入 HTML */
       if(/formatAsDisplayedMessage\s*\(/.test(html))items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 调用了 formatAsDisplayedMessage——对原始楼层文本再处理会二次执行宏与正则导致重复渲染，直接使用 getChatMessages 读到的原文即可`});
       if(/\.innerHTML\s*=|insertAdjacentHTML|document\.write/i.test(html)&&/getChatMessages|getVariables|getAllVariables|getCurrentMessageId/.test(html))items.push({level:'提示',msg:`自由 HTML 区块 #${i+1} 把楼层数据写入 innerHTML/insertAdjacentHTML——楼层文本含未转义 HTML 时有注入与二次渲染风险，建议改用 textContent/createTextNode`});
     });
