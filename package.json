@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "build": "node build.js",
+    "build:ext": "npm run build && node ext-build.js",
     "postbuild": "node scripts/smoke-static.mjs",
     "watch": "node build.js --watch",
     "test": "vitest run",
