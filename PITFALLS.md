@@ -63,3 +63,11 @@
     `src/` 就是未压缩源码，别想着给 dist 留可读版。
 17. **提交前 `git status --short` 核对**——v1.19 漏 add 过 renderHelp.js（amend 补救）。
     推送走项目级代理 `http.proxy=127.0.0.1:7897`（配置与排查见 AGENTS.md 顶部）。
+18. **零依赖走 HTTP 代理出网**：Node 全局 fetch 只认 `NODE_USE_ENV_PROXY=1` 的环境变量路径
+    （且进程环境在启动时固定——改了系统代理后必须重启服务进程才生效，v1.21 实测踩过）。
+    要运行时指定代理只能手工 CONNECT 隧道（net 连代理 → CONNECT 域名:443 → tls 包隧道）。
+    **坑**：预连 socket 用 `https.Agent({createConnection})` 或 `agent:false+createConnection`
+    封装，实测握手正常但请求永远无响应——直接在 tls socket 上手写 HTTP 请求最稳
+    （`Connection: close` 读到尾 + chunked 解码，先例见 scripts/nh-import.mjs 的 proxyGet）。
+    顺带：spawn 的工作目录被删会让整个 shell 工具链 ENOENT（报错指向 bash.exe 缺失，
+    实为 cwd 缺失），先重建目录再 cd 走。
