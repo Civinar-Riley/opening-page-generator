@@ -26,10 +26,15 @@ export function renderExport(){
     :`<div style="font-size:12px;color:var(--danger,#e07070);margin:4px 0">✗ 自检未通过（${audit.problems.filter(x=>x.level==='阻断').length} 项阻断）：${esc(audit.problems.map(x=>x.msg).join('；'))}</div>`;
   const auditHints=audit.problems.filter(x=>x.level==='提示');
   const guard=()=>{const b=audit.problems.find(x=>x.level==='阻断');if(b){toast('自检未通过：'+b.msg);return false}return true};
+  /* 工程数据体积：localStorage 约 5MB 上限的显式预警（导出即备份的场景下最容易看到） */
+  const dataKB=(JSON.stringify(p).length/1024).toFixed(0);
+  const dataColor=dataKB>1024?'var(--danger,#e07070)':dataKB>512?'#e0a040':'var(--txt2)';
+  const dataHint=dataKB>1024?'（超 1MB——接近浏览器存储上限，建议拆分工程或精简图片/HTML）':dataKB>512?'（偏大，注意增长）':'';
   const box1=document.createElement('div');box1.className='card export-box';
   box1.innerHTML=`<h3>① 开场白版 <span class="hint">整段贴进 first_mes 或 alternate_greetings，保留 \`\`\` 围栏与 body 标签</span></h3>
     <div style="font-size:12px;color:var(--txt2);margin:6px 0">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此这里导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签。</div>
     ${auditLine}${auditHints.length?`<div style="font-size:12px;color:var(--txt2);margin:4px 0">提示：${esc(auditHints.map(x=>x.msg).join('；'))}</div>`:''}
+    <div style="font-size:12px;color:${dataColor};margin:4px 0">📦 工程数据体积 ${dataKB} KB${dataHint}</div>
     <div class="export-actions">
       <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
       <button type="button" class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>

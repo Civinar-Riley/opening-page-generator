@@ -7,7 +7,7 @@ const $$=(s,el=document)=>[...el.querySelectorAll(s)];
 let _uidSeq=0;
 const uid=()=>Date.now().toString(36)+(_uidSeq++).toString(36)+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800)}
+function toast(msg,dur=1800){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),dur)}
 function copyText(txt){
   if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(()=>toast('已复制到剪贴板'));return}
   const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();

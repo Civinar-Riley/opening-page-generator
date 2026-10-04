@@ -16,7 +16,8 @@
 | 命令 | 用途 |
 |------|------|
 | `npm test`（等价 `npx vitest run`） | 全部单元测试——**任何改动后必须全过** |
-| `npm run build` | 构建 `dist/index.html`（压缩版） |
+| `npm run build` | 构建 `dist/index.html`（压缩版；构建后自动跑静态冒烟 `postbuild`，超体积预算线失败） |
+| `npm run smoke` | 双冒烟：静态检查（script 配平/双转义状态机/版本一致/语法可解析）+ 无头浏览器级冒烟（零 console.error、页签可切、预览挂载、探活 mock） |
 | `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 / `<button>` 缺显式 type |
 | `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
@@ -24,7 +25,9 @@
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端 |
 | `npm run nh-install` / `nh-uninstall` | 注册/移除 `opg-nh://` 本地协议（HKCU）——工具页「🚀 一键启动服务」按钮的唤起通道 |
 
-交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功 → **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
+交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功（postbuild 自动静态冒烟）→ `npm run smoke`（改动涉及工具 UI/壳时必跑）→ **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
+
+发版配方（打 tag 自动建 Release 挂 dist 产物，workflow 见 `.github/workflows/release.yml`）：bump `package.json` version → README 标题同步 → 全量闭环 → commit push main → `git tag -a v1.x.0 && git push origin v1.x.0` → GitHub Actions 自动构建并创建 Release（workflow 必须已先在 main 上，tag 才会触发）。
 
 ## extension 分支（酒馆扩展形态）
 

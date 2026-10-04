@@ -1,4 +1,4 @@
-# 企鹅的酒馆开场页生成器 v1.19.0
+# 企鹅的酒馆开场页生成器 v1.20.0
 
 为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡生成开场页组件的本地可视化工具。
 
@@ -34,7 +34,7 @@
 
 ### 直接使用（推荐）
 
-下载 `dist/index.html`，双击打开即可使用，无需安装任何依赖。
+从 [GitHub Releases](https://github.com/Civinar-Riley/opening-page-generator/releases) 下载最新版 `opg-vX.X.X.html`（或 `dist/index.html`），双击打开即可使用，无需安装任何依赖。顶栏右侧常显版本号与构建日期，反馈问题时截图即带版本信息。
 
 ### 从源码构建
 
@@ -51,7 +51,10 @@ npm test
 # 4. 交付前零依赖 lint（未使用 import / 未定义标识符 / localStorage key 前缀 / console.log 残留）
 npm run lint
 
-# 5. 产物在 dist/ 目录下
+# 5. 双冒烟：静态检查（build 后自动跑）+ 无头浏览器级冒烟（零 console.error / 页签可切 / 预览挂载）
+npm run smoke
+
+# 6. 产物在 dist/ 目录下
 ```
 
 开发时可使用 watch 模式，修改 `src/` 后自动重新构建：
@@ -90,6 +93,8 @@ npm run watch
 │           └── extBridge.js    # 扩展版桥接（角色卡写入 / 酒馆 AI 通道探测与调用）
 ├── tests/                    # 单元测试（vitest）
 ├── dist/                     # 构建产物（单文件 HTML）
+├── scripts/                  # 辅助脚本（nhentai 导入 / 构建后静态+浏览器双冒烟）
+├── .github/                  # 工作流（CI / tag 自动发版）+ issue 模板
 ├── reference/                # 外部参考资料（酒馆助手官方文档/API 类型/命令手册，只读不进构建）
 ├── build.js                  # 构建脚本
 ├── lint.js                   # 零依赖 lint
@@ -109,7 +114,8 @@ npm run watch
 ## 注意事项
 
 - 开发版 `src/index.html` 使用 ES Modules，直接双击会被浏览器 CORS 拦截，请使用构建产物或本地静态服务器
-- 构建产物 `dist/` 是自包含单文件，可直接分发给酒馆用户
+- 构建产物 `dist/` 是自包含单文件，可直接分发给酒馆用户；每次发版在 [Releases](https://github.com/Civinar-Riley/opening-page-generator/releases) 挂产物（push `v*` tag 自动触发）
+- 工具页顶栏常显版本号与构建日期；离线打开时飞书字体 CDN 加载失败会回落系统字体，不影响任何功能
 - 酒馆需安装「酒馆助手（TavernHelper / JS-Slash-Runner）」扩展；无 API 环境下组件自动降级显示占位内容
 
 ## 🙏 致谢

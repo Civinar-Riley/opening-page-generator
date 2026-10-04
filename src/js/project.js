@@ -152,9 +152,11 @@ const Project={
       localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
       localStorage.setItem(this.LS_CUR,this.cur?.id||'');
     }catch(e){
-      /* 配额超限（多为超大图片/HTML 内容）：提示但不中断界面 */
+      /* 配额超限（超大图片/HTML）或隐私模式禁写：显式报错 + 强提示（数据仅存内存，关闭即失） */
       clearTimeout(this._qTip);
-      this._qTip=setTimeout(()=>toast('⚠️ 保存失败：浏览器存储空间不足，请精简图片/HTML 内容或删除旧工程'),200);
+      const size=(JSON.stringify(this.list).length/1024).toFixed(0);
+      console.error('[Project] localStorage 写入失败（工程数据约 '+size+' KB）:',e);
+      this._qTip=setTimeout(()=>toast('⚠️ 保存失败（数据约 '+size+' KB，仅存于内存，关闭页面即丢失）——请精简内容或立即「导出工程」备份',6000),200);
     }
   },
   /* 高频输入路径用防抖保存，避免每次按键全量序列化所有工程 */

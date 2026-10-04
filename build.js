@@ -2,6 +2,11 @@
 const fs = require('fs');
 const pkg = require('./package.json');
 
+/* 产物体积预算（KB）：超 warn 线告警、超 fail 线构建失败（CI 挡下）。
+   产物随区块/组件/模板增长，预算线的调整本身就是一次显式决策——改这里必须写进提交说明 */
+const BUDGET_WARN = 1024;
+const BUDGET_FAIL = 1280;
+
 let esbuild;
 try { esbuild = require('esbuild'); }
 catch (e) { console.error('缺少 esbuild，请先运行: npm install'); process.exit(1); }
@@ -9,8 +14,13 @@ catch (e) { console.error('缺少 esbuild，请先运行: npm install'); process
 /* 构建脚本：src/ 多文件 → dist/ 单文件 HTML */
 function build() {
   const html0 = fs.readFileSync('src/index.html', 'utf8');
-  /* 版本号注入：src/index.html 中的 __OPG_VERSION__ 占位替换为 package.json 的 version */
-  const html = html0.replace(/__OPG_VERSION__/g, pkg.version);
+  /* 版本号注入：src/index.html 中的 __OPG_VERSION__ 占位替换为 package.json 的 version；
+     __OPG_BUILD_DATE__ 注入构建日期（顶栏常显，出问题截图自带版本信息） */
+  const buildDate = new Date().toISOString().slice(0, 10);
+  const html = html0
+    .replace(/__OPG_VERSION__/g, pkg.version)
+    .replace(/__OPG_BUILD_DATE__/g, buildDate);
+  const prevSize = fs.existsSync('dist/index.html') ? fs.statSync('dist/index.html').size : 0;
   const css = fs.readFileSync('src/css/tool.css', 'utf8');
   /* watch 模式不压缩，便于断点调试；正式构建压缩 JS 与 CSS */
   const minify = !process.argv.includes('--watch');
@@ -63,7 +73,20 @@ function build() {
   }
   fs.mkdirSync('dist', { recursive: true });
   fs.writeFileSync('dist/index.html', out);
-  console.log('构建完成 → dist/index.html (' + (out.length / 1024).toFixed(1) + ' KB)');
+  const kb = out.length / 1024;
+  const delta = prevSize ? (out.length - prevSize) / 1024 : 0;
+  console.log('构建完成 → dist/index.html (' + kb.toFixed(1) + ' KB)'
+    + (prevSize ? '，较上次 ' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' KB' : ''));
+  /* 体积预算：warn 只提示，fail 让构建失败（watch 模式不打断，仅提示） */
+  if (kb > BUDGET_FAIL) {
+    console.error(`✖ 产物体积 ${kb.toFixed(1)} KB 超预算失败线 ${BUDGET_FAIL} KB——精简产物或显式调高 build.js 的 BUDGET_FAIL（写进提交说明）`);
+    if (!process.argv.includes('--watch')) process.exitCode = 1;
+  } else if (kb > BUDGET_WARN) {
+    console.warn(`⚠ 产物体积 ${kb.toFixed(1)} KB 超告警线 ${BUDGET_WARN} KB，接近预算`);
+  }
+  if (out.includes('__OPG_VERSION__') || out.includes('__OPG_BUILD_DATE__')) {
+    throw new Error('版本/日期占位未完全替换，请检查 index.html 占位拼写');
+  }
 }
 
 build();
