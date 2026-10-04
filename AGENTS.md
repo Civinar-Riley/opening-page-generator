@@ -25,6 +25,7 @@
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端；抓取代理由页面请求 `&proxy=` 参数按次传入（PNA 预检头已内置） |
 | `npm run nh-install` / `nh-uninstall` | 注册/移除 `opg-nh://` 本地协议（HKCU）——工具页「🚀 一键启动服务」按钮的唤起通道 |
 | `npm run pack:helper` | 打包「漫画导入助手」独立小包 → `dist-nh/opg-nh-helper-v*.zip`（Release 第二资产，CI 自动） |
+| `slots/back-home.json` | 「返回开场页」脚本模板插槽（非命令）：换文件重建即换内置模板，契约见 `slots/README.md` |
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功（postbuild 自动静态冒烟）→ `npm run smoke`（改动涉及工具 UI/壳时必跑）→ **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
 

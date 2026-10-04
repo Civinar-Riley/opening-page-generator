@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../src/js/gen/index.js';
 import { defaultProject, BLOCK_PRESETS, BLOCK_DEFS, applyBlockPreset, syncGateThemeCopy } from '../src/js/defs.js';
+import backHomeTpl from '../slots/back-home.json';
 
 const proj=blocks=>{const p=defaultProject('t');p.blocks=blocks;return p};
 const stripSlashes=s=>s.replace(/^\//,'').replace(/\/$/,'');
@@ -22,63 +23,43 @@ describe('Gen.regexScript 标记正则',()=>{
   });
 });
 
-describe('Gen.backHomeScript 返回开场页角色脚本（v1.18.0）',()=>{
-  it('JSON 形状与酒馆助手角色脚本导出格式一致且可序列化回环',()=>{
+describe('Gen.backHomeScript 返回开场页角色脚本（模板插槽 v1.22.0）',()=>{
+  it('输出与 slots/back-home.json 模板一致：content/name 透传、id 重新生成、可序列化回环',()=>{
     const s=Gen.backHomeScript(defaultProject('t'));
     expect(s.type).toBe('script');
+    expect(s.content).toBe(backHomeTpl.content);
+    expect(s.name).toBe(backHomeTpl.name);
+    expect(s.info).toBe(backHomeTpl.info);
+    expect(s.id).not.toBe(backHomeTpl.id);
     expect(s.enabled).toBe(true);
-    expect(s.name).toContain('t');
-    expect(s.id).toBeTruthy();
-    expect(typeof s.content).toBe('string');
-    expect(s.button).toEqual({enabled:false,buttons:[]});
-    expect(s.data).toEqual({});
-    expect(s.export_with).toEqual({data:true,button:true});
+    expect(s.button).toEqual(backHomeTpl.button);
+    expect(s.export_with).toEqual(backHomeTpl.export_with);
     expect(JSON.parse(JSON.stringify(s))).toEqual(s);
   });
-  it('content 含切换调用、API 守卫、宿主注入与音轨清理关键片段',()=>{
+  it('name 支持 {{工程名}} 占位符；非法模板（缺 content）抛错',()=>{
+    const p=defaultProject('t');
+    const fake={type:'script',name:'返回开场页-{{工程名}}',content:'(function(){})();'};
+    const s=Gen.backHomeScript(p,fake);
+    expect(s.name).toBe('返回开场页-t');
+    expect(()=>Gen.backHomeScript(p,{type:'script'})).toThrow(/插槽模板非法/);
+  });
+  it('模板契约守卫：type=script、content 非空、含关键守卫片段',()=>{
+    expect(backHomeTpl.type).toBe('script');
+    expect(typeof backHomeTpl.content).toBe('string');
     const c=Gen.backHomeScript(defaultProject('t')).content;
     expect(c).toContain("setChatMessages([{message_id:0,swipe_id:0}],{refresh:'affected'})");
     expect(c).toContain("hasFn('getChatMessages')");
-    expect(c).toContain("typeof window[n]==='function'");
     expect(c).toContain('.mes[mesid="0"]');
     expect(c).toContain('opg-backhome');
-    expect(c).toContain('tavern_events');
-    expect(c).toContain('MutationObserver');
     expect(c).toContain('data-opg-greet-audio');
     expect(c).toContain('← 返回开场页');
   });
-  it('文字模式烘焙工程主题色与圆角',()=>{
-    const p=defaultProject('t');
-    p.theme.primary='#112233';p.theme.accent='#445566';p.theme.textColor='#ccddee';p.theme.radius=8;
-    const c=Gen.backHomeScript(p).content;
-    expect(c).toContain('#11223359');
-    expect(c).toContain('#445566');
-    expect(c).toContain('#ccddee');
-    expect(c).toContain('border-radius:8px');
-    expect(c).toContain("mode:'text'");
-  });
-  it('图片模式带 URL；URL 为空回退文字模式且不残留 URL',()=>{
-    const p=defaultProject('t');
-    p.backHome={mode:'img',text:'回去',img:'https://a.example/b.png'};
-    let c=Gen.backHomeScript(p).content;
-    expect(c).toContain("mode:'img'");
-    expect(c).toContain('https://a.example/b.png');
-    p.backHome={mode:'img',text:'回去',img:''};
-    c=Gen.backHomeScript(p).content;
-    expect(c).toContain("mode:'text'");
-    expect(c).not.toContain('a.example');
-    expect(c).toContain('回去');
-  });
-  it('content 不含反引号且两种模式均为合法 JS（Function 构造器解析校验）',()=>{
-    const p=defaultProject('t');
-    [p, {...p,backHome:{mode:'img',text:'回去',img:'https://a.example/b.png'}}].forEach(x=>{
-      const c=Gen.backHomeScript(x).content;
-      expect(c.includes('`')).toBe(false);
-      expect(()=>new Function(c)).not.toThrow();
-    });
+  it('content 不含反引号且为合法 JS（Function 构造器解析校验）',()=>{
+    const c=Gen.backHomeScript(defaultProject('t')).content;
+    expect(c.includes('`')).toBe(false);
+    expect(()=>new Function(c)).not.toThrow();
   });
 });
-
 describe('Gen.build 转义与宏',()=>{
   it('divider 自定义文字被转义（预览与导出）',()=>{
     const b={type:'divider',enabled:true,style:'plain',text:'<b>x</b>'};

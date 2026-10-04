@@ -425,7 +425,6 @@ function defaultProject(name){
   return {
     id:uid(),name:name||'未命名工程',createdAt:new Date().toISOString(),
     marker:'【开场页】',
-    backHome:{mode:'text',text:'← 返回开场页',img:''},
     theme:{primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',followTavern:false,
       follow:{text:false,quote:false,font:false,em:false},
       fontName:'',headingFont:'',radius:12,titleAlign:'center',motion:'full'},

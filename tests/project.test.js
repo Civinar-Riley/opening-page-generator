@@ -13,14 +13,7 @@ describe('Project.normalize 规范化',()=>{
     });
     p.blocks.forEach(b=>expect(b.enabled).toBe(false));
   });
-  it('backHome 脚本配置缺失/残缺补默认值（v1.18 返回开场页）',()=>{
-    const p={name:'测试'};
-    Project.normalize(p);
-    expect(p.backHome).toEqual({mode:'text',text:'← 返回开场页',img:''});
-    const q={name:'测试',backHome:{mode:'img'}};
-    Project.normalize(q);
-    expect(q.backHome).toEqual({mode:'img',text:'← 返回开场页',img:''});
-  });
+
   it('ai.rememberKey 缺失补默认 true（v1.19 Key 记住开关）',()=>{
     const p={name:'测试',ai:{baseURL:'https://x/v1'}};
     Project.normalize(p);

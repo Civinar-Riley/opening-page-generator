@@ -9,7 +9,6 @@ import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject } from './de
  * @property {string} name - 工程名
  * @property {string} createdAt - 创建时间（ISO）
  * @property {string} marker - 正则脚本标记文本
- * @property {{mode:string,text:string,img:string}} backHome - 返回开场页角色脚本配置（mode: text=主题色文字按钮 img=图片按钮）
  * @property {import('./defs.js').ThemeConfig} theme - 主题配置
  * @property {import('./defs.js').Block[]} blocks - 区块列表（数组顺序即渲染顺序）
  * @property {import('./defs.js').Macro[]} macros - 自定义宏
@@ -98,8 +97,6 @@ const Project={
   normalize(p){
     const def=defaultProject(p.name||'');
     if(!p.marker)p.marker=def.marker;
-    if(!p.backHome||typeof p.backHome!=='object')p.backHome={};
-    Object.keys(def.backHome).forEach(k=>{if(p.backHome[k]===undefined)p.backHome[k]=def.backHome[k]});
     if(!p.theme||typeof p.theme!=='object')p.theme={};
     /* 旧工程的 followTavern 布尔映射为新四路跟随开关的 text 项（必须在通用合并前，
        否则会被 def.theme.follow 的全 false 默认值覆盖导致跟随静默失效） */
