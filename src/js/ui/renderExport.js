@@ -103,4 +103,44 @@ export function renderExport(){
     Project.save();
   });
   col.appendChild(rx);
+
+  /* ③ 返回开场页脚本：生成可直接导入酒馆助手的角色脚本 JSON（非首页注入返回按钮）
+     配置持久化在 p.backHome（仿 p.marker），保证切页后输入不丢 */
+  const bhx=document.createElement('div');bhx.className='card export-box';
+  const bhCfg=p.backHome||{};
+  bhx.innerHTML=`<h3>③ 返回开场页脚本 <span class="hint">酒馆助手角色脚本：切到其它开场白后，第0楼末尾出现「返回开场页」按钮</span></h3>
+    <div class="row2">
+      <div><label>按钮样式</label><select id="bhMode">
+        <option value="text">文字按钮（套用工程主题色）</option>
+        <option value="img">图片按钮（图床直链）</option>
+      </select></div>
+      <div><label>按钮文字（图片模式作 alt）</label><input id="bhText" value="${esc(bhCfg.text||'← 返回开场页')}"></div>
+    </div>
+    <div class="row2">
+      <div><label>图片直链 URL（仅图片模式，https 开头；留空自动回退文字按钮）</label><input id="bhImg" value="${esc(bhCfg.img||'')}" placeholder="https://…"></div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
+        <button class="btn small" id="bhDownload">💾 下载角色脚本 .json</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">使用：酒馆 → 扩展 → 酒馆助手 → 角色脚本 → 导入本 JSON 并启用。之后把第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即回到开场页；开场页本身（第 0 张）不会出现按钮，点返回会顺带停掉开场白联动音轨。原理上按钮必须由独立角色脚本注入（swipe 切换会销毁楼层 iframe，开场页自己的脚本活不到那时候）。</div>
+    <pre></pre>`;
+  const bhJson=()=>JSON.stringify(Gen.backHomeScript(p),null,2);
+  const bhRefresh=()=>{$('pre',bhx).innerHTML=hlDoc(bhJson())};
+  const bhMode=$('#bhMode',bhx),bhText=$('#bhText',bhx),bhImg=$('#bhImg',bhx);
+  bhMode.value=bhCfg.mode==='img'?'img':'text';
+  const bhSyncImg=()=>{bhImg.parentElement.style.display=bhMode.value==='img'?'':'none'};
+  bhSyncImg();
+  const bhPersist=()=>{
+    p.backHome={mode:bhMode.value,text:bhText.value,img:bhImg.value.trim()};
+    Project.save();
+    bhRefresh();
+  };
+  bhMode.addEventListener('change',()=>{bhSyncImg();bhPersist()});
+  bhText.addEventListener('change',bhPersist);
+  bhImg.addEventListener('change',bhPersist);
+  $('#bhCopy',bhx).onclick=()=>copyText(bhJson());
+  $('#bhDownload',bhx).onclick=()=>download(`backhome-开场页-${p.name}.json`,bhJson());
+  bhRefresh();
+  col.appendChild(bhx);
 }

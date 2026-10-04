@@ -1,6 +1,6 @@
 # TavernHelper API 契约（gen 生成脚本所依赖）
 
-> 适用范围：本目录生成的运行时脚本 —— `gen/scripts.js` 的 `script()/lightbox()/bgmScript()` 与 `gen/body.js` 内联脚本。
+> 适用范围：本目录生成的运行时脚本 —— `gen/scripts.js` 的 `script()/lightbox()/bgmScript()`、`gen/body.js` 内联脚本，以及 `gen/index.js` 的 `backHomeScript()`（导出的酒馆助手角色脚本 JSON，见运行环境规则 12）。
 > 官方文档：https://n0vi028.github.io/JS-Slash-Runner-Doc/
 > **新增任何酒馆助手 API 使用前，先在本表登记**（作用/签名/守卫/降级），保持契约与实现同步。
 
@@ -17,6 +17,7 @@
 9. **重读本楼原文用 `getChatMessages(getCurrentMessageId())[0]?.message`**：正则 `$1` 向 HTML 传内容与对原始消息调 `formatAsDisplayedMessage`（会二次执行宏与正则）均为废弃做法，禁止采用
 10. **外层标签命名**：依赖标签定位的产物标记须是卡内唯一的 ASCII 小写标识符（字母开头，仅字母/数字/下划线/短横线），**禁用 `think`/`thinking`/`content`**（与预设职责冲突）
 11. **宿主文档音频挂载（开场白联动音轨专用，`gen/scripts.js` `playGreetAudio`）**：楼层 iframe 在 swipe 后整体重建，楼内 `<audio>` 随之销毁——「选中开场白后持续播放」的音轨必须挂到顶层文档。做法：从 runner iframe 向上遍历 `window.parent`（≤8 层，逐层 `void w.parent.document` 试探，抛 SecurityError 即停在当前层），把 `<audio data-opg-greet-audio>`（loop、`display:none`）挂到可达的最顶层文档；同标记幂等复用（楼层重建后新实例接管旧元素，不叠挂）。**生命周期**：楼层重建后音频继续播放属**预期行为**（作为开场 BGM 延续），不注册宿主事件监听做清理；选中未配音轨的开场白时停止并移除元素；宿主不可达（全跨域）时自然降级挂本楼（切楼即停）。工具预览 iframe 无酒馆 API，联动音轨不会触发；仅在点击切换开场白成功且校验通过后播放（用户手势上下文内，无自动播放限制问题）
+12. **角色脚本形态（`gen/index.js` `backHomeScript`，导出的酒馆助手角色脚本 JSON）**：脚本运行于酒馆助手的**脚本 runner iframe**——不随楼层内容销毁，这正是它能给「已切走的开场白」注入返回按钮的原因（开场页自身脚本在 swipe 时随楼层 iframe 重建而死，见规则 8）。定位宿主：向上遍历 `window.parent`（≤8 层，逐层试探 `document.querySelector('#chat')`，SecurityError 即停）——与规则 11 同手法、反方向（规则 11 把音频挂出宿主，这里把按钮 UI 注入宿主）。同步驱动：`eventOn` 四事件（CHAT_CHANGED/CHARACTER_MESSAGE_RENDERED/MESSAGE_SWIPED/MESSAGE_UPDATED）+ `#chat` childList 与首楼 subtree 双 MutationObserver + swipe 按钮捕获点击，统一 80ms 防抖；pagehide 清理注入的按钮与样式。该产物为独立 JSON 内 JS 字符串、不嵌楼层 HTML，**无 `<\/script>` 转义约束**；但守卫（规则 3）、Promise 兼容（规则 4）、降级静默（规则 6）同样适用，API 全缺时不注入按钮、无任何痕迹。注入的按钮类名 `opg-backhome`、样式 id `opg-backhome-style`，主题色在生成时烘焙
 
 ## 接口优先级（选择原则）
 
@@ -44,9 +45,9 @@
 
 ### 3. setChatMessages —— 切换开场白（写入第 0 楼）
 - 用途：点击开场白选项后跳转。两种形态：`[{message_id:0, swipes:[...] }]` 整体同步（卡里新增而聊天缺的开场白先补进去）；`[{message_id:0, swipe_id:n}]` 按映射索引切换。**切换后重读 `getChatMessages(0,…)` 校验 `swipe_id` 是否已到目标**——酒馆在切换被拦截/失败时不一定抛错，静默重读才能发现；不符弹 `note('消息页未切换，请重试')`，校验通过才触发联动音轨
-- 签名：`setChatMessages(msgs)` → 同步或 `Promise`
+- 签名：`setChatMessages(msgs[,opts])` → 同步或 `Promise`；`opts.refresh`（`'affected'|'all'|'none'`）控制写完后的楼层刷新——`backHomeScript` 的返回按钮传 `{refresh:'affected'}` 确保第 0 楼立即重渲染（开场白切换路径未传，靠事件/轮询刷新列表即可）
 - 守卫与降级：`hasFn('setChatMessages')`；失败 `note('切换开场白失败：…')`；**API 缺失时仅提示**（`/swipe` 命令只支持 left/right，无法按序号切换，故不做替代实现）
-- 使用处：`gen/scripts.js` `goGreeting(i)`
+- 使用处：`gen/scripts.js` `goGreeting(i)`；`gen/index.js` `backHomeScript`（返回按钮，`{refresh:'affected'}`）
 
 ### 4. triggerSlash —— 执行酒馆斜杠命令
 - 用途：开场白「填入输入框」模式（`/setinput 文本`）、「直接发送」模式（`/send 文本`）
@@ -135,10 +136,11 @@
 | 重读第 0 楼失败（无法确认切换状态） | 不触发联动音轨，列表照常刷新 |
 | 宿主文档不可达（全跨域隔离） | 开场白联动音轨降级挂本楼 iframe，切换开场白后随楼层重建停止 |
 | toastr | 降级自绘 note 浮层（视觉差异仅此而已） |
+| 返回开场页脚本（角色脚本）：getChatMessages/setChatMessages 均缺失 | 不注入按钮，无任何痕迹（酒馆自带 swipe 仍可用） |
 | 全部缺失（普通浏览器） | 静态占位内容完整可见，无任何报错 |
 
 ## 参考
 
 - 官方文档（接口说明与示例）：https://n0vi028.github.io/JS-Slash-Runner-Doc/
-- 修改 `gen/scripts.js` / `gen/body.js` 后：核对本文档契约 → `npm test` → `npm run build` → 在真实酒馆环境冒烟一次（列表渲染/切换/选项填入/BGM 接续）
+- 修改 `gen/scripts.js` / `gen/body.js` / `gen/index.js`（backHomeScript）后：核对本文档契约 → `npm test` → `npm run build` → 在真实酒馆环境冒烟一次（列表渲染/切换/选项填入/BGM 接续；backHomeScript 另测导入角色脚本→swipe 出现按钮→点击返回）
 - 版本基线：酒馆助手 ≥ 4.6.0（SillyTavern ≥ 1.12.13）解锁全部能力；BGM 音频 API ≥ 4.3.5；其余守卫式 API 无硬性版本要求

@@ -13,6 +13,14 @@ describe('Project.normalize 规范化',()=>{
     });
     p.blocks.forEach(b=>expect(b.enabled).toBe(false));
   });
+  it('backHome 脚本配置缺失/残缺补默认值（v1.18 返回开场页）',()=>{
+    const p={name:'测试'};
+    Project.normalize(p);
+    expect(p.backHome).toEqual({mode:'text',text:'← 返回开场页',img:''});
+    const q={name:'测试',backHome:{mode:'img'}};
+    Project.normalize(q);
+    expect(q.backHome).toEqual({mode:'img',text:'← 返回开场页',img:''});
+  });
   it('存量工程缺新增区块时补入且默认停用（v1.9 五区块）',()=>{
     const p=defaultProject('t');
     p.blocks=p.blocks.filter(b=>!['changelog','gate','decode','gacha','egg'].includes(b.type));

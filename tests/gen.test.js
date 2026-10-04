@@ -22,6 +22,63 @@ describe('Gen.regexScript 标记正则',()=>{
   });
 });
 
+describe('Gen.backHomeScript 返回开场页角色脚本（v1.18.0）',()=>{
+  it('JSON 形状与酒馆助手角色脚本导出格式一致且可序列化回环',()=>{
+    const s=Gen.backHomeScript(defaultProject('t'));
+    expect(s.type).toBe('script');
+    expect(s.enabled).toBe(true);
+    expect(s.name).toContain('t');
+    expect(s.id).toBeTruthy();
+    expect(typeof s.content).toBe('string');
+    expect(s.button).toEqual({enabled:false,buttons:[]});
+    expect(s.data).toEqual({});
+    expect(s.export_with).toEqual({data:true,button:true});
+    expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+  });
+  it('content 含切换调用、API 守卫、宿主注入与音轨清理关键片段',()=>{
+    const c=Gen.backHomeScript(defaultProject('t')).content;
+    expect(c).toContain("setChatMessages([{message_id:0,swipe_id:0}],{refresh:'affected'})");
+    expect(c).toContain("hasFn('getChatMessages')");
+    expect(c).toContain("typeof window[n]==='function'");
+    expect(c).toContain('.mes[mesid="0"]');
+    expect(c).toContain('opg-backhome');
+    expect(c).toContain('tavern_events');
+    expect(c).toContain('MutationObserver');
+    expect(c).toContain('data-opg-greet-audio');
+    expect(c).toContain('← 返回开场页');
+  });
+  it('文字模式烘焙工程主题色与圆角',()=>{
+    const p=defaultProject('t');
+    p.theme.primary='#112233';p.theme.accent='#445566';p.theme.textColor='#ccddee';p.theme.radius=8;
+    const c=Gen.backHomeScript(p).content;
+    expect(c).toContain('#11223359');
+    expect(c).toContain('#445566');
+    expect(c).toContain('#ccddee');
+    expect(c).toContain('border-radius:8px');
+    expect(c).toContain("mode:'text'");
+  });
+  it('图片模式带 URL；URL 为空回退文字模式且不残留 URL',()=>{
+    const p=defaultProject('t');
+    p.backHome={mode:'img',text:'回去',img:'https://a.example/b.png'};
+    let c=Gen.backHomeScript(p).content;
+    expect(c).toContain("mode:'img'");
+    expect(c).toContain('https://a.example/b.png');
+    p.backHome={mode:'img',text:'回去',img:''};
+    c=Gen.backHomeScript(p).content;
+    expect(c).toContain("mode:'text'");
+    expect(c).not.toContain('a.example');
+    expect(c).toContain('回去');
+  });
+  it('content 不含反引号且两种模式均为合法 JS（Function 构造器解析校验）',()=>{
+    const p=defaultProject('t');
+    [p, {...p,backHome:{mode:'img',text:'回去',img:'https://a.example/b.png'}}].forEach(x=>{
+      const c=Gen.backHomeScript(x).content;
+      expect(c.includes('`')).toBe(false);
+      expect(()=>new Function(c)).not.toThrow();
+    });
+  });
+});
+
 describe('Gen.build 转义与宏',()=>{
   it('divider 自定义文字被转义（预览与导出）',()=>{
     const b={type:'divider',enabled:true,style:'plain',text:'<b>x</b>'};

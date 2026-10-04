@@ -143,6 +143,7 @@ export function renderHelp(){
 <ul>
   <li><strong>开场白版</strong>：把导出的<strong>完整 HTML 文档（含 \`\`\` 代码围栏）</strong>整段贴进 first_mes 或某条 alternate_greetings。⚠️ 酒馆助手只渲染「位于代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，请勿删除围栏或 body 标签（正文自带 <code>\`\`\`</code> 时导出会自动升级为四反引号长围栏，无需手动处理）。</li>
   <li><strong>标记 + 正则</strong>：① 点「下载正则脚本 .json」，在酒馆 扩展 → 正则 → 导入（可选生效位置：AI 输出 / 用户输入 / 两者）；② 复制「标记文本」（默认 <code>【开场页】</code>）贴进某条开场白或世界书条目。标记文本可自定义。</li>
+  <li><strong>返回开场页脚本</strong>：导出页 ③ 生成酒馆助手<strong>角色脚本 JSON</strong>——在 酒馆助手 → 角色脚本 里导入并启用后，把第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现「返回开场页」按钮，点击即切回第 0 张开场白（开场页），并顺带停掉开场白联动音轨；开场页本身不出现按钮。按钮可选<strong>主题色文字</strong>（自动套工程主题）或<strong>图片</strong>（填图床直链）。为什么需要独立脚本：swipe 切换会整体销毁楼层 iframe，开场页自己的脚本活不到被切走之后，返回按钮只能由不随楼层销毁的角色脚本从宿主文档注入。灵感来源 @wobushirenji「非首页自动返回」脚本（作者允许二改）。</li>
   <li><strong>导出页提示</strong>：长代码在导出页仅高亮显示前 2 万字符（超出部分提示截断），<strong>复制 / 下载始终为完整内容</strong>。正则脚本版可设 <strong>maxDepth 渲染楼层限制</strong>（如 0=仅最后一楼渲染）——AI 复读标记时旧楼不会重复渲染。</li>
 </ul>
 
