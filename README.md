@@ -4,49 +4,91 @@
 
 **拖拽区块，可视化编排 SillyTavern 角色卡开场页 —— 产出自包含单文件 HTML，零手写代码、零运行时依赖**
 
-[![Release](https://img.shields.io/github/v/release/Civinar-Riley/opening-page-generator?label=%E6%9C%80%E6%96%B0%E7%89%88)](https://github.com/Civinar-Riley/opening-page-generator/releases/latest)
+[![Release](https://img.shields.io/github/v/release/Civinar-Riley/opening-page-generator?style=flat-square)](https://github.com/Civinar-Riley/opening-page-generator/releases/latest)
 [![CI](https://github.com/Civinar-Riley/opening-page-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/Civinar-Riley/opening-page-generator/actions/workflows/ci.yml)
-[![License](https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF-CC%20BY--NC--SA%204.0-8a6fc3)](#-许可证)
-![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933)
+[![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey?style=flat-square)](./LICENSE)
+[![Node](https://img.shields.io/badge/Node-%E2%89%A518-339933?style=flat-square)](package.json)
+[![Stars](https://img.shields.io/github/stars/Civinar-Riley/opening-page-generator?style=flat-square&color=yellow)](https://github.com/Civinar-Riley/opening-page-generator/stargazers)
+[![Last Commit](https://img.shields.io/github/last-commit/Civinar-Riley/opening-page-generator?style=flat-square)](https://github.com/Civinar-Riley/opening-page-generator/commits/main)
 
-[📥 下载最新版](https://github.com/Civinar-Riley/opening-page-generator/releases/latest) · [✨ 功能总览](#-核心特性) · [🚀 快速开始](#-快速开始) · [📖 文档](#-更多文档)
+[项目简介](#-项目简介) · [功能特性](#-功能特性) · [安装](#-安装) · [使用指南](#-使用指南) · [仓库结构](#-仓库结构) · [常见问题](#-常见问题) · [版本历史](#-版本历史) · [声明与授权](#-声明与授权) · [致谢](#-致谢)
 
 </div>
 
 ---
 
-## 🤔 这是什么
+## 📖 项目简介
 
-为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡生成**开场页组件**的本地可视化工具：把欢迎标题、粒子动效、开场白选择、漫画阅读器等区块拖拽编排成页，导出自包含 HTML 贴进 `first_mes`，由酒馆助手（TavernHelper / JS-Slash-Runner）在聊天里渲染。纯本地运行，无服务端、数据不出浏览器。
+为 [SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）角色卡制作**开场页组件**的本地可视化工具：把欢迎标题、粒子动效、开场白选择、漫画阅读器等区块拖拽编排成页，导出**自包含单文件 HTML** 贴进 `first_mes`，由酒馆助手（TavernHelper / JS-Slash-Runner）在聊天里渲染。
+
+- **不写代码**：25 种区块 + 59 个可复用组件 + 12 套官方模板，拖拽即所得，改文案改图片即可出成品；
+- **纯本地运行**：无服务端、零运行时依赖，工程数据只存浏览器 localStorage，数据不出本机；
+- **贴进酒馆就能用**：三种导出格式覆盖开场白 / 正则脚本 / 返回开场页角色脚本，另有扩展版可把产物直写角色卡。
 
 | 区块类型 | 复用组件 | 官方模板 | 页面主题 | 工具主题 |
 |:---:|:---:|:---:|:---:|:---:|
 | **25** 种 | **59** 个 | **12** 套 | **6** 套 | **5** 套 |
 
-## ✨ 核心特性
+## ✨ 功能特性
 
-**🎛 编辑体验**
+### 入口一 · 「模板配置」页 —— 可视化编排
 
-- 拖拽排序 / 一键复制区块 / 实时预览（📱手机 · 🖥PC 宽度，🌙暗 · ☀️亮底模拟）
-- 撤销重做 20 步、区块搜索、全局搜索替换、区块预设一键套用、触屏长按拖拽
+| 特性 | 说明 |
+| :--- | :--- |
+| 🧩 区块编排 | 25 种区块拖拽排序、一键复制；触屏长按把手拖拽，移动端可用 |
+| ↩️ 撤销重做 | `Ctrl+Z` 撤销、`Ctrl+Shift+Z` / `Ctrl+Y` 重做，最多 20 步历史；`Ctrl+S` 立即保存 |
+| 🔍 搜索定位 | 按名称实时筛选区块；跨区块全局搜索替换（含角色 / 图片 / 漫画页 / 曲目 / 问答等子项），支持逐个定位后单处或全部替换 |
+| 🎛 区块预设 | 欢迎标题 / 引言 / 随机事件 / 骰子 / 入场闸门 5 类内置常用风格，一键套用 |
+| 🧱 组件库 | 59 个可复用组件（7 大分类 + 搜索弹窗）——对话气泡、手机聊天窗、终端窗口、监护仪、求签占卜、翻转人物卡……点击追加到自由 HTML 区 |
+| 📐 官方模板 | 12 套成品布局，新建工程时一键套用完整排版 |
+| 🎨 双主题体系 | 6 套页面主题（紫夜幻金 / 荆棘王室 / 狐火缘日 / 蓝电义体 / 渊语回廊 / 档案机）+ 5 套工具主题（暖铜金 / 星夜 / 蓝图 / 磷光 / 深海，顶栏切换并记忆） |
+| 🔤 宏支持 | `{{random}}` `{{roll}}` `{{setvar}}` `{{isotime}}` 等酒馆宏自动包装与预览，随机结果带缓存防预览闪变 |
 
-**🧩 内容与美术**
+### 入口二 · 「预览」页 —— 所见即所得
 
-- 25 种区块：欢迎标题、粒子动效、开场白选择、BGM、问答折叠、倒计时、命运卡池、连击彩蛋、模糊揭示、漫画阅读器……
-- 12 套官方完整模板 + 6 套页面主题 + 5 套工具主题；入场闸门六主题（含 18+ 年龄验证）
-- 59 个可复用组件（分类 + 搜索弹窗）：对话气泡、手机聊天窗、终端窗口、求签占卜、监护仪……
-- 酒馆宏自动包装与预览：`{{random}}` `{{roll}}` `{{setvar}}` `{{isotime}}` 等
+| 特性 | 说明 |
+| :--- | :--- |
+| 📱 双端宽度 | 手机 / PC 宽度一键切换，核对 430px 窄屏下的排版 |
+| 🌙 双色底模拟 | 暗色 / 亮色底预览，提前发现深色假设失效的区块 |
+| ⚡ 实时刷新 | 内容变更 300ms 防抖重建预览，内容未变则跳过重建，不打断编辑 |
 
-**🏨 酒馆深度适配**
+### 入口三 · 「导出」页 —— 三种格式 + 导出自检
 
-- 开场白选择（卡片 / 列表 / 封面墙，封面图 + 联动音轨 + 标题库）＋「返回开场页」角色脚本
-- 漫画阅读器（条漫 / 翻页双模式）；漫画导入（本机服务代抓 + 页面直填代理 + 免安装独立小包）
-- BGM 切楼接续播放、头像零 JS 注入、四种导出格式、导出自检、扩展版「📤 写入角色卡」
+| 特性 | 说明 |
+| :--- | :--- |
+| ① 开场白版 | 完整 HTML 文档 + 代码围栏，整段贴进 `first_mes` 或 `alternate_greetings`（酒馆助手只渲染「代码块内 + 含 body 标签」的代码） |
+| ② 标记 + 正则脚本版 | 生成可直接导入酒馆的正则脚本 JSON：把标记文本贴进开场白 / 世界书条目，由正则替换为完整页面代码 |
+| ③ 返回开场页脚本 | 生成酒馆助手角色脚本 JSON：第 0 楼 swipe 到第 2 张及以后时，正文末尾自动注入「返回开场页」按钮，点击切回开场页并停掉联动音轨；模板外置于 [`slots/back-home.json`](slots/back-home.json) |
+| ⚠️ 兼容审查报告 | 导出自检覆盖 `</script>` 逃逸、vw/vh 基准、`position:fixed`、Google Fonts 等已知坑，属提示级清单，不阻断导出 |
+| 💾 代码处理 | 导出代码带语法高亮，长代码预览截断显示，复制 / 下载为完整内容 |
 
-**🔐 工程与安全**
+### 入口四 · 「📚 漫画导入」页 —— nhentai 整本直填
 
-- 数据全存本地；AI Key 可选不落盘、导出工程自动剔除；自由 HTML 全权限警示
-- 构建后双冒烟（静态 + 无头浏览器）、产物体积预算、[PITFALLS](PITFALLS.md) 防踩坑清单
+| 特性 | 说明 |
+| :--- | :--- |
+| 🔌 本机服务 | `npm run nh-serve` 启动（只监听 `127.0.0.1`，零第三方依赖）；`npm run nh-install` 注册 `opg-nh://` 协议后，工具页可一键启动 / 停止服务 |
+| 🖼 整本抓取 | 贴画廊链接抓全本，缩略图网格支持全选 / 反选 / 按页码选 / 去尾 N 页，也可点卡勾掉广告页，一键写入漫画区块 |
+| 🌐 抓取代理 | 页面内直接填本机代理地址（Node 不走系统代理，Clash 默认 `http://127.0.0.1:7890`），改完即生效；服务出网走零依赖 CONNECT 隧道，抓取走 API → 页面解析双通道自动回落 |
+| ⌨️ CLI 兜底 | `npm run nh -- <画廊链接> --skip-last 3` 直出剪贴板，`--pages a-b`、`--proxy` 同样可用 |
+| 📦 免安装小包 | 不装 Node 环境的用户可从 Releases 下载「漫画导入助手」独立小包：解压 → 双击安装协议 → 工具页点启动 |
+
+### 入口五 · 「🤖 AI 助手」页 —— 可选能力
+
+| 特性 | 说明 |
+| :--- | :--- |
+| 🔑 兼容接口 | 接 OpenAI 兼容接口，生成自由 HTML 区内容与主题配色 |
+| 🙈 Key 保护 | 输入框默认遮蔽（👁 切换显示）；可勾掉「在本机记住 Key」改为仅本次会话使用、不写入 localStorage；导出工程自动剔除 |
+| 📋 模型列表 | 填好 URL 与 Key 后可一键拉取 `/models` 下拉选择（只读，不发送对话请求，90 秒超时保护） |
+| 🏨 酒馆直连 | 扩展版可选「酒馆当前连接」：经酒馆助手 `generateRaw` 静默生成，复用当前连接的 Key / 模型 / 参数，零配置（无酒馆助手时自动回落自定义接口） |
+
+### 入口六 · 「extension」扩展版 —— 直写角色卡
+
+| 特性 | 说明 |
+| :--- | :--- |
+| 📤 写入角色卡 | 导出页选卡直写 `first_mes` / 追加 `alternate_greetings`，免复制粘贴（覆盖模式有二次确认） |
+| 🧷 开场白烘焙 | 写入时自动提取所选卡的实际开场白填进开场白选择区静态列表，替代编辑器占位文本，可勾选关闭 |
+| ⌨️ 工坊内 Esc | 工具 iframe 获焦后由工具侧转发关闭请求；弹窗打开时 Esc 只关弹窗，不误关工坊 |
+| 💾 自动落盘 | 关闭工坊 / 切换聊天导致 iframe 被拆毁时，保存防抖窗口（600ms）内的编辑也会同步写一次 localStorage |
 
 <details>
 <summary><b>📖 功能明细（25 条完整说明，点击展开）</b></summary>
@@ -66,102 +108,121 @@
 - **漫画导入（nhentai）**：「📚 漫画导入」页签配合本机辅助服务（`npm run nh-serve`，只监听 127.0.0.1 零第三方；`npm run nh-install` 注册一键启动后页面内点按钮即可拉起/停止服务）把画廊整本直链一键填进漫画区块——贴链接抓全本，缩略图网格用全选/反选/按页码选/去尾 N 页或点卡勾掉广告页，一键应用；**抓取代理**在页面直接填本机代理地址（Node 不走系统代理，Clash 默认 `http://127.0.0.1:7890`，改完即生效），服务出网走零依赖 CONNECT 隧道；单次命令 `npm run nh -- 画廊链接 --skip-last 3` 直出剪贴板（`--proxy` 同样可用）；抓取走 API→页面解析双通道自动回落；**不会装 Node 环境的用户**可从 Releases 下载「漫画导入助手」独立小包（免 clone 仓库，解压→双击安装协议→工具页点启动）
 - **漫画阅读器**：开场页内嵌一部漫画——入口选封面卡片（竖版封面 + 书腰标题 + 页数徽标 + 网点质感，未填封面自动回落横幅按钮）或横幅按钮，点击打开全屏阅读器；条漫（无缝纵排滚动）/翻页（按钮 + 键盘 ←→ + 页码）双模式，✕/Esc 关闭；图床 URL 逐页添加或批量粘贴一次建页，一键清空全部页面；纯客户端交互零 API
 - **开场白选择增强**：三种选项风格（卡片式/列表式/封面墙——16:9 海报网格，无封面回落主题渐变占位 + 大序号水印）；可按序号给每条开场白配封面图与联动音轨（切换成功后经宿主文档播放，切楼不中断）；排除标签过滤（自动提取前剥除指定标签元素）；人物名自动提取（显式字段/成对标签/说话人归属三层启发式，可开关）；切换后重读校验并提示
-- **返回开场页脚本**：导出页 ③ 生成酒馆助手角色脚本 JSON（灵感来源 @wobushirenji「非首页自动返回」，实现自研）——导入角色脚本并启用后，第 0 楼开场白 swipe 到第 2 张及以后时正文末尾自动出现「返回开场页」按钮，点击切回开场页并顺带停掉联动音轨；开场页本身不出现按钮。**模板外置于 [`slots/back-home.json`](slots/back-home.json)（插槽式）**——替换该文件后重新构建即换脚本，契约见 `slots/README.md`；模板即真相，按钮样式由模板自身定义
+- **返回开场页脚本**：导出页 ③ 生成酒馆助手角色脚本 JSON（灵感来源 @wobushirenji「非首页自动返回」，实现自研）——导入角色脚本并启用后，第 0 楼开场白 swipe 到第 2 张及以后时正文末尾自动出现「返回开场页」按钮，点击切回开场页并顺带停掉联动音轨；开场页本身不出现按钮。**模板外置于 [`slots/back-home.json`](slots/back-home.json)（插槽式）**——替换该文件后重新构建即换脚本，契约见 [`slots/README.md`](slots/README.md)；模板即真相，按钮样式由模板自身定义
 - **五套工具主题**：暖铜金（默认）/ 星夜 / 蓝图 / 磷光 / 深海，顶栏下拉选择并记忆
 - **工程管理**：本地存储、导入导出、多工程切换
 - **工厂重置**：顶栏「⟲ 重置」三次确认后清空全部本地数据（工程/模板/主题偏好），恢复初始状态——重置前建议先「导出工程」备份
 - **AI 助手（可选）**：接 OpenAI 兼容接口生成自由 HTML 区内容与主题配色；API Key 输入框默认遮蔽（👁 切换显示），可勾掉「在本机记住 Key」改为仅本次会话使用、不写入 localStorage；填好 URL 与 Key 后可一键拉取模型列表（下拉选择，只读 /models 不发送对话请求，90 秒超时保护）；Key 导出工程自动剔除。扩展版内还可选「酒馆当前连接」——经酒馆助手 `generateRaw` 静默生成，复用当前连接的 Key/模型/参数，零配置（无酒馆助手时自动回落自定义接口）
 - **多种导出格式**：开场白版、标记+正则脚本版、返回开场页角色脚本，适配不同嵌入场景（状态栏生成已拆分为独立单文件工具，不在本仓库）；导出代码带语法高亮，长代码预览截断显示（复制/下载为完整内容）
-- **酒馆深度适配**：BGM 走酒馆助手音频播放器（切楼不重播，缺失降级本地播放）；头像可选零 JS 方案（渲染器 char-avatar/user-avatar 自动注入）；主题可分别跟随酒馆正文/引用/字体/强调色；导出自检覆盖 </script> 逃逸、vw/vh 基准、position:fixed、Google Fonts 等已知坑
+- **酒馆深度适配**：BGM 走酒馆助手音频播放器（切楼不重播，缺失降级本地播放）；头像可选零 JS 方案（渲染器 char-avatar/user-avatar 自动注入）；主题可分别跟随酒馆正文/引用/字体/强调色；导出自检覆盖 `</script>` 逃逸、vw/vh 基准、`position:fixed`、Google Fonts 等已知坑
 - **SillyTavern 扩展版（extension 分支）**：以扩展形式内嵌酒馆运行（安装时填仓库 URL + 分支名 `extension`），导出页新增「📤 写入角色卡」——选卡直写 first_mes / 追加 alternate_greetings，免复制粘贴（覆盖模式有二次确认；写入时自动提取所选卡的实际开场白烘焙进开场白选择区静态列表，替代编辑器占位文本，可勾选关闭；独立单文件版此功能自动休眠不可见）；AI 助手可选「酒馆当前连接」直连主 AI；工坊内按 Esc 可关闭；编辑防抖窗口内被宿主拆毁时自动落盘
 
 </details>
 
-## 🚀 快速开始
+## 📦 安装
 
-### 直接使用（推荐）
+**环境要求**
 
-从 [GitHub Releases](https://github.com/Civinar-Riley/opening-page-generator/releases/latest) 下载最新版 `opg-vX.X.X.html`（或 `dist/index.html`），双击打开即可使用，无需安装任何依赖。顶栏右侧常显版本号与构建日期，反馈问题时截图即带版本信息。
+- **使用工具本体**：任意现代浏览器（Chrome / Edge / Firefox），无需安装任何依赖
+- **在酒馆内渲染产物**：[SillyTavern](https://github.com/SillyTavern/SillyTavern)（酒馆）+ 酒馆助手扩展（TavernHelper / JS-Slash-Runner），建议更新到较新版本
+- **从源码构建**：Node.js ≥ 18（构建依赖 esbuild 的环境要求）+ npm
 
-### 从源码构建
+**安装步骤（直接使用，推荐）**
 
-```bash
-npm install        # 1. 安装依赖
-npm run build      # 2. 构建（自动压缩，构建后自动跑静态冒烟）
-npm test           # 3. 单元测试（vitest）
-npm run lint       # 4. 零依赖 lint
-npm run smoke      # 5. 双冒烟：静态 + 无头浏览器（零 console.error / 页签可切 / 预览挂载）
+1. 打开 [GitHub Releases](https://github.com/Civinar-Riley/opening-page-generator/releases/latest)，下载最新版 `opg-vX.X.X.html`
+2. 双击该文件，用浏览器打开，即可开始编排
+3. 编排完成后在「导出」页复制开场白版代码，贴进角色卡的 `first_mes` 或 `alternate_greetings`
+4. 酒馆内需已安装酒馆助手（TavernHelper / JS-Slash-Runner）扩展，产物才能被渲染
+
+**安装步骤（从源码构建）**
+
+1. 克隆仓库并安装依赖：`npm install`
+2. 构建产物：`npm run build`（自动压缩，构建后自动跑静态冒烟）
+3. 打开 `dist/index.html` 使用；改动 `src/` 时可用 `npm run watch` 自动重建（不压缩，便于断点调试）
+4. 提交前跑完整闭环：`npm test`（vitest 单元测试）→ `npm run lint`（零依赖 lint）→ `npm run smoke`（静态 + 无头浏览器双冒烟）
+
+> ⚠️ 开发版 `src/index.html` 使用 ES Modules，直接双击会被浏览器 CORS 拦截，请使用构建产物或本地静态服务器。
+>
+> ⚠️ 每个 Release 挂两个资产：`opg-vX.X.X.html` 为工具本体（单文件，下载即用）；`opg-nh-helper-vX.X.X.zip` 为「漫画导入助手」独立小包（免 clone 仓库，解压 → 双击安装协议 → 工具页点启动）。push `v*` tag 会自动触发完整流水线（lint → 测试 → 构建 → 双冒烟 → 建 Release）。
+>
+> ⚠️ 工具页离线打开时飞书字体 CDN 加载失败会回落系统字体，不影响任何功能；无 API 环境下组件自动降级显示占位内容。
+
+## 🚀 使用指南
+
+| 场景 | 操作 |
+| :--- | :--- |
+| **从零做一张开场页** | 「模板配置」页新建工程 → 选 12 套官方模板之一套用布局 → 逐区块改文案 / 图片 → 「预览」页切 📱 / 🖥 与 🌙 / ☀️ 复核 → 「导出」页复制①开场白版 |
+| **贴进角色卡** | 复制①开场白版整段（保留代码围栏与 body 标签）→ 酒馆角色卡 `first_mes` / `alternate_greetings`；或用 extension 扩展版「📤 写入角色卡」直写 |
+| **做开场白选择器** | 配置页加「开场白选择」区块 → 选卡片式 / 列表式 / 封面墙 → 按序号配封面图与联动音轨 → 按需开排除标签过滤与人名提取 → 导出 |
+| **换内置「返回开场页」模板** | 替换 [`slots/back-home.json`](slots/back-home.json) → 重新构建 → 导出页③即换（不需改 JS，契约见 [`slots/README.md`](slots/README.md)） |
+| **把一本漫画填进开场页** | 「📚 漫画导入」页启动本机服务 → 贴 nhentai 画廊链接抓全本 → 勾选页面 / 去尾 N 页 → 一键写入漫画区块 → 「预览」页核对 |
+| **用正则方案嵌入** | 「导出」页②生成「标记 + 正则脚本」→ 标记文本贴进开场白或世界书条目 → 酒馆「扩展 → 正则」导入下载的 JSON |
+| **让 AI 帮忙出内容** | 「AI 助手」页填 OpenAI 兼容 URL + Key（扩展版可选「酒馆当前连接」）→ 生成自由 HTML 内容与主题配色 |
+| **换工具界面配色** | 顶栏主题下拉：暖铜金 / 星夜 / 蓝图 / 磷光 / 深海，选择自动记忆 |
+| **重置全部本地数据** | 顶栏「⟲ 重置」三次确认（清空工程 / 模板 / 主题偏好，建议先「导出工程」备份） |
+
+## 📁 仓库结构
+
+```
+opening-page-generator/
+├── src/                          # 源码（开发用；ES Modules，直接双击会被 CORS 拦截）
+│   ├── index.html                # 工具壳：顶栏 / 页签 / 页面容器（版本号占位由 build.js 注入）
+│   ├── css/tool.css              # 工具界面样式（含 5 套工具主题）
+│   └── js/
+│       ├── main.js               # 入口：顶栏事件 / 工具主题下拉 / 工厂重置
+│       ├── utils.js              # 工具函数（转义 / 代码高亮 / 模态框 / toast）
+│       ├── defs.js               # 纯数据：区块定义 / 主题预设 / 组件库 / 官方模板
+│       ├── macros.js             # 宏替换引擎（预览用，随机结果带缓存）
+│       ├── project.js            # 工程管理（存储 / 迁移 / 撤销重做 / 导入导出）
+│       ├── search.js             # 全局搜索替换（纯函数）
+│       ├── fontdetect.js         # 字体检测（纯函数）
+│       ├── gen/                  # 生成引擎
+│       │   ├── index.js          # 入口：build / 完整文档 / 围栏 / 正则脚本 / 返回开场页脚本 / 导出自检
+│       │   ├── css.js            # 产物 CSS 生成
+│       │   ├── body.js           # 产物 HTML 结构生成（tx / raw 宏双轨）
+│       │   ├── scripts.js        # 产物运行时脚本（灯箱 / BGM / 酒馆助手交互）
+│       │   └── TAVERN_API.md     # 生成脚本依赖的酒馆助手 API 契约（守卫 / 降级矩阵）
+│       └── ui/                   # 界面渲染
+│           ├── core.js           # UI 壳 + renderAll 总入口 + 预览挂载 + 页签 / 快捷键
+│           ├── renderConfig.js   # 配置页（区块编辑器 / 拖拽 / 搜索替换 UI）
+│           ├── renderExport.js   # 导出页
+│           ├── renderAI.js       # AI 助手页（连接模式分流）
+│           ├── renderNh.js       # 漫画导入页（服务探活 / 抓取 / 勾选 / 写入区块）
+│           ├── renderHelp.js     # 说明页
+│           ├── shared.js         # 跨页辅助（列表编辑器 / 字体探测）
+│           └── extBridge.js      # 扩展版桥接（角色卡写入 / 酒馆 AI 通道）
+├── tests/                        # 单元测试（vitest，10 个测试文件）
+├── dist/index.html               # 构建产物（自包含单文件，下载即用）
+├── slots/                        # 产物模板插槽
+│   ├── back-home.json            # 「返回开场页」脚本模板（换文件重建即换）
+│   └── README.md                 # 插槽字段契约
+├── scripts/                      # 辅助脚本
+│   ├── nh-import.mjs             # nhentai 导入（页面服务 / CLI / CONNECT 隧道代理）
+│   ├── nh-install.mjs            # 注册 / 移除 opg-nh:// 本地协议
+│   ├── nh-lib.mjs                # 抓取与解析公共库
+│   ├── smoke-static.mjs          # 构建后静态冒烟
+│   ├── smoke-browser.mjs         # 无头浏览器冒烟（playwright）
+│   └── pack-helper.mjs           # 打包「漫画导入助手」独立小包
+├── .github/                      # 工作流（CI / tag 自动发版）+ issue 模板
+├── reference/                    # 外部参考资料（酒馆助手文档 / API 类型，只读不进构建）
+├── build.js                      # 构建脚本（esbuild + 产物体积预算）
+├── lint.js                       # 零依赖 lint
+├── sync-extension.bat            # extension 分支同步脚本
+├── AGENTS.md                     # AI 协作指南（硬约束 / 常见任务配方 / 发版配方）
+├── PITFALLS.md                   # 防踩坑清单（真实踩坑沉淀）
+├── package.json
+└── LICENSE                       # CC BY-NC-SA 4.0
 ```
 
-产物在 `dist/` 目录下。开发用 watch 模式（改 `src/` 自动重建，不压缩便于断点调试）：
-
-```bash
-npm run watch
-```
-
-## 📦 发版与更新
-
-push `v*` tag 自动触发完整流水线（lint → 测试 → 构建 → 双冒烟 → 建 Release），每个 Release 挂两个资产：
-
-| 资产 | 说明 |
-|------|------|
-| `opg-vX.X.X.html` | 工具本体（单文件，下载即用） |
-| `opg-nh-helper-vX.X.X.zip` | 「漫画导入助手」独立小包（免 clone 仓库，解压 → 双击安装协议 → 工具页点启动） |
-
-## 📖 更多文档
+**📚 相关文档**
 
 | 文档 | 内容 |
-|------|------|
-| 工具内「📖 使用说明」页 | 区块详解 / 嵌入方式 / 宏支持 / 漫画导入操作 |
+| :--- | :--- |
+| 工具内「使用说明」页 | 区块详解 / 嵌入方式 / 宏支持 / 漫画导入操作 |
 | [`src/js/gen/TAVERN_API.md`](src/js/gen/TAVERN_API.md) | 生成脚本依赖的酒馆助手 API 契约（守卫 / 降级矩阵） |
+| [`slots/README.md`](slots/README.md) | 产物模板插槽契约（字段表 / 注意事项） |
 | [`AGENTS.md`](AGENTS.md) | AI 协作指南（硬约束 / 常见任务配方 / 发版配方） |
 | [`PITFALLS.md`](PITFALLS.md) | 防踩坑清单（真实踩坑沉淀，AI 协作检查表） |
-
-<details>
-<summary><b>🗂 项目结构</b></summary>
-
-```
-├── src/                     # 源码（开发用）
-│   ├── index.html           # 页面骨架（版本号占位由 build.js 注入）
-│   ├── css/tool.css         # 工具界面样式（含 5 套工具主题）
-│   └── js/
-│       ├── main.js          # 入口（顶栏事件 / 工具主题下拉 / 工厂重置）
-│       ├── utils.js         # 工具函数（转义 / 高亮 / 模态框）
-│       ├── defs.js          # 区块定义 / 主题预设 / 组件库 / 官方模板
-│       ├── macros.js        # 宏替换引擎（预览用，随机结果带缓存）
-│       ├── project.js       # 工程管理（存储 / 迁移 / 撤销重做 / 导入导出）
-│       ├── search.js        # 全局搜索替换（纯函数）
-│       ├── fontdetect.js    # 字体检测（纯函数）
-│       ├── gen/              # 生成引擎
-│       │   ├── index.js      # 入口：build / 完整文档 / 围栏 / 正则脚本 / 返回开场页脚本 / 导出自检
-│       │   ├── css.js        # CSS 样式生成
-│       │   ├── body.js       # HTML 结构生成（tx/raw 宏双轨）
-│       │   ├── scripts.js    # 运行时脚本（灯箱 / BGM / 酒馆助手交互）
-│       │   └── TAVERN_API.md # 生成脚本依赖的酒馆助手 API 契约
-│       └── ui/               # 界面渲染
-│           ├── core.js       # UI 壳 + renderAll 总入口 + 预览挂载 + 页签/快捷键
-│           ├── renderConfig.js # 配置页（区块编辑器 / 拖拽 / 搜索替换 UI）
-│           ├── renderExport.js # 导出页
-│           ├── renderAI.js     # AI 助手页（连接模式分流：酒馆当前连接 / 自定义接口）
-│           ├── renderNh.js     # 漫画导入页（服务探活 / 抓取 / 勾选 / 写入区块）
-│           ├── renderHelp.js   # 说明页
-│           ├── shared.js       # 跨页辅助（列表编辑器 / 字体探测）
-│           └── extBridge.js    # 扩展版桥接（角色卡写入 / 酒馆 AI 通道探测与调用）
-├── tests/                    # 单元测试（vitest）
-├── dist/                     # 构建产物（单文件 HTML）
-├── slots/                    # 产物模板插槽（返回开场页脚本等，替换文件重建即换）
-├── scripts/                  # 辅助脚本（nhentai 导入 / 构建后静态+浏览器双冒烟 / 助手小包打包）
-├── .github/                  # 工作流（CI / tag 自动发版）+ issue 模板
-├── reference/                # 外部参考资料（酒馆助手官方文档/API 类型/命令手册，只读不进构建）
-├── build.js                  # 构建脚本
-├── lint.js                   # 零依赖 lint
-├── AGENTS.md                 # AI 协作指南（硬约束 / 常见任务配方）
-├── PITFALLS.md               # 防踩坑清单（真实踩坑沉淀，AI 协作检查表）
-├── package.json
-└── LICENSE                   # CC BY-NC-SA 4.0
-```
-
-</details>
 
 <details>
 <summary><b>🛠 自定义与注意事项</b></summary>
@@ -172,6 +233,7 @@ push `v*` tag 自动触发完整流水线（lint → 测试 → 构建 → 双�
 - **添加组件**：编辑 `src/js/defs.js` 中的 `COMP_LIB`
 - **添加主题预设**：编辑 `src/js/defs.js` 中的 `THEME_PRESETS`
 - **添加区块类型**：编辑 `src/js/defs.js` 的 `BLOCK_DEFS` + `BLOCK_ORDER`，渲染逻辑在 `src/js/gen/` 目录
+- **替换导出模板**：改 `slots/` 下的模板文件后重新构建，不需改 JS
 
 **注意事项**
 
@@ -182,14 +244,71 @@ push `v*` tag 自动触发完整流水线（lint → 测试 → 构建 → 双�
 
 </details>
 
+## ❓ 常见问题
+
+**Q：双击 `src/index.html` 打开是空白？**
+A：开发版使用 ES Modules，直接双击会被浏览器 CORS 拦截。请改用构建产物 `dist/index.html`，或起一个本地静态服务器。
+
+**Q：产物贴进酒馆后没有样式 / 区块不显示？**
+A：产物依赖酒馆助手（TavernHelper / JS-Slash-Runner）扩展渲染；未安装或当前环境无对应 API 时，组件会自动降级显示占位内容，属预期行为。
+
+**Q：开场页里的字体或图标会请求外部资源吗？**
+A：产物自包含，样式与脚本全部内联，图标使用 emoji / 内联 SVG。仅工具页本身在离线打开时飞书字体 CDN 会加载失败并回落系统字体，不影响任何功能。
+
+**Q：我的工程数据存在哪？会被上传吗？**
+A：全部存在浏览器 localStorage（`openingPageGen_*` 键），本工具无服务端、数据不出本机。换浏览器或清理站点数据会丢失，重要工程请先用「导出工程」备份。
+
+**Q：AI 助手的 API Key 会写进导出的页面吗？**
+A：不会。Key 默认只存本机；勾掉「在本机记住 Key」后仅本次会话使用、不写入 localStorage；导出工程时 Key 会被自动剔除。
+
+**Q：想换掉导出的「返回开场页」按钮样式怎么办？**
+A：不需要改 JS——替换 [`slots/back-home.json`](slots/back-home.json) 后重新构建即可，字段契约见 [`slots/README.md`](slots/README.md)。
+
+**Q：构建报「产物体积超预算」？**
+A：`build.js` 设有体积预算线：超 1024 KB 告警、超 1280 KB 构建失败（CI 会挡下）。请精简产物，或显式调高预算并把理由写进提交说明。
+
+**Q：漫画导入抓不到内容？**
+A：抓取由本机服务完成（`npm run nh-serve`，只监听 `127.0.0.1`）。Node 不走系统代理，请在页面「抓取代理」填入本机代理地址（Clash 默认 `http://127.0.0.1:7890`）。若没有 Node 环境，可改用 Releases 的「漫画导入助手」独立小包。
+
+**Q：扩展版和单文件版有什么区别？**
+A：extension 分支在单文件版之上增加「📤 写入角色卡」与 AI「酒馆当前连接」能力，以酒馆扩展形式内嵌运行；安装时填仓库 URL + 分支名 `extension`，详见[扩展分支说明](https://github.com/Civinar-Riley/opening-page-generator/blob/extension/ext/README.md)。
+
+**Q：反馈问题时需要提供什么？**
+A：请走 [Issue 模板](https://github.com/Civinar-Riley/opening-page-generator/issues/new/choose)，带上工具版本（顶栏 logo 右侧或「使用说明」页顶部的「vX.X.X · 构建于 日期」）、酒馆助手版本与使用环境。
+
+## 🕘 版本历史
+
+| 版本 | 日期 | 更新内容 |
+| :---: | :---: | :--- |
+| **v1.22.0** | 2026-10-04 | 「返回开场页」脚本模板外置到 `slots/back-home.json`，导出页显示当前模板来源，按钮样式由模板自身定义 |
+| **v1.21.0** | 2026-10-04 | 漫画导入支持本机代理（零依赖 CONNECT 隧道）；新增「漫画导入助手」独立小包（Release 第二资产） |
+| **v1.20.0** | 2026-10-04 | 发布闭环与质量基建：push tag 自动发版、CI 全量检查、产物体积预算、静态 + 浏览器双冒烟、顶栏常显版本号 |
+| **v1.19.0** | 2026-10-04 | 外部来源清零与安全加固：图标改 emoji / 内联样式、API Key 不落盘、请求超时、按钮 type 与可访问性修补 |
+| **v1.18.0** | 2026-10-04 | 新增导出③「返回开场页」角色脚本：非首页自动注入返回按钮，点击切回并停掉联动音轨 |
+| **v1.17.0** | 2026-09-30 | 漫画区块编辑器加「清空全部页面」一键删除导入漫画（确认 + 可撤销） |
+| **v1.15.0** | 2026-09-30 | 新增「📚 漫画导入」页签：nhentai 画廊整本一键填入漫画区块 |
+| **v1.14.0** | 2026-09-30 | 新增「漫画阅读器」区块（条漫 / 翻页双模式，封面卡 / 横幅双入口） |
+| **v1.13.0** | 2026-09-29 | AI 助手接入酒馆主 AI（「酒馆当前连接」静默生成）+ 产物层高危修复 |
+| **v1.12.0** | 2026-09-29 | 扩展版桥接就绪：导出页「📤 写入角色卡」（独立单文件版自动休眠） |
+| **v1.11.0** | 2026-09-29 | 开场白选择增强：封面墙 / 排除标签过滤 / 人名自动提取 / 联动音轨与切换校验 |
+| **v1.10.0** | 2026-09-26 | 入场闸门新增剧场帷幕 / 封印法阵 / 机密金库 / 生物识别四主题（共六主题） |
+| **v1.9.0** | 2026-09-25 | 初始版本：可视化区块编排 + 自包含单文件导出 |
+
+## 📜 声明与授权
+
+- 🚫 **禁止商用**
+- 🚫 **禁止二传**：请勿转载至其它平台 / 群组，需要分享请直接使用本仓库链接
+- ✏️ **二改请先联系作者**，经同意后可修改自用
+
+> 本代码为纯 AI 编写，作者不对其作任何明示或默示的担保；使用产生的任何问题由使用者自行承担。
+> 本脚本为免费的酒馆玩家向工具，与 SillyTavern 及酒馆助手官方无关。
+
+本项目采用 **CC BY-NC-SA 4.0**（署名—非商业性使用—相同方式共享 4.0）协议授权，完整法律文本见 [LICENSE](./LICENSE)。
+
 ## 🙏 致谢
 
 - @wobushirenji「非首页自动返回」角色脚本——「返回开场页脚本」功能的机制灵感来源，本工具实现为自研重写，未复制原代码
 - 酒馆助手（TavernHelper / JS-Slash-Runner）——本工具全部产物所依赖的运行时，官方文档：<https://n0vi028.github.io/JS-Slash-Runner-Doc/>
-
-## 📄 许可证
-
-本项目采用 [CC BY-NC-SA 4.0（署名-非商业性使用-相同方式共享 4.0）](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh) 协议授权，完整法律文本见仓库中的 `LICENSE` 文件。
 
 ---
 
