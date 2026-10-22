@@ -316,6 +316,22 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 #tabs .tab:hover{color:var(--txt2)}
 #tabs .tab.dragging{opacity:.45}
 #tabs .tab.active{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+/* GitHub 仓库直达：页签栏最右（order 固定，页签拖拽重排不会把它挪走），
+   颜色/悬停沿用 .btn.ghost，自动适配 5 套工具主题 */
+#tabs .gh-link{
+  order:1;
+  align-self:center;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:auto;
+  width:28px;
+  height:28px;
+  padding:0;
+  flex:none;
+  text-decoration:none;
+}
+#tabs .gh-link svg{width:15px;height:15px;display:block}
 
 /* ===== 主体布局 ===== */
 #main{flex:1;display:flex;overflow:hidden}
