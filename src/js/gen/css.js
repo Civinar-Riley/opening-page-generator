@@ -28,9 +28,11 @@ export function css(p,px,blocks){
        reduced-motion 豁免（!important 优先于后续各区块实例样式里的 animation） */
     if(motion!=='off'){
       const dur=motion==='soft'?'.3s':'.45s',step=motion==='soft'?3:6;
+      /* to 帧经 --opg-rot 透传实例级旋转（如 stamp 印章 -2°）：直接写 transform:none 会
+         在动画结束时盖掉元素自身的 rotate，印章回正是存量暗病 */
       s+=(motion==='soft'
         ?`@keyframes ${px}-in{from{opacity:0}}\n`
-        :`@keyframes ${px}-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}\n`);
+        :`@keyframes ${px}-in{from{opacity:0;transform:translateY(8px) rotate(var(--opg-rot,0deg))}to{opacity:1;transform:translateY(0) rotate(var(--opg-rot,0deg))}}\n`);
       s+=`.${px}-wrap>div>*{animation:${px}-in ${dur} ease both}\n`;
       s+=[1,2,3,4,5,6,7,8,9,10,11].map(n=>`.${px}-wrap>div:nth-child(${n+1})>*{animation-delay:.${(n*step).toString().padStart(2,'0')}s}`).join('\n')+'\n';
     }else{
@@ -80,36 +82,80 @@ export function css(p,px,blocks){
 
     /* 各区块实例样式（支持同类型多实例，按实例作用域隔离） */
     let lbCssDone=false,readerCssDone=false;
+    const wfKfDone={}; /* welcome 动效 keyframes 去重：同名同内容，多实例只产出一份 */
     blocks.forEach((b,i)=>{
       const bk=`.${px}-bk${i}`;
       switch(b.type){
         case 'welcome':{
+          /* 扉页题笺：眉题=两侧渐隐引言线，主标题=display 题字（墨色为主、朱色点睛），
+             副标题=题款（前置菱珠 + 字距）。decoStyle 值名保持不变（旧工程/模板兼容），
+             十种风格视觉全量重铸；题字字号 clamp 适配 430px 手机宽 */
           const ds=b.decoStyle||'none';
-          const mAuto=th.titleAlign==='center'?'margin:6px auto 10px;':'margin:6px 0 10px;';
-          let deco='';
-          if(ds==='underline')deco=`border-bottom:2px solid ${th.accent};width:fit-content;${mAuto}padding:0 18px 8px`;
-          if(ds==='boxed')deco=`border:1px solid ${th.accent};width:fit-content;${mAuto}padding:6px 22px;border-radius:8px`;
-          if(ds==='double')deco=`border-top:3px double ${th.accent};border-bottom:3px double ${th.accent};width:fit-content;${mAuto}padding:8px 26px`;
-          if(ds==='stamp')deco=`border:2px dashed ${th.accent};width:fit-content;${mAuto}padding:8px 24px;transform:rotate(-3deg);color:${th.accent};letter-spacing:2px`;
-          if(ds==='ribbon')deco=`background:linear-gradient(90deg,transparent,${th.accent}22,${th.accent}33,${th.accent}22,transparent);width:fit-content;${mAuto}padding:8px 36px;position:relative`;
+          const ctr=th.titleAlign==='center',rgt=th.titleAlign==='right';
+          const fit=ctr?`width:fit-content;margin:4px auto 8px;`:(rgt?`width:fit-content;margin:4px 0 8px auto;`:`width:fit-content;margin:4px 0 8px;`);
+          const md=th.motion==='soft'?'.3s':'.45s';
+          /* 题笺刻线三态：居中双向渐隐 / 左对齐向右渐隐 / 右对齐向左渐隐（中段长实两端快隐） */
+          const rule=ctr?`linear-gradient(90deg,transparent,${th.accent} 18%,${th.accent} 82%,transparent) left bottom/100% 1px no-repeat`
+            :(rgt?`linear-gradient(270deg,${th.accent},${th.accent}00) right bottom/46% 1px no-repeat`
+                 :`linear-gradient(90deg,${th.accent},${th.accent}00) left bottom/46% 1px no-repeat`);
           s+=`
-${bk} .${px}-title{font-size:26px;font-weight:700;text-align:${th.titleAlign};color:${ds==='gradient'?'transparent':th.accent};${ds==='ornate'?`text-shadow:0 0 14px ${th.accent}66,0 0 30px ${th.accent}33;`:''}${ds==='glitch'?`text-shadow:2px 0 ${th.accent},-2px 0 #ff00cc;position:relative;`:''}${deco};margin-top:6px}
-${bk} .${px}-title::before,${bk} .${px}-title::after{content:""}
-${bk} .${px}-eyebrow{font-size:11px;letter-spacing:5px;text-transform:uppercase;opacity:.6;text-align:${th.titleAlign};margin-bottom:4px}
-${bk} .${px}-subtitle{font-size:14px;text-align:${th.titleAlign};opacity:.75;margin-bottom:14px}
+${bk} .${px}-eyebrow{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:5px;padding-left:5px;text-transform:uppercase;color:${th.accent};opacity:.85;margin:0 0 8px;justify-content:${ctr?'center':rgt?'flex-end':'flex-start'}}
+${bk} .${px}-eyebrow::before,${bk} .${px}-eyebrow::after{content:"";flex:none;width:52px;height:1px}
+${bk} .${px}-eyebrow::before{background:linear-gradient(90deg,transparent,${th.accent})}
+${bk} .${px}-eyebrow::after{background:linear-gradient(270deg,transparent,${th.accent})}
+${!ctr?`${bk} .${px}-eyebrow::${rgt?'after':'before'}{content:none}\n`:''}\
+${bk} .${px}-title{font-size:clamp(24px,6vw,32px);font-weight:700;line-height:1.35;letter-spacing:1px;text-align:${th.titleAlign};color:${th.textColor};margin:2px 0 6px}
+${bk} .${px}-subtitle{display:flex;align-items:center;gap:8px;font-size:13px;letter-spacing:1.5px;opacity:.78;margin:0 0 18px;justify-content:${ctr?'center':rgt?'flex-end':'flex-start'}}
+${bk} .${px}-subtitle::before{content:"";flex:none;width:5px;height:5px;transform:rotate(45deg);background:${th.accent};opacity:.85}
+${bk} .${px}-subtitle:empty::before{display:none}
+${rgt?`${bk} .${px}-subtitle::before{display:none}\n${bk} .${px}-subtitle:not(:empty)::after{content:"";flex:none;width:5px;height:5px;transform:rotate(45deg);background:${th.accent};opacity:.85}\n`:''}
 `;
-          if(ds==='gradient')s+=`
-${bk} .${px}-title{background:linear-gradient(90deg,${th.accent},${th.primary});-webkit-background-clip:text;background-clip:text}
+          /* 区块内三行错峰（eyebrow 沿用容器基线）：`.wrap bk title` 三类选择器特异性 (0,3,0)
+             压过 wrap 级区块 stagger 的 (0,2,2)，单值 delay 作用于动画列表全体 */
+          s+=`.${px}-wrap ${bk} .${px}-title{animation-delay:.08s}\n.${px}-wrap ${bk} .${px}-subtitle{animation-delay:.16s}\n`;
+          if(ds==='none')s+=`${bk} .${px}-title{${fit}padding:0 2px 10px;background:${rule}}\n`;
+          if(ds==='ornate')s+=`
+${bk} .${px}-title{color:${th.accent};text-shadow:0 0 12px ${th.accent}59,0 0 34px ${th.accent}2e}
+${bk} .${px}-title::before{content:"✧";color:${th.accent};opacity:.55;font-size:.55em;vertical-align:middle;margin-right:10px;text-shadow:none}
+${bk} .${px}-title::after{content:"✧";color:${th.accent};opacity:.55;font-size:.55em;vertical-align:middle;margin-left:10px;text-shadow:none}
 `;
+          if(ds==='glitch'){
+            /* 双色色差取主题主/强调色（旧版硬编码 #ff00cc 不跟主题）；抖动 6s 仅两帧，95% 时间静止 */
+            s+=`${bk} .${px}-title{color:${th.textColor};text-shadow:2px 0 ${th.primary}b3,-2px 0 ${th.accent}b3}\n`;
+            if(motion!=='off'){
+              s+=`${bk} .${px}-title{animation:${px}-in ${md} ease both,${px}-glitch 6s steps(1,end) infinite}\n`;
+              if(!wfKfDone.glitch){wfKfDone.glitch=1;s+=`@keyframes ${px}-glitch{0%,91.5%,94.5%,100%{text-shadow:2px 0 ${th.primary}b3,-2px 0 ${th.accent}b3;transform:none}92.5%{text-shadow:4px 1px ${th.primary},-3px 0 ${th.accent};transform:skewX(-6deg)}93.5%{text-shadow:-2px 0 ${th.primary},3px -1px ${th.accent};transform:skewX(3deg)}}\n`;}
+            }
+          }
+          if(ds==='underline'){
+            /* 荧光笔：底部 38% 高强调色半透明高亮，入场后从左划入 */
+            s+=`${bk} .${px}-title{${fit}padding:0 6px 3px;background:linear-gradient(${th.accent}4d,${th.accent}4d) left bottom/100% 38% no-repeat}\n`;
+            if(motion!=='off'){
+              s+=`${bk} .${px}-title{animation:${px}-in ${md} ease both,${px}-marker .65s ease-out .3s both}\n`;
+              if(!wfKfDone.marker){wfKfDone.marker=1;s+=`@keyframes ${px}-marker{from{background-size:0% 38%}}\n`;}
+            }
+          }
+          if(ds==='boxed')s+=`${bk} .${px}-title{${fit}padding:12px 20px;background:linear-gradient(${th.accent},${th.accent}) left top/16px 1px,linear-gradient(${th.accent},${th.accent}) left top/1px 16px,linear-gradient(${th.accent},${th.accent}) right top/16px 1px,linear-gradient(${th.accent},${th.accent}) right top/1px 16px,linear-gradient(${th.accent},${th.accent}) left bottom/16px 1px,linear-gradient(${th.accent},${th.accent}) left bottom/1px 16px,linear-gradient(${th.accent},${th.accent}) right bottom/16px 1px,linear-gradient(${th.accent},${th.accent}) right bottom/1px 16px;background-repeat:no-repeat}\n`;
+          if(ds==='double')s+=`${bk} .${px}-title{${fit}padding:12px 10px;background:linear-gradient(${th.accent}99,${th.accent}99) 50% 0/100% 1px no-repeat,linear-gradient(${th.accent}40,${th.accent}40) 50% 4px/44% 1px no-repeat,linear-gradient(${th.accent}99,${th.accent}99) 50% 100%/100% 1px no-repeat,linear-gradient(${th.accent}40,${th.accent}40) 50% calc(100% - 4px)/44% 1px no-repeat}\n`;
           if(ds==='brackets')s+=`
-${bk} .${px}-title::before{content:"『 ";opacity:.65}
-${bk} .${px}-title::after{content:" 』";opacity:.65}
+${bk} .${px}-title::before{content:"『";color:${th.accent};opacity:.85;margin-right:4px}
+${bk} .${px}-title::after{content:"』";color:${th.accent};opacity:.85;margin-left:4px}
 `;
-          if(ds==='ribbon')s+=`
-${bk} .${px}-title::before,${bk} .${px}-title::after{content:"";position:absolute;top:50%;border:12px solid transparent;border-top:12px solid ${th.accent}33;transform:translateY(-50%)}
-${bk} .${px}-title::before{left:-24px;border-right:12px solid ${th.accent}33}
-${bk} .${px}-title::after{right:-24px;border-left:12px solid ${th.accent}33}
-`;
+          if(ds==='stamp'){
+            /* 篆印：楷/衬线题字 + 外实内虚双描线 + 淡染章底 -2° 钤印；旋转经 --opg-rot
+               透传给入场 keyframes（transform:none 盖旋转是旧版暗病） */
+            s+=`${bk} .${px}-title{${fit}--opg-rot:-2deg;padding:10px 22px 10px 17px;border:2px solid ${th.accent};border-radius:6px;color:${th.accent};letter-spacing:5px;transform:rotate(-2deg);background:linear-gradient(160deg,${th.accent}1f,${th.accent}0d);box-shadow:inset 0 0 0 1px ${th.accent}66;font-family:"KaiTi","STKaiti","Kaiti SC","SimKai",serif;font-weight:700}\n`;
+          }
+          if(ds==='ribbon')s+=`${bk} .${px}-title{${fit}padding:10px 36px;border-top:1px solid ${th.accent}66;border-bottom:1px solid ${th.accent}66;background:linear-gradient(90deg,${th.accent}00,${th.accent}2b 18%,${th.accent}42 50%,${th.accent}2b 82%,${th.accent}00)}\n`;
+          if(ds==='gradient'){
+            /* 流光：三停靠首尾同色渐变，background-position 位移整周期无缝循环；
+               动画停（off / reduced-motion）回落 100% 全谱静态 */
+            s+=`${bk} .${px}-title{${motion!=='off'?`background:linear-gradient(90deg,${th.accent},${th.primary},${th.accent}) 0 0/200% 100%;animation:${px}-in ${md} ease both,${px}-shimmer 6s linear infinite;`:`background:linear-gradient(90deg,${th.accent},${th.primary},${th.accent});`}-webkit-background-clip:text;background-clip:text;color:transparent}\n`;
+            if(motion!=='off'){
+              s+=`@media(prefers-reduced-motion:reduce){${bk} .${px}-title{animation:none!important;background-size:100% 100%}}\n`;
+              if(!wfKfDone.shimmer){wfKfDone.shimmer=1;s+=`@keyframes ${px}-shimmer{from{background-size:200% 100%;background-position:0% 0}to{background-size:200% 100%;background-position:200% 0}}\n`;}
+            }
+          }
           break;
         }
         case 'profile':

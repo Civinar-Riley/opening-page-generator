@@ -536,7 +536,7 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
 describe('Gen.build 视觉细节升级（入场动效/选区/灯箱/倒计时/流光）',()=>{
   it('全局包：入场渐显 stagger + ::selection/焦点主题化 + 全局 reduced-motion 豁免',()=>{
     const html=Gen.build(proj([{type:'divider',enabled:true,style:'plain'}]),{isPreview:false});
-    expect(html).toContain('-in{from{opacity:0;transform:translateY(8px)}');
+    expect(html).toContain('-in{from{opacity:0;transform:translateY(8px) rotate(var(--opg-rot,0deg))}');
     expect(html).toContain('animation-delay');
     expect(html).toContain('::selection');
     expect(html).toContain(':focus-visible');
@@ -585,6 +585,81 @@ describe('Gen.build 参考图新增四项（眉题/卡片作者/小节标题/顶
     expect(on).toContain('border-top:2px solid');
     const off=Gen.build(proj([base]),{isPreview:false});
     expect(off).not.toContain('border-top:2px');
+  });
+});
+
+describe('Gen.build welcome 扉页题笺重铸（v1.25）',()=>{
+  const w=d=>({type:'welcome',enabled:true,showEyebrow:true,eyebrow:'STORY OPENING',title:'欢迎来到 {{char}} 的世界',subtitle:'题款小字',decoStyle:d});
+  it('十种 decoStyle 双轨渲染均产出结构层（引言线眉题/题字/菱珠题款）',()=>{
+    for(const ds of ['none','ornate','glitch','underline','boxed','double','brackets','stamp','ribbon','gradient']){
+      for(const opts of [{isPreview:true},{isPreview:false}]){
+        const html=Gen.build(proj([w(ds)]),opts);
+        expect(html).toContain('-eyebrow::before,');
+        expect(html).toContain('-title{font-size:clamp(24px,6vw,32px)');
+        expect(html).toContain('-subtitle::before{content:""');
+      }
+    }
+  });
+  it('眉题引言线：居中双侧、左对齐仅右侧（藏 before）、副标题空值藏菱珠',()=>{
+    const c=Gen.build(proj([w('none')]),{isPreview:true});
+    expect(c).toContain('linear-gradient(90deg,transparent,#e8c47c)');
+    expect(c).not.toContain('-eyebrow::before{content:none}');
+    const projL=defaultProject('t');projL.theme.titleAlign='left';projL.blocks=[{...w('none'),subtitle:''}];
+    const htmlL=Gen.build(projL,{isPreview:true});
+    expect(htmlL).toContain('-eyebrow::before{content:none}');
+    expect(htmlL).toContain('-subtitle:empty::before{display:none}');
+  });
+  it('none 题笺刻线三态：居中双向渐隐 100% 宽',()=>{
+    const html=Gen.build(proj([w('none')]),{isPreview:true});
+    expect(html).toContain('linear-gradient(90deg,transparent,#e8c47c 18%,#e8c47c 82%,transparent) left bottom/100% 1px no-repeat');
+  });
+  it('glitch 色差：双色来自主题主/强调色、不再硬编码 #ff00cc，full 档含低频抖动 keyframes',()=>{
+    const html=Gen.build(proj([w('glitch')]),{isPreview:true});
+    expect(html).toContain('text-shadow:2px 0 #7c6cf0b3,-2px 0 #e8c47cb3');
+    expect(html).not.toContain('#ff00cc');
+    expect(html).toMatch(/@keyframes [\w-]+-glitch\{/);
+    expect(html).toContain('skewX(-6deg)');
+    const pOff=defaultProject('t');pOff.theme.motion='off';pOff.blocks=[w('glitch')];
+    expect(Gen.build(pOff,{isPreview:true})).not.toMatch(/@keyframes [\w-]+-glitch\{/);
+  });
+  it('underline 荧光笔：底部 38% 高亮 + 划入动画，off 档静态全宽',()=>{
+    const html=Gen.build(proj([w('underline')]),{isPreview:true});
+    expect(html).toContain('left bottom/100% 38% no-repeat');
+    expect(html).toMatch(/@keyframes [\w-]+-marker\{/);
+    const pOff=defaultProject('t');pOff.theme.motion='off';pOff.blocks=[w('underline')];
+    const off=Gen.build(pOff,{isPreview:true});
+    expect(off).not.toMatch(/@keyframes [\w-]+-marker\{/);
+    expect(off).toContain('left bottom/100% 38% no-repeat');
+  });
+  it('boxed 四角铭牌：八组多重背景角刻线',()=>{
+    const html=Gen.build(proj([w('boxed')]),{isPreview:true});
+    expect(html).toContain('left top/16px 1px');
+    expect(html).toContain('right bottom/1px 16px');
+    expect(html.match(/16px 1px/g).length).toBe(4);
+  });
+  it('stamp 篆印：--opg-rot 透传旋转给入场 keyframes（transform:none 盖旋转暗病修复）+ 楷书字体栈',()=>{
+    const html=Gen.build(proj([w('stamp')]),{isPreview:true});
+    expect(html).toContain('--opg-rot:-2deg');
+    expect(html).toContain('rotate(var(--opg-rot,0deg))');
+    expect(html).toContain('"KaiTi","STKaiti"');
+    expect(html).toContain('inset 0 0 0 1px');
+  });
+  it('gradient 流光：三停靠首尾同色 + 位移循环 + reduced-motion 回落全谱，off 档静态',()=>{
+    const html=Gen.build(proj([w('gradient')]),{isPreview:true});
+    expect(html).toContain('linear-gradient(90deg,#e8c47c,#7c6cf0,#e8c47c)');
+    expect(html).toMatch(/@keyframes [\w-]+-shimmer\{/);
+    expect(html).toContain('background-size:100% 100%}');
+    const pOff=defaultProject('t');pOff.theme.motion='off';pOff.blocks=[w('gradient')];
+    expect(Gen.build(pOff,{isPreview:true})).not.toMatch(/@keyframes [\w-]+-shimmer\{/);
+  });
+  it('区块内三行错峰：title/subtitle 行级 delay 压过 wrap 级区块 stagger',()=>{
+    const html=Gen.build(proj([w('none')]),{isPreview:true});
+    expect(html).toMatch(/\.opg-[\w-]+-wrap \.opg-[\w-]+-bk0 \.opg-[\w-]+-title\{animation-delay:\.08s\}/);
+    expect(html).toMatch(/\.opg-[\w-]+-wrap \.opg-[\w-]+-bk0 \.opg-[\w-]+-subtitle\{animation-delay:\.16s\}/);
+  });
+  it('旧值兼容：未知 decoStyle 回落纯排版不炸',()=>{
+    const html=Gen.build(proj([{type:'welcome',enabled:true,title:'T',subtitle:'S',decoStyle:'legacy-unknown'}]),{isPreview:true});
+    expect(html).toContain('-title">T');
   });
 });
 

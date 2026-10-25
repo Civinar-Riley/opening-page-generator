@@ -616,16 +616,16 @@ export function renderBlockBody(container,b,i){
       const presets=BLOCK_PRESETS.welcome||[];
       html=(presets.length?`<div style="margin:0 0 8px"><label>📋 套用预设</label><select data-gpreset="welcome"><option value="">选择预设模板…</option>${presets.map((p,pi)=>`<option value="${pi}">${esc(p.name)}</option>`).join('')}</select></div>`:'')
         +bind('title','主标题（支持 {{char}} 等宏）')+bind('subtitle','副标题')+`<div class="row2">${chk('showEyebrow','显示眉题')}</div>`+bind('eyebrow','眉题文字（标题上方小型大写宽字距）')+`<div><label>标题装饰风格</label><select data-bkey="${i}.decoStyle">
-          <option value="none"${b.decoStyle==='none'?' selected':''}>无</option>
-          <option value="ornate"${b.decoStyle==='ornate'?' selected':''}>华丽辉光</option>
-          <option value="glitch"${b.decoStyle==='glitch'?' selected':''}>故障风</option>
-          <option value="underline"${b.decoStyle==='underline'?' selected':''}>荧光下划线</option>
-          <option value="boxed"${b.decoStyle==='boxed'?' selected':''}>描边线框</option>
+          <option value="none"${b.decoStyle==='none'?' selected':''}>无（纯排版 + 题笺刻线）</option>
+          <option value="ornate"${b.decoStyle==='ornate'?' selected':''}>华丽辉光（双层柔光 + 两侧星点）</option>
+          <option value="glitch"${b.decoStyle==='glitch'?' selected':''}>色差故障（主题双色错位 + 低频抖动）</option>
+          <option value="underline"${b.decoStyle==='underline'?' selected':''}>荧光笔（底部高亮划入）</option>
+          <option value="boxed"${b.decoStyle==='boxed'?' selected':''}>四角铭牌刻线</option>
           <option value="double"${b.decoStyle==='double'?' selected':''}>双线夹注</option>
           <option value="brackets"${b.decoStyle==='brackets'?' selected':''}>书名括角『』</option>
-          <option value="stamp"${b.decoStyle==='stamp'?' selected':''}>印章</option>
-          <option value="ribbon"${b.decoStyle==='ribbon'?' selected':''}>丝带</option>
-          <option value="gradient"${b.decoStyle==='gradient'?' selected':''}>渐变文字</option>
+          <option value="stamp"${b.decoStyle==='stamp'?' selected':''}>篆印（楷书钤印轻旋转）</option>
+          <option value="ribbon"${b.decoStyle==='ribbon'?' selected':''}>票根缎带</option>
+          <option value="gradient"${b.decoStyle==='gradient'?' selected':''}>流光渐变（缓慢巡游）</option>
         </select></div>`;
       break;
     }
