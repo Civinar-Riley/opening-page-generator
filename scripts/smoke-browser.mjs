@@ -88,6 +88,50 @@ try {
   });
   assert('返回配置页后预览底色同步', true);
 
+  const themes = await page.locator('#themeSelect option').evaluateAll(opts => opts.map(o => ({ id: o.value, name: o.textContent })));
+  assert('工具主题包含七套', themes.length === 7 && themes.some(t => t.id === 'velvet') && themes.some(t => t.id === 'moonstone'));
+  for (const { id, name } of themes) {
+    await page.locator('#themeSelect').selectOption(id);
+    const state = await page.evaluate(() => ({ theme: document.documentElement.getAttribute('data-theme'), saved: localStorage.getItem('openingPageGen_theme') }));
+    assert(`工具主题「${name}」切换并保存`, state.theme === (id === 'bronze' ? null : id) && state.saved === id);
+  }
+  for (const id of ['velvet', 'moonstone']) {
+    await page.locator('#themeSelect').selectOption(id);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#themeSelect option[value="moonstone"]', { state: 'attached' });
+    const restored = await page.evaluate(id => document.documentElement.dataset.theme === id && document.querySelector('#themeSelect').value === id, id);
+    assert(`工具主题 ${id} 刷新后恢复`, restored);
+    await page.setViewportSize({ width: 430, height: 932 });
+    const layout = await page.evaluate(() => {
+      const root = getComputedStyle(document.documentElement), tabs = document.querySelector('#tabs');
+      const strip = getComputedStyle(tabs), text = getComputedStyle(tabs.querySelector('.tab'));
+      return { dark: root.colorScheme === 'dark', noOverflow: document.documentElement.scrollWidth <= innerWidth, singleLine: text.whiteSpace === 'nowrap', scrollable: strip.overflowX === 'auto' };
+    });
+    assert(`工具主题 ${id} 窄屏深色与单行页签`, layout.dark && layout.noOverflow && layout.singleLine && layout.scrollable);
+    await page.locator('[data-action="project-rename"]').click();
+    await page.locator('.opg-modal-root.show').waitFor();
+    const modal = await page.locator('.opg-modal-box').evaluate(el => {
+      const root = getComputedStyle(document.documentElement), style = getComputedStyle(el), rect = el.getBoundingClientRect();
+      const expected = root.getPropertyValue('--panel').trim().slice(1).match(/../g).map(v => parseInt(v, 16));
+      return { themed: style.backgroundColor === `rgb(${expected.join(', ')})`, fits: rect.left >= 0 && rect.right <= innerWidth, onTop: el.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)) };
+    });
+    assert(`工具主题 ${id} 弹窗随主题且无纹理遮挡`, modal.themed && modal.fits && modal.onTop);
+    await page.locator('.opg-modal-cancel').click();
+    await page.locator('#themeSelect').focus();
+    await page.keyboard.press('Tab');
+    /* 按钮 transition:all 会渐变 outline，须等待最终焦点样式再断言。 */
+    await page.waitForFunction(() => {
+      const el = document.activeElement, style = getComputedStyle(el);
+      return el.matches(':focus-visible') && style.outlineWidth === '2px' && style.outlineStyle === 'solid';
+    });
+    assert(`工具主题 ${id} 键盘焦点清晰`, true);
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+  await page.evaluate(() => localStorage.setItem('openingPageGen_theme', 'unknown-theme'));
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#themeSelect option[value="bronze"]', { state: 'attached' });
+  assert('无效工具主题回落暖铜金', await page.evaluate(() => !document.documentElement.hasAttribute('data-theme') && document.querySelector('#themeSelect').value === 'bronze'));
+
   /* 汇总 */
   const bad = checks.filter(c => !c.ok);
   /* 8765（漫画导入探活地址）相关的失败是已知良性降级路径——仅当 mock 未绑上 8765 时过滤 */

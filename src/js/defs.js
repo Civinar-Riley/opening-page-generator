@@ -513,6 +513,8 @@ const UI_THEMES=[
   {id:'blueprint',name:'蓝图'},
   {id:'crt',      name:'磷光'},
   {id:'abyss',    name:'深海'},
+  {id:'velvet',   name:'绯幕'},
+  {id:'moonstone',name:'月岩'},
 ];
 
 export {BLOCK_DEFS, BLOCK_ORDER, CORE_TYPES, THEME_PRESETS, COMP_LIB, BUILTIN_TEMPLATES, BLOCK_PRESETS, defaultProject, UI_THEMES, applyBlockPreset, syncGateThemeCopy};

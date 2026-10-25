@@ -40,6 +40,16 @@ html[data-theme='star']{
   --acc2:#6f5fd8;
   --acc-soft:rgba(139,124,240,0.12);
   --acc-line:rgba(139,124,240,0.40);
+  --ok:#6a9b7e;
+  --warn:#c9a24c;
+  --err:#c46a5e;
+  --radius:8px;
+  --radius-sm:5px;
+  --shadow-sm:0 1px 4px rgba(0,0,0,0.2);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.3);
+  --font-serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
   --star-c:rgba(160,150,255,.40);
 }
 html[data-theme='star'] body{
@@ -86,6 +96,9 @@ html[data-theme='blueprint']{
   --radius-sm:2px;
   --shadow-sm:0 1px 4px rgba(2,10,22,.35);
   --shadow-md:0 4px 20px rgba(2,10,22,.5);
+  --font-serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
   --star-c:rgba(108,196,234,.38);
 }
 html[data-theme='blueprint'] body{
@@ -129,6 +142,8 @@ html[data-theme='crt']{
   --shadow-md:0 4px 20px rgba(0,0,0,.55);
   /* 衬线标题位整体切等宽：logo/卡片标题/帮助标题全部上机（CJK 回落系统字） */
   --font-serif:"JetBrains Mono","SF Mono","Courier New",Consolas,monospace;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
   --star-c:rgba(57,224,110,.35);
 }
 html[data-theme='crt'] body{
@@ -165,6 +180,9 @@ html[data-theme='abyss']{
   --radius-sm:4px;
   --shadow-sm:0 1px 4px rgba(0,4,8,.4);
   --shadow-md:0 4px 20px rgba(0,4,8,.55);
+  --font-serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
   --star-c:rgba(47,196,217,.30);
 }
 html[data-theme='abyss'] body{
@@ -182,6 +200,112 @@ html[data-theme='abyss'] body::before{
 html[data-theme='abyss'] #topbar,
 html[data-theme='abyss'] #tabs,
 html[data-theme='abyss'] #main{position:relative;z-index:1}
+
+/* ===== 主题六：绯幕剧院 —— 黑樱桃绒幕与玫瑰色票签 ===== */
+html[data-theme='velvet']{
+  --bg:#160e13;
+  --panel:#21171d;
+  --panel2:#2b1e26;
+  --line:#49313f;
+  --line-strong:#725062;
+  --txt:#f4e7eb;
+  --txt2:#c5a5b4;
+  --txt3:#ac8b9a;
+  --acc:#ee9ab5;
+  --acc2:#a43c60;
+  --acc-soft:rgba(238,154,181,.10);
+  --acc-line:rgba(238,154,181,.45);
+  --ok:#83c5a4;
+  --warn:#dcb878;
+  --err:#f18d86;
+  --radius:10px;
+  --radius-sm:6px;
+  --shadow-sm:0 2px 6px rgba(12,3,8,.3);
+  --shadow-md:0 8px 28px rgba(12,3,8,.45);
+  --font-serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
+  --star-c:rgba(238,154,181,.35);
+  color-scheme:dark;
+}
+html[data-theme='velvet'] body{
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(164,60,96,.18), transparent 58%),
+    radial-gradient(ellipse at 100% 100%, rgba(238,154,181,.05), transparent 52%),
+    var(--bg);
+}
+/* 纹理只铺背景，面板保持实色，避免细小表单文字落在幕纹上。 */
+html[data-theme='velvet'] body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg, transparent 0 44px, rgba(238,154,181,.025) 56px, rgba(0,0,0,.08) 72px, transparent 96px);
+}
+html[data-theme='velvet'] #topbar,
+html[data-theme='velvet'] #tabs,
+html[data-theme='velvet'] #main{position:relative;z-index:1}
+html[data-theme='velvet'] #topbar{box-shadow:inset 0 2px var(--acc-line)}
+html[data-theme='velvet'] .card{box-shadow:var(--shadow-sm)}
+html[data-theme='velvet'] .card h3{border-bottom-style:double;border-bottom-width:3px}
+html[data-theme='velvet'] #tabs .tab.active{background:linear-gradient(0deg,var(--acc-soft),transparent 85%)}
+
+/* ===== 主题七：月岩工作室 —— 石墨岩面、银白刻度与无衬线标题 ===== */
+html[data-theme='moonstone']{
+  --bg:#111416;
+  --panel:#1a1f22;
+  --panel2:#242b2f;
+  --line:#3d494f;
+  --line-strong:#66777d;
+  --txt:#edf1f0;
+  --txt2:#b2c0bf;
+  --txt3:#98aaa9;
+  --acc:#cad8d3;
+  --acc2:#52665e;
+  --acc-soft:rgba(202,216,211,.08);
+  --acc-line:rgba(202,216,211,.40);
+  --ok:#9bc8af;
+  --warn:#e0c28a;
+  --err:#e69e93;
+  --radius:3px;
+  --radius-sm:3px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.28);
+  --shadow-md:0 6px 24px rgba(0,0,0,.42);
+  --font-serif:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-sans:"Noto Sans SC","Segoe UI","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono",Consolas,monospace;
+  --star-c:rgba(202,216,211,.30);
+  color-scheme:dark;
+}
+html[data-theme='moonstone'] body{
+  background:linear-gradient(125deg, rgba(202,216,211,.05), transparent 46%),var(--bg);
+}
+html[data-theme='moonstone'] body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    radial-gradient(circle, rgba(202,216,211,.09) .6px, transparent .9px),
+    repeating-linear-gradient(125deg, transparent 0 179px, rgba(202,216,211,.035) 179px 180px);
+  background-size:6px 6px,auto;
+}
+html[data-theme='moonstone'] #topbar,
+html[data-theme='moonstone'] #tabs,
+html[data-theme='moonstone'] #main{position:relative;z-index:1}
+html[data-theme='moonstone'] #topbar{box-shadow:inset 0 2px var(--acc-line)}
+html[data-theme='moonstone'] .card{border-top-color:var(--line-strong);box-shadow:var(--shadow-sm)}
+html[data-theme='moonstone'] .card h3::before{content:"";width:3px;height:12px;flex:none;background:var(--acc)}
+html[data-theme='moonstone'] #tabs .tab.active{background:var(--acc-soft)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) :is(button,a,input,select,textarea):focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+/* 弹窗基础样式由 utils.js 延迟注入，主题选择器须保持更高优先级。 */
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-box{background:var(--panel);color:var(--txt);border:1px solid var(--line-strong);border-radius:var(--radius);box-shadow:var(--shadow-md)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-title{color:var(--txt);font-family:var(--font-serif)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-input{background:var(--panel2);color:var(--txt);border-color:var(--line-strong);border-radius:var(--radius-sm)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-input:focus{border-color:var(--acc)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-btn{border:1px solid var(--line-strong);border-radius:var(--radius-sm)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-cancel{background:var(--panel2);color:var(--txt2)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-cancel:hover{background:var(--acc-soft);color:var(--acc);border-color:var(--acc-line)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-ok{background:var(--acc);color:#1a1a1a;border-color:var(--acc)}
+html:is([data-theme='velvet'],[data-theme='moonstone']) .opg-modal-ok:hover{background:var(--acc2);color:#fff;border-color:var(--acc2);filter:none}
+@media (max-width:900px){
+  html:is([data-theme='velvet'],[data-theme='moonstone']) #tabs{overflow-x:auto}
+  html:is([data-theme='velvet'],[data-theme='moonstone']) #tabs .tab{flex:none;white-space:nowrap;padding:12px}
+}
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -317,7 +441,7 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 #tabs .tab.dragging{opacity:.45}
 #tabs .tab.active{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
 /* GitHub 仓库直达：页签栏最右（order 固定，页签拖拽重排不会把它挪走），
-   颜色/悬停沿用 .btn.ghost，自动适配 5 套工具主题 */
+   颜色/悬停沿用 .btn.ghost，自动适配工具主题 */
 #tabs .gh-link{
   order:1;
   align-self:center;

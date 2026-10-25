@@ -40,10 +40,10 @@ main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json
 | 文件 | 职责 |
 |------|------|
 | `src/index.html` | 工具壳（顶栏/页签/页面容器）；`__OPG_VERSION__` 占位由 build.js 注入版本号 |
-| `src/css/tool.css` | 工具自身 UI；令牌在 `:root`（暖铜金默认），其余主题为 `html[data-theme='x']` 块（星夜/蓝图/磷光/深海，共 5 套） |
+| `src/css/tool.css` | 工具自身 UI；令牌在 `:root`（暖铜金默认），其余主题为 `html[data-theme='x']` 块（星夜/蓝图/磷光/深海/绯幕/月岩，共 7 套） |
 | `src/js/main.js` | 入口：顶栏事件委托（工程 CRUD/导入导出）、工具主题下拉（UI_THEMES 渲染 + localStorage 持久化 + 恢复兜底）、工厂重置（三次确认） |
 | `src/js/utils.js` | `$/$$`、`esc()`（五类转义）、`uid()`（时间戳+单调计数器）、toast、confirmModal/promptModal、导出代码语法高亮 |
-| `src/js/defs.js` | 纯数据：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（5 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
+| `src/js/defs.js` | 纯数据：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
 | `src/js/project.js` | 工程存储/migrate/normalize、撤销重做（20 步快照栈）、模板、导入导出（剔除 API Key） |
 
@@ -91,7 +91,7 @@ localStorage（openingPageGen_* 键）
 | README 位置 | 对照源 |
 |------|------|
 | Release 徽章（标题区，版本随 Release 自动跟随不再写死在 H1） | `package.json` `version`（build.js 注入 `__OPG_VERSION__`）+ 打 tag 前同步 bump |
-| 功能特性列表（区块/组件/模板/主题数量与名称） | `defs.js`：`BLOCK_ORDER`（25）、`COMP_LIB`（59）、`BUILTIN_TEMPLATES`（12）、`THEME_PRESETS`（6）、`UI_THEMES`（5）——「核心特性」上浮短句 + 「功能明细」折叠区存全量长说明，**两处都要核对** |
+| 功能特性列表（区块/组件/模板/主题数量与名称） | `defs.js`：`BLOCK_ORDER`（25）、`COMP_LIB`（59）、`BUILTIN_TEMPLATES`（12）、`THEME_PRESETS`（6）、`UI_THEMES`（7）——「核心特性」上浮短句 + 「功能明细」折叠区存全量长说明，**两处都要核对** |
 | 功能特性新增条目 | 本次改动引入的能力（如新区块特性、新组件、闸门双主题） |
 | 项目结构树 | `src/`、`tests/`、根目录实际文件（新增/删除目录要同步，如 `reference/`；不存在的文件如 `TESTING.md` 要移除） |
 | 构建/测试命令说明 | `package.json` scripts |
@@ -120,7 +120,7 @@ localStorage（openingPageGen_* 键）
 `defs.js` `THEME_PRESETS` 追加 `{name,theme:{primary,accent,textColor,radius,titleAlign}}`——先核对与现有 5 套色相不撞；textColor 必须近白（深底可读）
 
 ### 新增工具 UI 主题
-`defs.js` `UI_THEMES` 追加 + `tool.css` 新 data-theme 块（遵守约束 4）；当前 5 套全深色系，新增浅色需先与作者确认（浅色主题曾因可读性被整体移除）
+`defs.js` `UI_THEMES` 追加 + `tool.css` 新 data-theme 块（遵守约束 4）；当前 7 套全深色系，新增浅色需先与作者确认（浅色主题曾因可读性被整体移除）
 
 ## 产物真机验证配方（酒馆环境）
 
