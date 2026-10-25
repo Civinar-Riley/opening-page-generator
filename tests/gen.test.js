@@ -384,7 +384,7 @@ describe('Gen.build greetings 按钮模式（序号跳转）',()=>{
     expect(html).toContain('callGenericPopup');
     expect(html).toContain('跳转开局');
     expect(html).toContain('未填入有效开局号');
-    expect(html).toContain('从 1 开始');
+    expect(html).toContain('从 0 开始');
   });
   it('注册段被 ACT 运行时门控（非 button 模式不执行注入，代码仍随产物输出）',()=>{
     const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',placeholderList:'a'}]),{isPreview:false});
@@ -404,12 +404,12 @@ describe('Gen.build greetings 按钮模式（序号跳转）',()=>{
 
 describe('Gen.build greetings 中文数字序号与箭头',()=>{
   const g3={type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',placeholderList:'宁静的清晨｜晨光洒进房间\n雨夜的邂逅｜一场大雨\n命运的转折'};
-  it('占位列表项含壹贰叁中文数字徽标与 gmain 包裹，箭头由 CSS ::after 输出',()=>{
+  it('占位列表项含零壹贰中文数字徽标（零起计数）与 gmain 包裹，箭头由 CSS ::after 输出',()=>{
     for(const opts of [{isPreview:true},{isPreview:false}]){
       const html=Gen.build(proj([g3]),opts);
+      expect(html).toContain('-gnum">零</span>');
       expect(html).toContain('-gnum">壹</span>');
       expect(html).toContain('-gnum">贰</span>');
-      expect(html).toContain('-gnum">叁</span>');
       expect(html).toContain('-gmain');
       expect(html).toContain('-gtitle">宁静的清晨</span>');
       expect(html).toContain('-gdesc">晨光洒进房间</span>');
@@ -417,15 +417,15 @@ describe('Gen.build greetings 中文数字序号与箭头',()=>{
       expect(html).toContain('-gcur::after');
     }
   });
-  it('超过 10 条回落阿拉伯数字',()=>{
-    const items=Array.from({length:11},(_,i)=>'开场白'+(i+1)).join('\n');
+  it('超过 11 条回落阿拉伯数字（零起下标直显）',()=>{
+    const items=Array.from({length:12},(_,i)=>'开场白'+(i+1)).join('\n');
     const html=Gen.build(proj([{...g3,placeholderList:items}]),{isPreview:true});
     expect(html).toContain('-gnum">拾</span>');
     expect(html).toContain('-gnum">11</span>');
   });
   it('运行时脚本按同一结构重绘（GNUM 常量 + gnum/gmain 节点），标题不再拼阿拉伯序号前缀',()=>{
     const html=Gen.build(proj([g3]),{isPreview:false});
-    expect(html).toContain("var GNUM='壹贰叁肆伍陆柒捌玖拾'");
+    expect(html).toContain("var GNUM='零壹贰叁肆伍陆柒捌玖拾'");
     expect(html).toContain("PX+'-gnum'");
     expect(html).toContain("PX+'-gmain'");
     expect(html).not.toContain("(i+1)+'. '");
@@ -441,8 +441,8 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
     expect(html).toContain('-gcover" src="https://x/1.png"');
     expect(html).toContain("onerror=\"this.style.display='none'\"");
     expect(html).toContain('-gcoverph');
-    expect(html).toContain('-gphnum">贰</span>');
-    expect(html).toContain('-gnum">壹</span>');
+    expect(html).toContain('-gphnum">壹</span>');
+    expect(html).toContain('-gnum">零</span>');
   });
   it('wall：CSS 网格/16:9 封面/430px 两列断点/reduced-motion 兜底，且左缘竖条外挂不再作用于 wall',()=>{
     const html=Gen.build(proj([{...gBase,cardStyle:'wall'}]),{isPreview:true});
@@ -487,7 +487,7 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
   it('切换校验：setChatMessages 后重读第 0 楼，不符弹「消息页未切换」；按钮模式序号直传卡索引（修复双重映射）',()=>{
     const html=Gen.build(proj([gBase]),{isPreview:false});
     expect(html).toContain('消息页未切换，请重试');
-    expect(html).toContain('await goGreeting(n-1)');
+    expect(html).toContain('await goGreeting(n)');
     expect(html).not.toContain('d.map?d.map[n-1]');
   });
   it('联动音轨：META 注入 + 宿主文档挂载标记 + 穿透与降级结构',()=>{

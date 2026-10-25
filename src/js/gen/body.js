@@ -3,8 +3,9 @@ import { esc } from '../utils.js';
 import { Macros } from '../macros.js';
 
 /* 开场白列表项的中文数字序号（与 scripts.js 运行时 renderList 共用同一视觉，
-   运行时脚本字符串自包含无法引用此常量，改动须两处同步）；超过 10 条回落阿拉伯数字 */
-const GNUM='壹贰叁肆伍陆柒捌玖拾';
+   运行时脚本字符串自包含无法引用此常量，改动须两处同步）；零起计数（首条徽标 零），
+   11 字覆盖 0..10，更多条回落阿拉伯数字（直接显示下标，与零起口径一致） */
+const GNUM='零壹贰叁肆伍陆柒捌玖拾';
 
 export function body(p,px,blocks,isPreview){
     const g=i=>Macros.apply(i,p.macros); // 预览时替换宏
@@ -131,11 +132,11 @@ export function body(p,px,blocks,isPreview){
             const main=`<span class="${px}-gmain"><span class="${px}-gtitle">${esc(title)}</span>${desc?`<span class="${px}-gdesc">${esc(desc)}</span>`:''}${names?`<span class="${px}-gnames">${esc(names)}</span>`:''}</span>`;
             if(wall){
               /* 渐变回落层垫底，img 加载失败隐藏后自然露出占位（无需 JS 交换） */
-              out+=`    <button type="button" class="${px}-gitem ${px}-gwallitem" data-opg="g" data-i="${i}"><span class="${px}-gcoverwrap"><span class="${px}-gcoverph"><span class="${px}-gphnum">${GNUM[i]||(i+1)}</span></span>`;
+              out+=`    <button type="button" class="${px}-gitem ${px}-gwallitem" data-opg="g" data-i="${i}"><span class="${px}-gcoverwrap"><span class="${px}-gcoverph"><span class="${px}-gphnum">${GNUM[i]||String(i)}</span></span>`;
               if(cover)out+=`<img class="${px}-gcover" src="${esc(tx(cover))}" alt="" loading="lazy" onerror="this.style.display='none'">`;
-              out+=`<span class="${px}-gnum">${GNUM[i]||(i+1)}</span></span>${main}</button>\n`;
+              out+=`<span class="${px}-gnum">${GNUM[i]||String(i)}</span></span>${main}</button>\n`;
             }else{
-              out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||(i+1)}</span>${main}</button>\n`;
+              out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||String(i)}</span>${main}</button>\n`;
             }
           });
           out+=`  </div>\n`;

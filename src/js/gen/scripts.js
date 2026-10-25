@@ -415,8 +415,9 @@ export function script(p,px){
 
   /* 渲染列表（不缓存数据——每次渲染都来自实时读取）。
      序号用中文数字徽标（与 gen/body.js 占位列表同一视觉；运行时脚本字符串
-     自包含无法引用 gen 层常量，GNUM 改动须两处同步），>10 条回落阿拉伯数字 */
-  var GNUM='壹贰叁肆伍陆柒捌玖拾';
+     自包含无法引用 gen 层常量，GNUM 改动须两处同步），零起计数（首条徽标 零），
+     11 字覆盖 0..10，>11 条回落阿拉伯数字 */
+  var GNUM='零壹贰叁肆伍陆柒捌玖拾';
   var lastSig=null;
   function swipeSig(d){return JSON.stringify([d.cur,d.list])}
   function renderList(d){
@@ -438,7 +439,7 @@ export function script(p,px){
         /* 封面墙条目：渐变回落层垫底，img 加载失败隐藏后自然露出（与占位渲染同构） */
         var wrap=document.createElement('span');wrap.className=PX+'-gcoverwrap';
         var ph=document.createElement('span');ph.className=PX+'-gcoverph';
-        var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||(i+1);
+        var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||String(i);
         ph.appendChild(pn);wrap.appendChild(ph);
         var cv=(META[i]&&META[i].cover)||'';
         if(cv){
@@ -447,10 +448,10 @@ export function script(p,px){
           img.onerror=function(){this.style.display='none'};
           wrap.appendChild(img);
         }
-        var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||(i+1);
+        var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||String(i);
         wrap.appendChild(n1);btn.appendChild(wrap);
       }else{
-        var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||(i+1);
+        var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||String(i);
         btn.appendChild(n0);
       }
       btn.appendChild(main);
@@ -521,7 +522,7 @@ export function script(p,px){
   loadTitleMap().then(loadGreetings);
 
   /* ---------- 按钮模式：注册酒馆脚本按钮 + 输入序号跳转 ----------
-     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入要序号（1 开始），
+     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入序号（0 起，与列表徽标一致），
      范围校验后走与页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
      页内列表照常渲染：无 API/注册失败环境降级为占位列表，功能静默跳过 */
   if(ACT==='button'){
@@ -538,11 +539,11 @@ export function script(p,px){
               if(!hasPopup){note('未检测到弹出输入，请直接点击页内列表选项');return}
               var d=await getSwipes();
               if(!d||!d.list||!d.list.length){note('未找到任何开场白');return}
-              var n=parseInt(String(await window.SillyTavern.callGenericPopup('请输入要选择的开局号（从 1 开始，共 '+d.list.length+' 个）',window.SillyTavern.POPUP_TYPE.INPUT),10));
-              if(!isFinite(n)||n<1||n>d.list.length){note('未填入有效开局号');return}
-              /* 序号（1 开始）= 卡开场白索引：与页内点选同一条 goGreeting 路径，
+              var n=parseInt(String(await window.SillyTavern.callGenericPopup('请输入要选择的开局号（从 0 开始，共 '+d.list.length+' 个）',window.SillyTavern.POPUP_TYPE.INPUT),10));
+              if(!isFinite(n)||n<0||n>d.list.length){note('未填入有效开局号');return}
+              /* 序号（0 起，与列表徽标一致）= 卡开场白索引：与页内点选同一条 goGreeting 路径，
                  由 goGreeting 内部完成卡↔swipe 映射（此处传 swipe 序号会双重映射） */
-              await goGreeting(n-1);
+              await goGreeting(n);
             }catch(e){console.warn('[开场页] 按钮切换失败',e);note('按钮切换失败：'+((e&&e.message)||e))}
           });
         }

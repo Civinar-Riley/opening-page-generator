@@ -1028,8 +1028,8 @@ ${R}  </div>
 `}break}case"greetings":{o.showTitle&&o.title&&(s+=`  <div class="${e}-ghead">${f(l(o.title))}</div>
 `),s+=`  <div class="${e}-glist" data-opg="glist">
 `;let m=l(o.placeholderList).split(`
-`).map(y=>y.trim()).filter(Boolean),r=o.cardStyle==="wall";m.forEach((y,T)=>{let N=y.includes("｜")?"｜":y.includes("|")?"|":null,q=N?y.split(N):[y],I=q[0].trim(),O=N&&q.length>=3?q[q.length-1].trim():"",R=N?(q.length>=3?q.slice(1,-1).join(N):q.slice(1).join(N)).trim():"",b=Array.isArray(o.entries)&&o.entries[T]&&o.entries[T].cover||"",w=`<span class="${e}-gmain"><span class="${e}-gtitle">${f(I)}</span>${R?`<span class="${e}-gdesc">${f(R)}</span>`:""}${O?`<span class="${e}-gnames">${f(O)}</span>`:""}</span>`;r?(s+=`    <button type="button" class="${e}-gitem ${e}-gwallitem" data-opg="g" data-i="${T}"><span class="${e}-gcoverwrap"><span class="${e}-gcoverph"><span class="${e}-gphnum">${Ue[T]||T+1}</span></span>`,b&&(s+=`<img class="${e}-gcover" src="${f(l(b))}" alt="" loading="lazy" onerror="this.style.display='none'">`),s+=`<span class="${e}-gnum">${Ue[T]||T+1}</span></span>${w}</button>
-`):s+=`    <button type="button" class="${e}-gitem" data-opg="g" data-i="${T}"><span class="${e}-gnum">${Ue[T]||T+1}</span>${w}</button>
+`).map(y=>y.trim()).filter(Boolean),r=o.cardStyle==="wall";m.forEach((y,T)=>{let N=y.includes("｜")?"｜":y.includes("|")?"|":null,q=N?y.split(N):[y],I=q[0].trim(),O=N&&q.length>=3?q[q.length-1].trim():"",R=N?(q.length>=3?q.slice(1,-1).join(N):q.slice(1).join(N)).trim():"",b=Array.isArray(o.entries)&&o.entries[T]&&o.entries[T].cover||"",w=`<span class="${e}-gmain"><span class="${e}-gtitle">${f(I)}</span>${R?`<span class="${e}-gdesc">${f(R)}</span>`:""}${O?`<span class="${e}-gnames">${f(O)}</span>`:""}</span>`;r?(s+=`    <button type="button" class="${e}-gitem ${e}-gwallitem" data-opg="g" data-i="${T}"><span class="${e}-gcoverwrap"><span class="${e}-gcoverph"><span class="${e}-gphnum">${Ue[T]||String(T)}</span></span>`,b&&(s+=`<img class="${e}-gcover" src="${f(l(b))}" alt="" loading="lazy" onerror="this.style.display='none'">`),s+=`<span class="${e}-gnum">${Ue[T]||String(T)}</span></span>${w}</button>
+`):s+=`    <button type="button" class="${e}-gitem" data-opg="g" data-i="${T}"><span class="${e}-gnum">${Ue[T]||String(T)}</span>${w}</button>
 `}),s+=`  </div>
 `,o.clickAction==="send"&&(s+=`  <button type="button" class="${e}-gsend" data-opg="gsend">${f(l(o.buttonText||"开始"))}</button>
 `);break}case"divider":{let r=(o.text?l(o.text):"")||(o.style==="diamond"?"◆":o.style==="dots"?"✦ ✦ ✦":o.style==="flowers"?"❀ ❀ ❀":o.style==="wave"?"〰 〰 〰":"");s+=`  <div class="${e}-hr">${r?`<span>${f(r)}</span>`:""}</div>
@@ -1299,7 +1299,7 @@ ${m.map(q=>`    <source data-name="${f(l(q.name))}" src="${f(l(q.url))}">`).join
 `}break}}s+=`  </div>
 `}),`  <div class="${e}-wrap">
 ${s}  </div>
-`}var Ue,dt,gt=F(()=>{Y();Ge();Ue="壹贰叁肆伍陆柒捌玖拾";dt=t=>JSON.stringify(t).replace(/</g,"\\u003c")});function ut(t){return`<script>
+`}var Ue,dt,gt=F(()=>{Y();Ge();Ue="零壹贰叁肆伍陆柒捌玖拾";dt=t=>JSON.stringify(t).replace(/</g,"\\u003c")});function ut(t){return`<script>
 (function(){
   var PX=${ae(t)};
   var root=document.getElementById(PX);
@@ -1679,8 +1679,9 @@ ${s}  </div>
 
   /* 渲染列表（不缓存数据——每次渲染都来自实时读取）。
      序号用中文数字徽标（与 gen/body.js 占位列表同一视觉；运行时脚本字符串
-     自包含无法引用 gen 层常量，GNUM 改动须两处同步），>10 条回落阿拉伯数字 */
-  var GNUM='壹贰叁肆伍陆柒捌玖拾';
+     自包含无法引用 gen 层常量，GNUM 改动须两处同步），零起计数（首条徽标 零），
+     11 字覆盖 0..10，>11 条回落阿拉伯数字 */
+  var GNUM='零壹贰叁肆伍陆柒捌玖拾';
   var lastSig=null;
   function swipeSig(d){return JSON.stringify([d.cur,d.list])}
   function renderList(d){
@@ -1702,7 +1703,7 @@ ${s}  </div>
         /* 封面墙条目：渐变回落层垫底，img 加载失败隐藏后自然露出（与占位渲染同构） */
         var wrap=document.createElement('span');wrap.className=PX+'-gcoverwrap';
         var ph=document.createElement('span');ph.className=PX+'-gcoverph';
-        var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||(i+1);
+        var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||String(i);
         ph.appendChild(pn);wrap.appendChild(ph);
         var cv=(META[i]&&META[i].cover)||'';
         if(cv){
@@ -1711,10 +1712,10 @@ ${s}  </div>
           img.onerror=function(){this.style.display='none'};
           wrap.appendChild(img);
         }
-        var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||(i+1);
+        var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||String(i);
         wrap.appendChild(n1);btn.appendChild(wrap);
       }else{
-        var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||(i+1);
+        var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||String(i);
         btn.appendChild(n0);
       }
       btn.appendChild(main);
@@ -1785,7 +1786,7 @@ ${s}  </div>
   loadTitleMap().then(loadGreetings);
 
   /* ---------- 按钮模式：注册酒馆脚本按钮 + 输入序号跳转 ----------
-     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入要序号（1 开始），
+     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入序号（0 起，与列表徽标一致），
      范围校验后走与页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
      页内列表照常渲染：无 API/注册失败环境降级为占位列表，功能静默跳过 */
   if(ACT==='button'){
@@ -1802,11 +1803,11 @@ ${s}  </div>
               if(!hasPopup){note('未检测到弹出输入，请直接点击页内列表选项');return}
               var d=await getSwipes();
               if(!d||!d.list||!d.list.length){note('未找到任何开场白');return}
-              var n=parseInt(String(await window.SillyTavern.callGenericPopup('请输入要选择的开局号（从 1 开始，共 '+d.list.length+' 个）',window.SillyTavern.POPUP_TYPE.INPUT),10));
-              if(!isFinite(n)||n<1||n>d.list.length){note('未填入有效开局号');return}
-              /* 序号（1 开始）= 卡开场白索引：与页内点选同一条 goGreeting 路径，
+              var n=parseInt(String(await window.SillyTavern.callGenericPopup('请输入要选择的开局号（从 0 开始，共 '+d.list.length+' 个）',window.SillyTavern.POPUP_TYPE.INPUT),10));
+              if(!isFinite(n)||n<0||n>d.list.length){note('未填入有效开局号');return}
+              /* 序号（0 起，与列表徽标一致）= 卡开场白索引：与页内点选同一条 goGreeting 路径，
                  由 goGreeting 内部完成卡↔swipe 映射（此处传 swipe 序号会双重映射） */
-              await goGreeting(n-1);
+              await goGreeting(n);
             }catch(e){console.warn('[开场页] 按钮切换失败',e);note('按钮切换失败：'+((e&&e.message)||e))}
           });
         }
@@ -2165,7 +2166,7 @@ ${this.build(t,{isPreview:!1})}
           <div><label>标题库世界书名（可选）</label><input data-bkey="${n}.titleWb" value="${f(e.titleWb||"")}" placeholder="留空则自动提取"></div>
           <div><label>标题库条目名 (comment)</label><input data-bkey="${n}.titleEntry" value="${f(e.titleEntry||"开场白标题库")}"></div>
         </div>
-        <div style="font-size:11px;color:var(--txt2);margin:4px 0">标题库条目内容每行格式：<code>序号|标题|描述</code>，序号从 1 开始（对应第 1 个开场白）。</div>
+        <div style="font-size:11px;color:var(--txt2);margin:4px 0">标题库条目内容每行格式：<code>序号|标题|描述</code>，序号从 0 开始（与列表徽标一致，0 即第 1 个开场白；旧的从 1 开始写法会自动识别兼容）。</div>
         ${i("excludedTags","排除标签（逗号/顿号分隔，自动提取标题、描述、人名前剥除，如 status,设定）")}
         <div><label>选项风格</label><select data-bkey="${n}.cardStyle">
           <option value="card"${e.cardStyle==="card"?" selected":""}>卡片式（底色块 + 边框 + 悬浮位移）</option>
@@ -2520,7 +2521,7 @@ ${this.build(t,{isPreview:!1})}
   <li><strong>填入输入框</strong>：<code>/setinput</code> 命令。</li>
   <li><strong>直接发送</strong>：选中后点按钮 <code>/send</code>。</li>
 </ul>
-<p>选项卡片显示标题和描述（带中文数字序号徽标与 → 箭头），支持自动提取或标题库世界书覆盖；可选列表上方的<strong>小节标题</strong>。选项风格三种：<strong>卡片式</strong> / <strong>列表式</strong> / <strong>封面墙</strong>（16:9 大图海报网格，未配封面的条目用主题渐变占位 + 大序号水印）。</p>
+<p>选项卡片显示标题和描述（带中文数字序号徽标，从 零 起数——零、壹、贰…，与 → 箭头），支持自动提取或标题库世界书覆盖；可选列表上方的<strong>小节标题</strong>。选项风格三种：<strong>卡片式</strong> / <strong>列表式</strong> / <strong>封面墙</strong>（16:9 大图海报网格，未配封面的条目用主题渐变占位 + 大序号水印）。</p>
 <ul>
   <li><strong>封面与音轨</strong>：区块编辑器里按开场白<strong>序号</strong>逐项配置封面图 URL 与联动音轨 URL；开场白数多于配置项时多余项用默认样式（卡里调整开场白顺序后需同步调整序号）。</li>
   <li><strong>联动音轨</strong>：点击切换开场白<strong>成功后</strong>自动循环播放对应音轨——音频挂在宿主文档（酒馆顶层），切换楼层不中断；选中未配音轨的开场白即停止。与 BGM 区块同时使用会叠播，请自行取舍。</li>

@@ -96,7 +96,7 @@ export function renderHelp(){
   <li><strong>填入输入框</strong>：<code>/setinput</code> 命令。</li>
   <li><strong>直接发送</strong>：选中后点按钮 <code>/send</code>。</li>
 </ul>
-<p>选项卡片显示标题和描述（带中文数字序号徽标与 → 箭头），支持自动提取或标题库世界书覆盖；可选列表上方的<strong>小节标题</strong>。选项风格三种：<strong>卡片式</strong> / <strong>列表式</strong> / <strong>封面墙</strong>（16:9 大图海报网格，未配封面的条目用主题渐变占位 + 大序号水印）。</p>
+<p>选项卡片显示标题和描述（带中文数字序号徽标，从 零 起数——零、壹、贰…，与 → 箭头），支持自动提取或标题库世界书覆盖；可选列表上方的<strong>小节标题</strong>。选项风格三种：<strong>卡片式</strong> / <strong>列表式</strong> / <strong>封面墙</strong>（16:9 大图海报网格，未配封面的条目用主题渐变占位 + 大序号水印）。</p>
 <ul>
   <li><strong>封面与音轨</strong>：区块编辑器里按开场白<strong>序号</strong>逐项配置封面图 URL 与联动音轨 URL；开场白数多于配置项时多余项用默认样式（卡里调整开场白顺序后需同步调整序号）。</li>
   <li><strong>联动音轨</strong>：点击切换开场白<strong>成功后</strong>自动循环播放对应音轨——音频挂在宿主文档（酒馆顶层），切换楼层不中断；选中未配音轨的开场白即停止。与 BGM 区块同时使用会叠播，请自行取舍。</li>
