@@ -132,6 +132,59 @@ try {
   await page.waitForSelector('#themeSelect option[value="bronze"]', { state: 'attached' });
   assert('无效工具主题回落暖铜金', await page.evaluate(() => !document.documentElement.hasAttribute('data-theme') && document.querySelector('#themeSelect').value === 'bronze'));
 
+  /* —— v1.24 主题风格卡：试穿/套用/自定义标识/撤销/对比度警示 —— */
+  await page.locator('#tabs [data-page="pageConfig"]').click();
+  await page.waitForTimeout(300);
+  assert('预设试穿卡渲染 6 张', await page.locator('.thpg .thp').count() === 6);
+  /* 悬停试穿：预览切到荆棘王室背景，但工程数据不落盘（试穿只动预览覆写） */
+  await page.locator('.thpg .thp').nth(1).hover();
+  await page.waitForFunction(() => (document.querySelector('#previewFrameLive')?.srcdoc || '').includes('#1e0b12'), null, { timeout: 5000 }).catch(() => {});
+  assert('悬停试穿：预览切到荆棘王室背景', await page.evaluate(() => (document.querySelector('#previewFrameLive')?.srcdoc || '').includes('#1e0b12')));
+  assert('悬停试穿：工程数据未落盘', await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('openingPageGen_v1_projects') || '[]');
+    return (p[0]?.theme?.primary || '') === '#7c6cf0';
+  }));
+  /* 移出还原 */
+  await page.mouse.move(10, 420);
+  await page.waitForFunction(() => (document.querySelector('#previewFrameLive')?.srcdoc || '').includes('#1a1a2e'), null, { timeout: 5000 }).catch(() => {});
+  assert('移出试穿卡：预览还原默认背景', await page.evaluate(() => (document.querySelector('#previewFrameLive')?.srcdoc || '').includes('#1a1a2e')));
+  /* 点击套用：落盘 + 选中态标识 */
+  await page.locator('.thpg .thp').nth(1).click();
+  await page.waitForTimeout(400);
+  assert('点击套用：数据落盘且 presetRef 记录', await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('openingPageGen_v1_projects') || '[]');
+    return p[0]?.theme?.primary === '#8c1f3f' && p[0]?.theme?.bg?.color === '#1e0b12' && p[0]?.theme?.presetRef === '荆棘王室';
+  }));
+  assert('套用后显示当前预设选中态', await page.evaluate(() => (document.querySelector('.thstat')?.textContent || '').includes('当前预设：荆棘王室') && !!document.querySelector('.thp-sel')));
+  /* 微调偏离 → 「已自定义（基于 X）」标识 */
+  await page.evaluate(() => {
+    const inp = document.querySelector('[data-bind="theme.primary"]');
+    inp.value = '#123456';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  assert('偏离预设后标「已自定义（基于 X）」', await page.evaluate(() => (document.querySelector('.thstat-mod')?.textContent || '').includes('已自定义（基于 荆棘王室）')));
+  /* 主题输入入撤销栈：Ctrl+Z 回退主色（undo 后 renderConfig 重渲染，读输入框值） */
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })));
+  await page.waitForTimeout(400);
+  assert('Ctrl+Z 撤销主题微调回预设色', await page.evaluate(() => document.querySelector('[data-bind="theme.primary"]')?.value === '#8c1f3f'));
+  /* 对比度警示：文字色调到深色即时出现警示条，调回近白消失 */
+  await page.evaluate(() => {
+    const inp = document.querySelector('[data-bind="theme.textColor"]');
+    inp.value = '#222226';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const warnShown = await page.evaluate(() => (document.querySelector('.thwarn')?.textContent || '').includes('4.5'));
+  await page.evaluate(() => {
+    const inp = document.querySelector('[data-bind="theme.textColor"]');
+    inp.value = '#f0f0f5';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const warnGone = await page.evaluate(() => !document.querySelector('.thwarn'));
+  assert('对比度警示即时出现与消失', warnShown && warnGone);
+
   /* 汇总 */
   const bad = checks.filter(c => !c.ok);
   /* 8765（漫画导入探活地址）相关的失败是已知良性降级路径——仅当 mock 未绑上 8765 时过滤 */

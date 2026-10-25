@@ -49,17 +49,22 @@ export function css(p,px,blocks){
     if(fl.em)s+=`.${px}-wrap em,.${px}-wrap i{color:var(--SmartThemeEmColor, ${cText})}\n`;
     /* 实例作用域层：display:contents 不影响布局，让同类区块多实例样式互不干扰 */
     blocks.forEach((b,i)=>{s+=`.${px}-bk${i}{display:contents}\n`});
-    // 装饰区作为整体背景
+    /* 背景自 v1.24 起归主题所有（theme.bg，migrate 已把旧装饰区背景上收）；
+       装饰区仅保留边框/花纹/顶部光带。色值走 fontName 同一信任面（工程 JSON 可分享） */
+    const _bgCol=v=>String(v??'').replace(/[<>"\\]/g,'');
+    const bgc=th.bg&&typeof th.bg==='object'?th.bg:{};
+    let bg='rgba(20,20,30,.85)';
+    if(bgc.type==='solid')bg=_bgCol(bgc.color);
+    else if(bgc.type==='gradient'||bgc.type==='noise')bg=`linear-gradient(160deg, ${_bgCol(bgc.color)}, ${_bgCol(bgc.color2)})`;
+    /* 背景图 URL 信任面：剔除引号/尖括号/反斜杠/换行，防 </style> 提前闭合注入 */
+    else if(bgc.type==='image')bg=`#0e0e14 url("${String(bgc.image||'').replace(/[<>"\\]/g,'').replace(/[\r\n]/g,'')}") center/cover no-repeat`;
+    s+=`.${px}-wrap{background:${bg}}\n`;
+    if(bgc.type==='noise')s+=`.${px}-wrap::after{content:"";position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;border-radius:inherit}\n`;
+    /* 组件库强调色挂钩：COMP_LIB 内联样式以 var(--opg-accent,原色) 引用，随主题联动 */
+    s+=`.${px}-wrap{--opg-primary:${th.primary};--opg-accent:${th.accent}}\n`;
+    /* 装饰区仍管整体边框/花纹/顶部光带（启用时） */
     const d=blocks.find(b=>b.type==='decor');
     if(d&&d.enabled){
-      let bg='';
-      if(d.bgType==='solid')bg=d.bgColor;
-      else if(d.bgType==='gradient')bg=`linear-gradient(160deg, ${d.bgColor}, ${d.bgColor2})`;
-      /* 背景图 URL 与 fontName 同一信任面（工程 JSON 可分享）：剔除引号/尖括号/反斜杠/换行，防 </style> 提前闭合注入 */
-      else if(d.bgType==='image')bg=`#0e0e14 url("${String(d.bgImage||'').replace(/[<>"\\]/g,'').replace(/[\r\n]/g,'')}") center/cover no-repeat`;
-      else if(d.bgType==='noise')bg=`linear-gradient(160deg, ${d.bgColor}, ${d.bgColor2})`;
-      s+=`.${px}-wrap{background:${bg}}\n`;
-      if(d.bgType==='noise')s+=`.${px}-wrap::after{content:"";position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;border-radius:inherit}\n`;
       if(d.borderStyle&&d.borderStyle!=='none'){
         const bw=(['groove','ridge','inset','outset'].includes(d.borderStyle))?'4px':'2px';
         s+=`.${px}-wrap{border:${bw} ${d.borderStyle} ${th.accent}}\n`;
@@ -71,8 +76,6 @@ export function css(p,px,blocks){
       /* 顶部光带：容器上缘强调色亮线 + 内侧微光。用 border-top 实现而非伪元素，
          避开 pattern 文字 ::before 与 noise 纹理 ::after；置于上方 border 简写之后确保覆盖顶边 */
       if(d.topGlow)s+=`.${px}-wrap{border-top:2px solid ${th.accent};box-shadow:inset 0 10px 24px -12px ${th.accent}66}\n`;
-    }else{
-      s+=`.${px}-wrap{background:rgba(20,20,30,.85)}\n`;
     }
 
     /* 各区块实例样式（支持同类型多实例，按实例作用域隔离） */

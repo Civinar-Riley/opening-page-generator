@@ -45,7 +45,7 @@ main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json
 | `src/js/utils.js` | `$/$$`、`esc()`（五类转义）、`uid()`（时间戳+单调计数器）、toast、confirmModal/promptModal、导出代码语法高亮 |
 | `src/js/defs.js` | 纯数据：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
-| `src/js/project.js` | 工程存储/migrate/normalize、撤销重做（20 步快照栈）、模板、导入导出（剔除 API Key） |
+| `src/js/project.js` | 工程存储/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
 
 | `src/js/ui/core.js` | UI 壳 + `UI.renderAll()` 总入口（各渲染页有独立 try/catch 隔离）+ renderProjectSelect + 预览四件套（mountPreview/fitPreviewHeight/refreshPreview/debouncedPreview）+ 页签切换/全局快捷键/启动；经 `Object.assign(UI,…)` 挂载页面方法（模块顶层不读 UI 值，规避循环 import TDZ） |
 | `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig + renderBlockBody 区块编辑器 + 区块拖拽/全局搜索替换 UI 层） |
@@ -117,7 +117,7 @@ localStorage（openingPageGen_* 键）
 > ⚠️ 改 COMP_LIB 基础文案时：若该组件被官方模板 `BUILTIN_TEMPLATES` 以 `.replace('旧文案',…)` 定制（常见 8 个：CHAPHD/LETTER/QUEST/RATE/TERM/INV/CAL/CHAT_HTML），先全局搜索 defs.js 里的 `.replace('该文案'` 核对模板——否则模板 replace 会静默失效回落到默认文案（模板本就是「开场即改」素材，影响小，但改动前留意即可）。
 
 ### 新增页面主题预设
-`defs.js` `THEME_PRESETS` 追加 `{name,theme:{primary,accent,textColor,radius,titleAlign}}`——先核对与现有 5 套色相不撞；textColor 必须近白（深底可读）
+`defs.js` `THEME_PRESETS` 追加 `{name,theme:{primary,accent,textColor,radius,titleAlign,motion,bg}}`——bg 为整套观感包的背景（v1.24 起背景归主题，`{type:'gradient'|'solid'|'image'|'noise',color,color2,image}`）；先核对与现有 6 套色相不撞；textColor 必须近白（深底可读，测试有 ≥4.5:1 对比度断言）。UI 层套用/试穿/选中态由 `renderConfig.js` 的 `applyPresetTheme`/`UI.tryPreview`/`updatePresetStatus` 统一处理，新预设无需额外接线
 
 ### 新增工具 UI 主题
 `defs.js` `UI_THEMES` 追加 + `tool.css` 新 data-theme 块（遵守约束 4）；当前 7 套全深色系，新增浅色需先与作者确认（浅色主题曾因可读性被整体移除）

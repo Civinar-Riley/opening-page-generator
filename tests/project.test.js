@@ -1,7 +1,8 @@
 /* 工程数据规范化 / 迁移逻辑单元测试 */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project, setUI } from '../src/js/project.js';
-import { BLOCK_DEFS, BLOCK_ORDER, defaultProject } from '../src/js/defs.js';
+import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, THEME_PRESETS, defaultProject } from '../src/js/defs.js';
+import { contrastRatio } from '../src/js/utils.js';
 
 describe('Project.normalize 规范化',()=>{
   it('空工程补齐全部默认区块（未启用）',()=>{
@@ -307,10 +308,9 @@ describe('输入历史与工程往返保存',()=>{
     expect(Project.cur.blocks[0].title).toBe('待重做');
   });
 
-  it('非 block 输入不生成历史或清除 redo，重做也不回退这些字段',()=>{
+  it('ai/macros/preview 等非主题非区块输入不生成历史，重做也不回退这些字段（v1.24 主题已单独入栈）',()=>{
     Project.cur.blocks[0].title='待重做';Project.saveSnapshot();Project.undo();
     const history=JSON.stringify(Project._history);
-    Project.cur.theme.primary='#123456';
     Project.cur.ai.baseURL='https://example.test/v1';
     Project.cur.macros[0].v='新宏值';
     Project.cur.preview.theme='light';
@@ -318,10 +318,18 @@ describe('输入历史与工程往返保存',()=>{
     expect(JSON.stringify(Project._history)).toBe(history);
     expect(Project.redo()).toBe(true);
     expect(Project.cur.blocks[0].title).toBe('待重做');
-    expect(Project.cur.theme.primary).toBe('#123456');
     expect(Project.cur.ai.baseURL).toBe('https://example.test/v1');
     expect(Project.cur.macros[0].v).toBe('新宏值');
     expect(Project.cur.preview.theme).toBe('light');
+  });
+
+  it('主题输入生成历史并截断 redo（v1.24 主题进撤销栈）',()=>{
+    Project.cur.blocks[0].title='待重做';Project.saveSnapshot();Project.undo();
+    Project.cur.theme.primary='#123456';
+    Project.saveDebounced();vi.advanceTimersByTime(600);
+    expect(Project.redo()).toBe(false); /* 新输入截断 redo，与区块输入同契约 */
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.theme.primary).not.toBe('#123456'); /* 撤销回退主题 */
   });
 
   it('undo/redo 的防抖保存不生成历史，且终止此前输入批次',()=>{
@@ -409,5 +417,88 @@ describe('输入历史与工程往返保存',()=>{
     expect(Project._history).toHaveLength(1);
     expect(Project.undo()).toBe(false);
     expect(Project.redo()).toBe(false);
+  });
+});
+
+describe('背景上收 _hoistBg（v1.24 背景归主题）',()=>{
+  it('启用装饰区的旧工程 bg 上收进 theme.bg 并从区块剔除',()=>{
+    const p={blocks:[
+      {type:'decor',enabled:true,bgType:'gradient',bgColor:'#112233',bgColor2:'#445566',bgImage:'',borderStyle:'solid',pattern:'stars'},
+      {type:'welcome',enabled:true},
+    ]};
+    Project.migrate(p);
+    expect(p.theme.bg).toEqual({type:'gradient',color:'#112233',color2:'#445566',image:''});
+    expect(p.blocks[0].bgType).toBeUndefined();
+    expect(p.blocks[0].bgColor).toBeUndefined();
+    expect(p.blocks[0].borderStyle).toBe('solid'); /* 装饰区自有字段保留 */
+  });
+  it('装饰区停用/缺失时回落旧扁平兜底色（与旧渲染 fallback 一致）',()=>{
+    const off={blocks:[{type:'decor',enabled:false,bgType:'gradient',bgColor:'#aabbcc',bgColor2:'#ddeeff'}]};
+    Project.migrate(off);
+    expect(off.theme.bg).toEqual({type:'solid',color:'#14141e'});
+    const none={blocks:[{type:'welcome',enabled:true}]};
+    Project.migrate(none);
+    expect(none.theme.bg).toEqual({type:'solid',color:'#14141e'});
+  });
+  it('已有 theme.bg 的工程不被覆写，decor 残留字段仍被清理（幂等）',()=>{
+    const p={theme:{bg:{type:'solid',color:'#123456'}},blocks:[{type:'decor',enabled:true,bgType:'gradient',bgColor:'#aabbcc',bgColor2:'#ddeeff'}]};
+    Project.migrate(p);
+    expect(p.theme.bg).toEqual({type:'solid',color:'#123456'});
+    expect(p.blocks[0].bgType).toBeUndefined();
+  });
+  it('官方模板建工程：decor bg 走同一条上收路进 theme.bg',()=>{
+    const t=BUILTIN_TEMPLATES.map(t=>Project.builtinTemplateProject(t,'x'))
+      .find(p=>p.theme.bg&&p.theme.bg.type==='gradient'&&p.theme.bg.color!=='#1a1a2e');
+    expect(t).toBeTruthy(); /* 12 套模板各带专属渐变背景 */
+    expect(t.blocks.find(b=>b.type==='decor').bgType).toBeUndefined();
+  });
+});
+
+describe('撤销栈纳入主题（v1.24）',()=>{
+  it('saveSnapshot 记录 theme，undo/redo 双向恢复',()=>{
+    const origSave=Project.save,origDeb=Project.saveDebounced;
+    Project.save=()=>{};Project.saveDebounced=()=>{};
+    setUI({renderAll(){}});
+    try{
+      Project.cur={id:'th',name:'T',theme:{primary:'#111111',accent:'#222222'},blocks:[{type:'divider',enabled:true}]};
+      Project.resetHistory();
+      Project.cur.theme.primary='#333333';
+      Project.saveSnapshot();
+      expect(Project.cur.theme.primary).toBe('#333333');
+      expect(Project.undo()).toBe(true);
+      expect(Project.cur.theme.primary).toBe('#111111');
+      expect(Project.redo()).toBe(true);
+      expect(Project.cur.theme.primary).toBe('#333333');
+    }finally{Project.save=origSave;Project.saveDebounced=origDeb}
+  });
+  it('无 theme 键的旧格式快照恢复时不覆盖当前主题',()=>{
+    const origSave=Project.save,origDeb=Project.saveDebounced;
+    Project.save=()=>{};Project.saveDebounced=()=>{};
+    setUI({renderAll(){}});
+    try{
+      Project.cur={id:'old',name:'O',theme:{primary:'#111111'},blocks:[{type:'divider',enabled:true}]};
+      /* 双条目旧格式历史（均无 theme 键），栈顶为当前区块态 */
+      Project._history=[{blocks:[{type:'welcome',enabled:true}]},{blocks:[{type:'divider',enabled:true}]}];
+      Project._historyIdx=1;
+      expect(Project.undo()).toBe(true);
+      expect(Project.cur.blocks[0].type).toBe('welcome');
+      expect(Project.cur.theme.primary).toBe('#111111');
+    }finally{Project.save=origSave;Project.saveDebounced=origDeb}
+  });
+});
+
+describe('主题预设（v1.24 整套观感包）',()=>{
+  it('6 套预设均带背景且文字色对底色对比度达标（≥4.5:1）',()=>{
+    for(const t of THEME_PRESETS){
+      expect(t.theme.bg,`${t.name} 缺背景`).toBeTruthy();
+      const bg=t.theme.bg.type==='gradient'?(t.theme.bg.color||''):t.theme.bg.color;
+      const cr=contrastRatio(t.theme.textColor,bg);
+      expect(cr,`${t.name} 文字对比度 ${cr}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  it('defaultProject theme 含 bg 与 presetRef 默认值',()=>{
+    const p=defaultProject('t');
+    expect(p.theme.bg).toEqual({type:'gradient',color:'#1a1a2e',color2:'#2d1b3d'});
+    expect(p.theme.presetRef).toBe('');
   });
 });

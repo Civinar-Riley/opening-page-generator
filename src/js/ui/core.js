@@ -14,10 +14,21 @@ import { renderHelp } from './renderHelp.js';
 
 const UI={
   previewDebounce:null,
+  /* 主题预设悬停试穿：仅覆写预览构建用的 theme 拷贝，绝不写 Project.cur.theme——
+     数据层零接触，undo/重渲染/换工程天然安全；renderAll 统一清算（含换工程） */
+  previewThemeOverride:null,
+  previewTryT:null,
   _helpBuilt:false,
   _curGame:null,
 
+  /* 设置/清除试穿覆写并刷新预览（patch=null 还原）；enter 侧防抖由调用方自理 */
+  tryPreview(patch){
+    this.previewThemeOverride=patch?JSON.parse(JSON.stringify(patch)):null;
+    this.refreshPreview();
+  },
+
   renderAll(){
+    this.previewThemeOverride=null;
     Macros.vars={};
     Macros.resetCache();
     /* 全入口隔离：任何一页崩了不拖垮其他页与预览 */
@@ -97,8 +108,15 @@ const UI={
     $$('#segTheme button',pg).forEach(b=>b.classList.toggle('active',b.dataset.v===p.preview.theme));
     frame.style.width=p.preview.mode==='mobile'?'430px':'100%';
     this.fitPreviewHeight(frame);
+    /* 试穿态：预览构建走 theme 覆写拷贝（工程数据不动），缓存 key 随 comp 自动失效 */
+    let pv=p;
+    if(this.previewThemeOverride){
+      pv=JSON.parse(JSON.stringify(p));
+      pv.theme=pv.theme&&typeof pv.theme==='object'?pv.theme:{};
+      Object.assign(pv.theme,this.previewThemeOverride);
+    }
     let comp;
-    try{comp=Gen.build(p,{isPreview:true})}
+    try{comp=Gen.build(pv,{isPreview:true})}
     catch(e){
       console.error('[预览] 生成失败',e);
       frame._lastPreviewKey='';

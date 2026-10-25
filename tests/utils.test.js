@@ -1,6 +1,26 @@
-/* 工具函数单元测试（esc / uid / highlightCode / API Key 加解密） */
+/* 工具函数单元测试（esc / uid / highlightCode / 对比度 / API Key 加解密） */
 import { describe, it, expect } from 'vitest';
-import { esc, uid, highlightCode } from '../src/js/utils.js';
+import { esc, uid, highlightCode, hexLuma, contrastRatio } from '../src/js/utils.js';
+
+describe('hexLuma / contrastRatio 对比度（v1.24 主题警示用）',()=>{
+  it('WCAG 锚点值：黑 0 / 白 1 / 黑白对比 21:1',()=>{
+    expect(hexLuma('#000000')).toBe(0);
+    expect(hexLuma('#ffffff')).toBe(1);
+    expect(contrastRatio('#000000','#ffffff')).toBeCloseTo(21,5);
+  });
+  it('已知色对落在标准区间（WCAG 计算样例）',()=>{
+    expect(contrastRatio('#767676','#ffffff')).toBeGreaterThan(4.4);
+    expect(contrastRatio('#767676','#ffffff')).toBeLessThan(4.6);
+    expect(contrastRatio('#f0f0f5','#1a1a2e')).toBeGreaterThan(10);
+  });
+  it('大小写与短写/非法输入：非 6 位 hex 返回 null 让调用方跳过警示',()=>{
+    expect(hexLuma('#ABCDEF')).toBe(hexLuma('#abcdef'));
+    expect(hexLuma('red')).toBeNull();
+    expect(hexLuma('')).toBeNull();
+    expect(hexLuma(null)).toBeNull();
+    expect(contrastRatio('rgba(0,0,0,.5)','#fff')).toBeNull();
+  });
+});
 
 describe('esc HTML 转义',()=>{
   it('转义 < > & " 四类字符',()=>{

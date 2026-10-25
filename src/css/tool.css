@@ -503,6 +503,39 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 }
 .inline-check input{width:auto;accent-color:var(--acc)}
 
+/* ===== 主题风格卡：预设试穿卡 + 分组小标题（v1.24） ===== */
+/* 颜色经行内 CSS 变量逐卡注入（--tbg 底/--tp 主色/--ta 强调/--tt 文字/--tr 圆角），此处只管形态 */
+.thpg{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
+.thp{
+  display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;
+  background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  cursor:pointer;text-align:left;
+  transition:border-color .15s,transform .15s,box-shadow .15s;
+}
+.thp:hover{border-color:var(--acc);transform:translateY(-2px);box-shadow:0 6px 16px -8px rgba(0,0,0,.55)}
+.thp:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.thp-sel{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.thp-demo{display:block;background:var(--tbg);border-radius:var(--tr);padding:12px 9px 9px;min-height:74px}
+.thp-title{display:block;font-size:12px;font-weight:700;letter-spacing:1px;line-height:1.3;width:fit-content;background:linear-gradient(90deg,var(--ta),var(--tp));-webkit-background-clip:text;background-clip:text;color:transparent}
+.thp-line{display:block;height:2px;width:28px;background:var(--ta);border-radius:1px;margin:6px 0 5px}
+.thp-text{display:block;font-size:9px;color:var(--tt);opacity:.78;margin-bottom:7px}
+.thp-pill{display:inline-block;font-size:9px;line-height:1;padding:3px 9px;border-radius:999px;background:var(--tp);color:#fff}
+.thp-name{display:block;font-size:11px;color:var(--txt);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thp-sel .thp-name{color:var(--acc);font-weight:700}
+/* 分组小标题：左侧标签 + 通长细线 */
+.thgrp{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--txt2);letter-spacing:2px;margin:14px 0 8px}
+.thgrp::after{content:"";flex:1;height:1px;background:var(--line)}
+.thstat{font-size:11px;color:var(--txt2)}
+.thstat b{color:var(--acc)}
+.thstat-mod{color:var(--acc)}
+/* 对比度警示：暖黄提示条（不阻止保存）；槽空时隐藏占位 */
+.thwarn-slot:empty{display:none}
+.thwarn{font-size:11px;line-height:1.6;color:#e6c37a;background:rgba(230,195,122,.08);border:1px solid rgba(230,195,122,.35);border-radius:6px;padding:6px 10px;margin-top:8px}
+/* 高级折叠（跟随酒馆主题） */
+.thadv{margin-top:12px;border-top:1px dashed var(--line);padding-top:8px}
+.thadv summary{cursor:pointer;font-size:12px;color:var(--txt2);user-select:none}
+.thadv summary:hover{color:var(--txt)}
+
 /* ===== 区块折叠卡片 ===== */
 .block{
   border:1px solid var(--line);

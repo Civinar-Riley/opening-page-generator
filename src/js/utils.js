@@ -106,5 +106,21 @@ function highlightCode(src){
   return s;
 }
 
-export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode};
+/* ---- 对比度警示（WCAG 相对亮度比）----
+   纯函数供主题卡实时提示与测试共用；非 hex（rgba()/var() 等）返回 null 让调用方跳过警示 */
+function _hexChan(h,i){return parseInt(h.slice(i,i+2),16)/255}
+function hexLuma(hex){
+  const m=/^#([0-9a-fA-F]{6})$/.exec(String(hex||'').trim());
+  if(!m)return null;
+  const h=m[1],f=c=>{const v=_hexChan(h,c);return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};
+  return 0.2126*f(0)+0.7152*f(2)+0.0722*f(4);
+}
+function contrastRatio(a,b){
+  const la=hexLuma(a),lb=hexLuma(b);
+  if(la===null||lb===null)return null;
+  const [hi,lo]=la>=lb?[la,lb]:[lb,la];
+  return (hi+0.05)/(lo+0.05);
+}
+
+export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode, hexLuma, contrastRatio};
 

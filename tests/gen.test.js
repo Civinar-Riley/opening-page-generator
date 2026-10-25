@@ -1,7 +1,7 @@
 /* 生成引擎单元测试（纯字符串函数，无需 DOM） */
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../src/js/gen/index.js';
-import { defaultProject, BLOCK_PRESETS, BLOCK_DEFS, applyBlockPreset, syncGateThemeCopy } from '../src/js/defs.js';
+import { defaultProject, BLOCK_PRESETS, BLOCK_DEFS, COMP_LIB, applyBlockPreset, syncGateThemeCopy } from '../src/js/defs.js';
 import backHomeTpl from '../slots/back-home.json';
 
 const proj=blocks=>{const p=defaultProject('t');p.blocks=blocks;return p};
@@ -239,11 +239,18 @@ describe('Gen.build 边界与安全回归',()=>{
     const html=Gen.build(p,{isPreview:false});
     expect(html).not.toContain('</style><img');
   });
-  it('decor 背景图 URL 与自定义花纹含 </style> 时不逃逸 style 标签',()=>{
+  it('主题背景图 URL 与自定义花纹含 </style> 时不逃逸 style 标签（v1.24 背景归主题）',()=>{
     const p=defaultProject('t');
+    p.theme.bg={type:'image',color:'',color2:'',image:'x</style><img src=x onerror=alert(1)>'};
     const d=p.blocks.find(b=>b.type==='decor');
-    d.enabled=true;d.bgType='image';d.bgImage='x</style><img src=x onerror=alert(1)>';
+    d.enabled=true;
     d.pattern='custom';d.patternText='✦</style><img src=x>';
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).not.toContain('</style><img');
+  });
+  it('主题背景色含 </style> 时不逃逸 style 标签',()=>{
+    const p=defaultProject('t');
+    p.theme.bg={type:'solid',color:'x</style><img src=x onerror=alert(1)>'};
     const html=Gen.build(p,{isPreview:false});
     expect(html).not.toContain('</style><img');
   });
@@ -548,12 +555,46 @@ describe('Gen.build 参考图新增四项（眉题/卡片作者/小节标题/顶
     const off=Gen.build(proj([base]),{isPreview:true});
     expect(off).not.toContain('-ghead">');
   });
-  it('decor 顶部光带：开启输出 border-top 亮线、默认关闭不输出',()=>{
-    const base={type:'decor',enabled:true,borderStyle:'none',bgType:'solid',bgColor:'#101018',bgColor2:'',bgImage:'',pattern:'none',patternText:''};
+  it('decor 顶部光带：开启输出 border-top 亮线、默认关闭不输出（背景已归主题，bg 字段不再属于区块）',()=>{
+    const base={type:'decor',enabled:true,borderStyle:'none',pattern:'none',patternText:''};
     const on=Gen.build(proj([{...base,topGlow:true}]),{isPreview:false});
     expect(on).toContain('border-top:2px solid');
     const off=Gen.build(proj([base]),{isPreview:false});
     expect(off).not.toContain('border-top:2px');
+  });
+});
+
+describe('Gen.build 背景归主题（v1.24）',()=>{
+  it('theme.bg 渐变输出到容器背景，装饰区不再提供背景',()=>{
+    const p=proj([{type:'decor',enabled:true,borderStyle:'solid',pattern:'none',patternText:''}]);
+    p.theme.bg={type:'gradient',color:'#112233',color2:'#445566'};
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain('linear-gradient(160deg, #112233, #445566)');
+  });
+  it('装饰区停用/缺失仍有主题背景（旧行为为扁平兜底）',()=>{
+    const off=Gen.build(proj([{type:'decor',enabled:false,borderStyle:'solid',pattern:'none',patternText:''}]),{isPreview:false});
+    expect(off).toContain('linear-gradient(160deg, #1a1a2e, #2d1b3d)');
+    const none=Gen.build(proj([]),{isPreview:false});
+    expect(none).toContain('linear-gradient(160deg, #1a1a2e, #2d1b3d)');
+  });
+  it('theme.bg 纯色/噪点渐变：solid 出纯色，noise 出渐变+噪点纹理层',()=>{
+    const p=proj([{type:'divider',enabled:true,style:'plain'}]);
+    p.theme.bg={type:'solid',color:'#0f0f14',color2:'',image:''};
+    expect(Gen.build(p,{isPreview:false})).toContain('-wrap{background:#0f0f14}');
+    p.theme.bg={type:'noise',color:'#0f0f14',color2:'#1a1a24',image:''};
+    const h2=Gen.build(p,{isPreview:false});
+    expect(h2).toContain('linear-gradient(160deg, #0f0f14, #1a1a24)');
+    expect(h2).toContain('feTurbulence');
+  });
+  it('容器声明 --opg-primary/--opg-accent 供组件库跟随主题',()=>{
+    const html=Gen.build(defaultProject('t'),{isPreview:false});
+    expect(html).toContain('--opg-primary:#7c6cf0');
+    expect(html).toContain('--opg-accent:#e8c47c');
+  });
+  it('组件库强调位随主题：插入组件的 HTML 带有 var(--opg-accent,原色) 挂钩',()=>{
+    const p=proj([{type:'freehtml',enabled:true,html:COMP_LIB.find(c=>c.name==='引言框').html}]);
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain('var(--opg-accent,#e8c47c)');
   });
 });
 

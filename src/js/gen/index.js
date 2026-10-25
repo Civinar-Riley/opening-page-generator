@@ -45,9 +45,12 @@ const Gen={
       if(b.type==='gallery'&&Array.isArray(b.images))b.images.forEach(x=>{if(x&&x.url)urls.push(x.url)});
       if(b.type==='comic'){if(b.cover)urls.push(b.cover);if(Array.isArray(b.pages))b.pages.forEach(x=>{if(x&&x.url)urls.push(x.url)})}
       if(b.type==='profile'&&Array.isArray(b.characters))b.characters.forEach(c=>{if(c&&c.avatar)urls.push(c.avatar)});
-      if(b.type==='decor'&&b.bgType==='image'&&b.bgImage)urls.push(b.bgImage);
       if(urls.some(u=>/^http:\/\//i.test(u)))items.push({level:'提示',msg:`区块 #${i+1}（${b.type}）使用了 http:// 图片——https 部署的酒馆会因混合内容策略拦截不显示，建议换 https 图源`});
     });
+    /* 背景图 v1.24 起归主题所有（theme.bg.image），预加载源同步迁移 */
+    if(p.theme&&p.theme.bg&&p.theme.bg.type==='image'&&p.theme.bg.image){
+      if(/^http:\/\//i.test(p.theme.bg.image))items.push({level:'提示',msg:'主题背景图使用了 http:// 直链——https 部署的酒馆会因混合内容策略拦截不显示，建议换 https 图源'});
+    }
     const free=(p.blocks||[]).filter(b=>b&&b.enabled&&b.type==='freehtml');
     if(free.length)items.push({level:'提示',msg:'自由 HTML 区块脚本以完整权限运行（预览 srcdoc + 酒馆导出均可读写 localStorage）——发卡前确认内容来源可信，文档与区块编辑器已注明「勿粘贴不可信来源的代码」'});
     return {items};

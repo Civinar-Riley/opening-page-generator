@@ -36,8 +36,8 @@ const Project={
     const merge=mergeInput&&this._inputBatch;
     if(!mergeInput)this._inputBatch=false;
     if(!this.cur)return;
-    const json=JSON.stringify({blocks:this.cur.blocks});
-    /* 无区块变化的保存不占历史，也不能截断 redo 或开启输入合并 */
+    const json=JSON.stringify({blocks:this.cur.blocks,theme:this.cur.theme});
+    /* 无区块与主题变化的保存不占历史，也不能截断 redo 或开启输入合并 */
     if(json===JSON.stringify(this._history[this._historyIdx]))return;
     this._history=this._history.slice(0,this._historyIdx+1);
     if(merge&&this._historyIdx>0)this._history[this._historyIdx]=JSON.parse(json);
@@ -46,10 +46,12 @@ const Project={
     this._historyIdx=this._history.length-1;
     this._inputBatch=mergeInput;
   },
-  /** 从快照恢复（区块列表） */
+  /** 从快照恢复（区块列表 + 主题；v1.24 起主题进撤销栈——主题卡此前是撤销盲区） */
   _restore(s){
     if(!s)return;
     this.cur.blocks=JSON.parse(JSON.stringify(s.blocks||[]));
+    /* 旧格式快照（无 theme 键）保持当前主题不动 */
+    if(s.theme)this.cur.theme=JSON.parse(JSON.stringify(s.theme));
   },
   /** 撤销一步；无可撤销时返回 false。恢复后触发整个界面重渲染 */
   undo(){
@@ -135,11 +137,26 @@ const Project={
       if(b.type==='greetings'&&!Array.isArray(b.entries))b.entries=[];
     });
   },
+  /* 背景上收（v1.24）：theme.bg 归主题所有，旧数据/官方模板里 decor 的 bg 字段
+     搬进 theme.bg 后从区块上剔除。上收源精确复刻 gen 旧行为——只看首个 decor 且
+     仅在其启用时生效（未启用时旧渲染走扁平兜底）；缺失时补旧兜底色。
+     必须先于 normalize 调用，否则 def.theme.bg 默认值会抢先填充导致旧背景丢失 */
+  _hoistBg(p){
+    if(!p.theme||typeof p.theme!=='object')p.theme={};
+    if(p.theme.bg===undefined){
+      const d=(p.blocks||[]).find(b=>b&&b.type==='decor');
+      p.theme.bg=(d&&d.enabled&&d.bgType)
+        ?{type:d.bgType,color:d.bgColor,color2:d.bgColor2,image:d.bgImage}
+        :{type:'solid',color:'#14141e'};
+    }
+    (p.blocks||[]).forEach(b=>{if(b&&b.type==='decor')['bgType','bgColor','bgColor2','bgImage'].forEach(k=>delete b[k])});
+  },
   /* 旧版工程结构迁移：角色简介区从「世界书拉取+占位值」迁移为「手动多角色」；
      无版本字段无法区分旧默认与主动选择，开场白点击行为仅在缺失时补 go。
      注意：旧字段转换必须先于 normalize —— normalize 会给缺 characters 的
      profile 注入默认值，若后跑会使旧占位迁移分支永远无法命中 */
   migrate(p){
+    this._hoistBg(p);
     (p.blocks||[]).forEach(b=>{
       if(b.type==='greetings'&&!b.clickAction)b.clickAction='go';
       if(b.type==='profile'&&!Array.isArray(b.characters)){
@@ -260,6 +277,8 @@ const Project={
       ai:{baseURL:'https://api.openai.com/v1',apiKey:'',model:'',models:[]},
       preview:{mode:'mobile',theme:'dark'},
     };
+    /* 模板 decor 自带的背景字段上收进 theme.bg（与旧工程 migrate 同一条路），必须先于 normalize */
+    this._hoistBg(p);
     this.normalize(p);
     return p;
   },

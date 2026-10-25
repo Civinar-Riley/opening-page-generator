@@ -1,5 +1,5 @@
 /* 配置页渲染与交互（renderConfig + renderBlockBody 区块编辑器） */
-import { $, $$, esc, toast, confirmModal } from '../utils.js';
+import { $, $$, esc, toast, confirmModal, contrastRatio } from '../utils.js';
 import { BLOCK_DEFS, BLOCK_ORDER, COMP_LIB, THEME_PRESETS, BLOCK_PRESETS, applyBlockPreset, syncGateThemeCopy } from '../defs.js';
 import { Project } from '../project.js';
 import { UI } from './core.js';
@@ -11,6 +11,51 @@ const COMP_CATS=[['all','全部'],['text','叙事文本'],['info','信息展示'
 /* 页面区块展开状态（索引制，按工程隔离）：showTitle/闸门主题/预设/组件插入等
    触发的整页重渲染不再跳回「第一个区块展开」；换工程时重置 */
 let cfgOpen=new Set([0]),cfgOpenProj=null;
+
+/* 主题预设「选中态」判定：全字段一致才算当前预设（bg 深比较） */
+const TH_EQ_FIELDS=['primary','accent','textColor','radius','titleAlign','motion'];
+const themeEq=(a,b)=>TH_EQ_FIELDS.every(k=>String(a[k]??'')===String(b[k]??''))&&JSON.stringify(a.bg||null)===JSON.stringify(b.bg||null);
+/* 预设套用统一入口：对象字段深拷贝写入——直接赋引用会让 THEME_PRESETS 常量
+   被后续微调污染（bg 等对象字段尤其危险），全部预设/试穿写入必须走这里 */
+function applyPresetTheme(t){
+  Object.keys(t).forEach(k=>{Project.cur.theme[k]=t[k]&&typeof t[k]==='object'?JSON.parse(JSON.stringify(t[k])):t[k]});
+}
+/* 悬停试穿的卡片跟踪（模块级：col 上的委托监听跨重渲染存续） */
+let tryCard=null,tryT=null;
+
+/* 选中态标识：与某套预设全字段一致 → 高亮该套并显示名称；套过但已偏离 → 「已自定义（基于 X）」。
+   颜色/圆角/动效等输入即时刷新（binder 挂钩），无需整卡重渲染 */
+function presetStatusHtml(){
+  const t=Project.cur.theme;
+  const matchedIdx=THEME_PRESETS.findIndex(x=>themeEq(t,x.theme));
+  if(matchedIdx>=0)return `<span class="thstat">当前预设：<b>${esc(THEME_PRESETS[matchedIdx].name)}</b></span>`;
+  if(t.presetRef&&THEME_PRESETS.some(x=>x.name===t.presetRef))return `<span class="thstat thstat-mod">已自定义（基于 ${esc(t.presetRef)}）— Ctrl+Z 可回退套用前状态</span>`;
+  return '';
+}
+function updatePresetStatus(){
+  const t=Project.cur.theme;
+  const matchedIdx=THEME_PRESETS.findIndex(x=>themeEq(t,x.theme));
+  document.querySelectorAll('.thpg .thp').forEach((el,i)=>{
+    el.classList.toggle('thp-sel',i===matchedIdx);
+    const nm=el.querySelector('.thp-name');
+    if(nm)nm.textContent=THEME_PRESETS[i].name+(i===matchedIdx?' ✓':'');
+  });
+  const slot=document.querySelector('.thstat-slot');
+  if(slot)slot.innerHTML=presetStatusHtml();
+}
+
+/* 对比度警示：背景归主题后工具首次知道底色——文字/强调色对背景低于 WCAG 阈值时提示
+   （不阻止保存）。颜色输入走 updateContrastWarn 即时刷新，无需整卡重渲染 */
+function contrastWarnHtml(){
+  const t=Project.cur.theme,bg=t.bg&&typeof t.bg==='object'?t.bg:{};
+  const base=bg.type==='image'?'#0e0e14':(bg.color||'');
+  const cT=contrastRatio(t.textColor,base),cA=contrastRatio(t.accent,base);
+  const w=[];
+  if(cT!==null&&cT<4.5)w.push(`文字色 ${cT.toFixed(1)}:1`);
+  if(cA!==null&&cA<3)w.push(`强调色 ${cA.toFixed(1)}:1`);
+  return w.length?`<div class="thwarn">⚠️ 对背景对比度偏低（${w.join('、')}；建议文字 ≥ 4.5:1、强调色 ≥ 3:1）——正文在当前底色上可能难以阅读</div>`:'';
+}
+function updateContrastWarn(){const slot=document.querySelector('.thwarn-slot');if(slot)slot.innerHTML=contrastWarnHtml()}
 
 /* ---------- 配置页 ---------- */
 export function renderConfig(){
@@ -28,10 +73,35 @@ export function renderConfig(){
   col.innerHTML='';
   const expandedSet=cfgOpen; /* 模块级持久状态：跨整页重渲染保留展开位置 */
 
-  /* 主题卡片 */
+  /* 主题卡片（v1.24 重排：预设试穿 → 背景 → 配色 → 字体 → 动效 → 高级跟随）。
+     背景自本版起归主题所有（原装饰区职责上收）；试穿只动预览覆写不落数据，见 tryPreview */
+  const pbg=p.theme.bg&&typeof p.theme.bg==='object'?p.theme.bg:{type:'gradient',color:'#1a1a2e',color2:'#2d1b3d'};
+  const pbgType=pbg.type||'gradient';
+  /* 选中态初始渲染走 updatePresetStatus（见模块级函数）；这里只铺卡面与状态槽 */
+  const presetGrid=`<div class="thpg">${THEME_PRESETS.map((t,i)=>{
+    const b=t.theme.bg||{};
+    return `<button type="button" class="thp" data-preset="${i}" title="悬停试穿，点击套用"
+      style="--tbg:linear-gradient(160deg,${b.color||'#1a1a2e'},${b.color2||'#2d1b3d'});--tp:${t.theme.primary};--ta:${t.theme.accent};--tt:${t.theme.textColor};--tr:${Math.min(12,t.theme.radius||0)}px">
+      <span class="thp-demo"><span class="thp-title">标题字</span><span class="thp-line"></span><span class="thp-text">正文示意 Aa</span><span class="thp-pill">按钮</span></span>
+      <span class="thp-name">${esc(t.name)}</span>
+    </button>`;
+  }).join('')}</div><div class="thstat-slot" style="min-height:16px;margin-bottom:4px"></div>`;
+  /* 背景字段随类型切换（bg.type 变更经 binder 入库后重渲染本卡换字段集） */
+  let bgFields='';
+  if(pbgType==='image')bgFields=`<div><label>背景图片 URL</label><input data-bind="theme.bg.image" value="${esc(pbg.image||'')}" placeholder="https://…"></div>`;
+  else{
+    bgFields=`<div><label>${pbgType==='solid'?'背景色':'背景色 1'}</label><input type="color" data-bind="theme.bg.color" value="${esc(pbg.color||'#1a1a2e')}"></div>`;
+    if(pbgType!=='solid')bgFields+=`<div><label>背景色 2（${pbgType==='noise'?'噪点渐变':'渐变'}用）</label><input type="color" data-bind="theme.bg.color2" value="${esc(pbg.color2||'#2d1b3d')}"></div>`;
+  }
+  /* 对比度警示槽：即时更新走 updateContrastWarn（binder 挂钩），槽空时 CSS 隐藏 */
   const themeCard=document.createElement('div');themeCard.className='card';
-  themeCard.innerHTML=`<h3>🎨 主题风格 <span class="hint">点预设一键套用，下方可微调</span></h3>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${THEME_PRESETS.map((t,i)=>`<button type="button" class="btn ghost small" data-preset="${i}"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${t.theme.primary};margin-right:4px;vertical-align:-1px"></span>${t.name}</button>`).join('')}</div>
+  themeCard.innerHTML=`<h3>🎨 主题风格 <span class="hint">预设悬停试穿、点击套用；分组微调随时可撤销（Ctrl+Z）</span></h3>
+    ${presetGrid}
+    <div class="thgrp">背景</div>
+    <div class="row2"><div><label>背景类型</label><select data-bind="theme.bg.type">
+      ${[['gradient','渐变'],['solid','纯色'],['image','图片'],['noise','噪点渐变']].map(([v,l])=>`<option value="${v}"${pbgType===v?' selected':''}>${l}</option>`).join('')}
+    </select></div>${bgFields}</div>
+    <div class="thgrp">配色</div>
     <div class="row2">
       <div><label>主色</label><input type="color" data-bind="theme.primary" value="${esc(p.theme.primary)}"></div>
       <div><label>强调色（标题/边框）</label><input type="color" data-bind="theme.accent" value="${esc(p.theme.accent)}"></div>
@@ -46,31 +116,38 @@ export function renderConfig(){
           <option value="center"${p.theme.titleAlign==='center'?' selected':''}>居中</option>
           <option value="left"${p.theme.titleAlign==='left'?' selected':''}>左对齐</option>
         </select></div>
-      <div><label>字体</label>
-        <select id="fontPicker">
-          <option value="">系统默认</option>
-        </select>
-        <input type="text" id="fontCustomInput" value="${esc(p.theme.fontName)}" placeholder="输入字体名称" style="margin-top:4px;display:none">
-      </div>
-    </div>
-    <div class="row2">
       <div><label>动效档位</label>
         <select data-bind="theme.motion">
           <option value="full"${p.theme.motion!=='soft'&&p.theme.motion!=='off'?' selected':''}>华丽（入场错峰 + 全部动效）</option>
           <option value="soft"${p.theme.motion==='soft'?' selected':''}>轻盈（只淡入、更快）</option>
           <option value="off"${p.theme.motion==='off'?' selected':''}>关闭（纯静态）</option>
         </select></div>
+    </div>
+    <div class="thwarn-slot"></div>
+    <div class="thgrp">字体</div>
+    <div class="row2">
+      <div><label>正文字体</label>
+        <select id="fontPicker">
+          <option value="">系统默认</option>
+        </select>
+        <input type="text" id="fontCustomInput" value="${esc(p.theme.fontName)}" placeholder="输入字体名称" style="margin-top:4px;display:none">
+      </div>
       <div><label>标题字体（留空跟随正文）</label><input data-bind="theme.headingFont" value="${esc(p.theme.headingFont||'')}" placeholder="如 Noto Serif SC，仅作用于标题位"></div>
     </div>
-    <div style="font-size:12px;color:var(--txt2);margin:10px 0 2px">跟随酒馆主题（读取用户酒馆的 SmartTheme 变量，未生效时回落到上方硬编码色）</div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <label class="inline-check"><input type="checkbox" data-bind="theme.follow.text" ${(p.theme.follow&&p.theme.follow.text)||p.theme.followTavern?'checked':''}>正文色</label>
-      <label class="inline-check"><input type="checkbox" data-bind="theme.follow.quote" ${(p.theme.follow&&p.theme.follow.quote)?'checked':''}>引用色</label>
-      <label class="inline-check"><input type="checkbox" data-bind="theme.follow.font" ${(p.theme.follow&&p.theme.follow.font)?'checked':''}>字体</label>
-      <label class="inline-check"><input type="checkbox" data-bind="theme.follow.em" ${(p.theme.follow&&p.theme.follow.em)?'checked':''}>强调色（斜体）</label>
-    </div>
+    <div style="font-size:11px;color:var(--txt2);margin-top:4px">字体检测的是本机已装字体；读者机器未装该字体时回落系统默认，导出前建议选常见字体或接受回落。</div>
+    <details class="thadv">
+      <summary>高级 · 跟随酒馆主题</summary>
+      <div style="font-size:11px;color:var(--txt2);margin:8px 0 2px">仅酒馆真机生效：勾选后对应颜色在酒馆内读取该用户酒馆的 SmartTheme 变量，未生效时回落到本卡手动设置的值；预览显示的始终是手动值，不代表酒馆内的最终效果。</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px">
+        <label class="inline-check"><input type="checkbox" data-bind="theme.follow.text" ${(p.theme.follow&&p.theme.follow.text)||p.theme.followTavern?'checked':''}>正文色</label>
+        <label class="inline-check"><input type="checkbox" data-bind="theme.follow.quote" ${(p.theme.follow&&p.theme.follow.quote)?'checked':''}>引用色</label>
+        <label class="inline-check"><input type="checkbox" data-bind="theme.follow.font" ${(p.theme.follow&&p.theme.follow.font)?'checked':''}>字体</label>
+        <label class="inline-check"><input type="checkbox" data-bind="theme.follow.em" ${(p.theme.follow&&p.theme.follow.em)?'checked':''}>强调色（斜体）</label>
+      </div>
+    </details>
   `;
   col.appendChild(themeCard);
+  updatePresetStatus();updateContrastWarn();
 
   /* 字体检测与选择 */
   const fontPicker=$('#fontPicker',col);
@@ -473,28 +550,52 @@ export function renderConfig(){
     col.addEventListener('input',e=>{
       const bind=e.target.dataset.bind;
       if(!bind||!bind.startsWith('theme.'))return;
-      /* 支持两层路径（theme.follow.xxx）：逐层下钻，中间节点缺失时补空对象 */
+      /* 支持两层路径（theme.follow.xxx / theme.bg.xxx）：逐层下钻，中间节点缺失时补空对象 */
       const keys=bind.split('.').slice(1);
       let obj=Project.cur.theme;
       while(keys.length>1){const k=keys.shift();if(!obj[k]||typeof obj[k]!=='object')obj[k]={};obj=obj[k]}
       obj[keys[0]]=e.target.type==='checkbox'?e.target.checked:e.target.value;
       /* follow.text 与旧布尔 followTavern 保持同值（旧版工程文件兼容） */
       if(bind==='theme.follow.text')Project.cur.theme.followTavern=obj[keys[0]];
+      /* 背景类型切换换字段集：入库后重渲染本卡（重渲染会销毁触发元素，值须先读完毕） */
+      if(bind==='theme.bg.type'){Project.saveDebounced();UI.renderConfig()}
+      /* 主题可微调字段的即时反馈：对比度警示 + 预设选中态/已自定义标识 */
+      if(/^theme\.(primary|accent|textColor|radius|titleAlign|motion|bg\.)/.test(bind)){updateContrastWarn();updatePresetStatus()}
       this.debouncedPreview();Project.saveDebounced();
     });
-    /* 主题预设一键套用（closest：点中预设按钮内的色点 span 也能命中） */
+    /* 悬停试穿：只覆写预览构建的 theme 拷贝（UI.previewThemeOverride），工程数据不动——
+       undo/重渲染/换工程天然安全。enter 防抖 120ms 防飞掠重建风暴；leave 立即还原 */
+    col.addEventListener('mouseover',e=>{
+      const card=e.target.closest('[data-preset]');
+      if(!card||card===tryCard)return;
+      const pi=+card.dataset.preset;
+      if(!THEME_PRESETS[pi])return;
+      clearTimeout(tryT);tryCard=card;
+      tryT=setTimeout(()=>UI.tryPreview(THEME_PRESETS[pi].theme),120);
+    });
+    col.addEventListener('mouseout',e=>{
+      if(!tryCard)return;
+      const card=e.target.closest('[data-preset]');
+      if(!card||card!==tryCard)return;
+      if(card.contains(e.relatedTarget))return; /* 卡内子元素间移动不算离开 */
+      clearTimeout(tryT);tryCard=null;
+      UI.tryPreview(null);
+    });
+    /* 主题预设一键套用（closest：点中试穿卡内任意子元素都能命中）。
+       试穿只动预览覆写、数据仍为原值，此处直接落盘即可；主题自 v1.24 进撤销栈 */
     col.addEventListener('click',e=>{
-      /* 先判 btn 再取值：btn 为 null 时 pi 若经 && 短路得 null，会漏过 ===undefined 守卫
-         （null!==undefined 且 +null=0 命中预设 0）——任意点击都会误套用首个预设并整页重渲染 */
       const btn=e.target.closest('[data-preset]');
       if(!btn)return;
       const pi=btn.dataset.preset;
       if(pi===undefined||!THEME_PRESETS[+pi])return;
-      const t=THEME_PRESETS[+pi].theme;
-      Object.keys(t).forEach(k=>{Project.cur.theme[k]=t[k]});
-      /* 主题也进导出产物：同步重渲染导出页，防止复制到过期内容 */
-      UI.renderConfig();UI.refreshPreview();UI.renderExport();Project.save();
-      toast('已套用预设：'+THEME_PRESETS[+pi].name);
+      clearTimeout(tryT);tryCard=null;
+      UI.previewThemeOverride=null;
+      const tp=THEME_PRESETS[+pi];
+      applyPresetTheme(tp.theme);
+      Project.cur.theme.presetRef=tp.name;
+      Project.saveSnapshot();Project.save();
+      UI.renderConfig();UI.refreshPreview();UI.renderExport();
+      toast('已套用预设：'+tp.name);
     });
   }
 
@@ -535,10 +636,7 @@ export function renderBlockBody(container,b,i){
           ${[['none','无'],['stars','星芒 ✦'],['lines','分隔线 ◆'],['moons','月相 ☽'],['petals','花瓣 ❀'],['notes','音符 ♪'],['hearts','爱心 ♡'],['waves','波浪 〰'],['diamonds','菱形阵 ◇'],['custom','自定义字符']].map(([v,l])=>`<option value="${v}"${b.pattern===v?' selected':''}>${l}</option>`).join('')}
         </select></div></div>
         ${bind('patternText','自定义花纹字符（选「自定义字符」时生效）')}
-        <div><label>背景类型</label><select data-bkey="${i}.bgType">
-          <option value="gradient"${b.bgType==='gradient'?' selected':''}>渐变</option><option value="solid"${b.bgType==='solid'?' selected':''}>纯色</option><option value="image"${b.bgType==='image'?' selected':''}>图片</option><option value="noise"${b.bgType==='noise'?' selected':''}>噪点渐变</option>
-        </select></div>
-        ${bind('bgColor','背景色 1','color')}${bind('bgColor2','背景色 2（渐变用）','color')}${bind('bgImage','背景图片 URL')}
+        <div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:6px 0">ℹ️ 背景色/背景图已移至顶部「🎨 主题风格」卡片统一管理（v1.24 起），此处只管边框、花纹与光带。</div>
         ${chk('topGlow','顶部光带（容器上缘强调色亮线）')}`;
       break;
     case 'profile':{
