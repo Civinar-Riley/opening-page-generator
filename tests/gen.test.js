@@ -158,6 +158,30 @@ describe('Gen.build 角色简介折叠',()=>{
     const html=Gen.build(prof(3),{isPreview:true});
     expect(html).toContain('-ptag');
   });
+  it('登场名录立牌：群像墙包裹 -pgrid 且逐卡序号 -pno（01/02…）',()=>{
+    const html=Gen.build(prof(3),{isPreview:true});
+    expect(html).toContain('-pgrid');
+    expect(html).toContain('-pno">01<');
+    expect(html).toContain('-pno">03<');
+  });
+  it('≤2 横向立牌带序号水印；radius 合法值入规则（回归 border-radius:px 存量缺陷）',()=>{
+    const html=Gen.build(prof(2),{isPreview:true});
+    expect(html).toContain('-pno">01<');
+    expect(html).not.toContain('border-radius:px');
+    expect(html).toContain('-profile{position:relative');
+    expect(html).toMatch(/-profile\{[^}]*border-radius:12px/);
+  });
+  it('群像墙逐卡错峰跟随动效档位：full 产出 / off 不产出',()=>{
+    const full=Gen.build(prof(3),{isPreview:true});
+    expect(full).toContain('-pgrid>*{animation:');
+    const p=prof(3);p.theme.motion='off';
+    const off=Gen.build(p,{isPreview:false});
+    expect(off).not.toContain('-pgrid>*{animation:');
+  });
+  it('角色名进标题字体集合（headingFont 作用于 -pname）',()=>{
+    const p=prof(2);p.theme.headingFont='Noto Serif SC';
+    expect(Gen.build(p,{isPreview:false})).toMatch(/-wrap \.[-a-z0-9]+-pname\{font-family:"Noto Serif SC"/);
+  });
 });
 
 describe('Gen.build 骰子区转义',()=>{

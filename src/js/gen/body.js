@@ -27,46 +27,51 @@ export function body(p,px,blocks,isPreview){
         }
         case 'profile':{
           const chars=(Array.isArray(b.characters)&&b.characters.length)?b.characters:[{name:'',desc:'',tags:'',avatar:''}];
-          /* 角色 >2 个：自动折叠为「只显示名字」列表，点击名字展开完整卡片。
-             用 <details> 实现无需脚本，预览与导出行为一致 */
-          const many=chars.length>2;
-          /* 头像来源三模式：manual=手动 URL（<img>）；char/user=酒馆渲染器零 JS 方案——
+          /* 登场名录·立牌：≤2 并列主演横向卡；>2 自动折叠为群像墙（<details> 零脚本，预览与导出一致）。
+             头像来源三模式：manual=手动 URL（<img>）；char/user=酒馆渲染器零 JS 方案——
              渲染器检测到 .char-avatar/.user-avatar 类即注入对应头像背景图（无 API、最兼容），
              预览环境无渲染器，显示占位底色 */
+          const many=chars.length>2;
           const avEl=ch=>{
             if(!b.showAvatar)return '';
             const m=ch.avatarMode==='char'?'char-avatar':ch.avatarMode==='user'?'user-avatar':'';
-            if(m)return `    <div class="${px}-avatar ${m}"></div>\n`;
-            if(ch.avatar)return `    <img class="${px}-avatar" src="${esc(tx(ch.avatar))}" alt="avatar" onerror="this.style.display='none'">\n`;
+            if(m)return `<div class="${px}-avatar ${m}"></div>\n`;
+            if(ch.avatar)return `<img class="${px}-avatar" src="${esc(tx(ch.avatar))}" alt="avatar" onerror="this.style.display='none'">\n`;
             return '';
           };
-          chars.forEach(ch=>{
-            const nameRaw=tx(ch.name||'');
-            if(many){
+          const tagsOf=ch=>(b.showTags&&ch.tags)?tx(ch.tags).split(/[,，]/).map(s=>s.trim()).filter(Boolean):[];
+          const subOf=ch=>{
+            let sub='';
+            if(b.showDesc&&ch.desc)sub+=`        <div class="${px}-pdesc">${esc(tx(ch.desc))}</div>\n`;
+            const tags=tagsOf(ch);
+            if(tags.length)sub+=`        <div class="${px}-ptags">\n${tags.map(t=>`          <span class="${px}-ptag">${esc(t)}</span>\n`).join('')}        </div>\n`;
+            return sub;
+          };
+          const no=i=>String(i+1).padStart(2,'0');
+          if(many){
+            /* 群像墙：折叠=紧凑立牌（序号徽标+渐变名+▸），展开=竖版小立牌 */
+            out+=`  <div class="${px}-pgrid">\n`;
+            chars.forEach((ch,i)=>{
               let body='';
               const av=avEl(ch);if(av)body+=`      ${av.trim()}\n`;
-              let sub='';
-              if(b.showDesc&&ch.desc)sub+=`        <div class="${px}-pdesc">${esc(tx(ch.desc))}</div>\n`;
-              if(b.showTags&&ch.tags){
-                const tags=tx(ch.tags).split(/[,，]/).map(s=>s.trim()).filter(Boolean);
-                if(tags.length)sub+=`        <div class="${px}-ptags">\n${tags.map(t=>`          <span class="${px}-ptag">${esc(t)}</span>\n`).join('')}        </div>\n`;
-              }
-              if(sub)body+=`      <div>\n${sub}      </div>\n`;
-              out+=`  <details class="${px}-profc">\n`;
-              out+=`    <summary class="${px}-phead"><span class="${px}-parrow">▸</span><span class="${px}-pname">${esc(nameRaw||'未命名')}</span></summary>\n`;
-              if(body)out+=`    <div class="${px}-pbody">\n${body}    </div>\n`;
-              out+=`  </details>\n`;
-              return;
-            }
+              body+=subOf(ch);
+              out+=`    <details class="${px}-profc">\n`;
+              out+=`      <summary class="${px}-phead"><span class="${px}-pno">${no(i)}</span><span class="${px}-pname">${esc(tx(ch.name||'')||'未命名')}</span><span class="${px}-parrow">▸</span></summary>\n`;
+              if(body)out+=`      <div class="${px}-pbody">\n${body}      </div>\n`;
+              out+=`    </details>\n`;
+            });
+            out+=`  </div>\n`;
+            break;
+          }
+          chars.forEach((ch,i)=>{
             let inner='';
             inner+=avEl(ch);
-            inner+=`    <div>\n`;
+            inner+=`    <span class="${px}-pno">${no(i)}</span>\n`;
+            inner+=`    <div class="${px}-pcol">\n`;
             if(b.showName&&ch.name)inner+=`      <div class="${px}-pname">${esc(tx(ch.name))}</div>\n`;
             if(b.showDesc&&ch.desc)inner+=`      <div class="${px}-pdesc">${esc(tx(ch.desc))}</div>\n`;
-            if(b.showTags&&ch.tags){
-              const tags=tx(ch.tags).split(/[,，]/).map(s=>s.trim()).filter(Boolean);
-              if(tags.length)inner+=`      <div class="${px}-ptags">\n${tags.map(t=>`        <span class="${px}-ptag">${esc(t)}</span>\n`).join('')}      </div>\n`;
-            }
+            const tags=tagsOf(ch);
+            if(tags.length)inner+=`      <div class="${px}-ptags">\n${tags.map(t=>`        <span class="${px}-ptag">${esc(t)}</span>\n`).join('')}      </div>\n`;
             inner+=`    </div>\n`;
             out+=`  <div class="${px}-profile">\n${inner}  </div>\n`;
           });

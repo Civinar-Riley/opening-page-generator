@@ -643,7 +643,7 @@ export function renderBlockBody(container,b,i){
       const bp=b;
       if(!Array.isArray(bp.characters)||!bp.characters.length)bp.characters=[{name:'',desc:'',tags:'',avatar:''}];
       const build=()=>{
-        let h=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:0 0 8px">📌 角色信息直接填写即可（支持宏），可添加多个角色，每个角色渲染为一张简介卡；角色超过 2 个时自动折叠——仅显示名字列表，点击名字展开完整卡片（预览与导出一致）。</div>`;
+        let h=`<div style="font-size:11px;color:var(--txt2);background:var(--panel2);border-radius:6px;padding:8px;margin:0 0 8px">📌 角色信息直接填写即可（支持宏）。≤2 个角色渲染为并列主演的横向立牌；超过 2 个自动收成「群像墙」网格——折叠显示序号与角色名，点击展开完整立牌（预览与导出一致）。</div>`;
         bp.characters.forEach((ch,ci)=>{
           h+=`<div style="border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:8px 0">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">

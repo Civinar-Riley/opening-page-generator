@@ -41,7 +41,7 @@ export function css(p,px,blocks){
     /* 标题字体：空则跟随正文字体；信任面同 fontName（剔除引号/尖括号/反斜杠）。
        标题位集合均无显式 font-family（继承自 root *{font-family:inherit}），声明即生效 */
     const hSafe=String(th.headingFont||'').replace(/[<>"\\]/g,'').trim();
-    if(hSafe)s+=`.${px}-wrap .${px}-title,.${px}-wrap .${px}-eyebrow,.${px}-wrap .${px}-gnum,.${px}-wrap .${px}-ghead,.${px}-wrap .${px}-revt,.${px}-wrap .${px}-cd-title,.${px}-wrap .${px}-tl-title,.${px}-wrap .${px}-qa-title,.${px}-wrap .${px}-bgm-title,.${px}-wrap .${px}-authh{font-family:"${hSafe}",${fontSafe?`"${fontSafe}",`:``}"Segoe UI","Microsoft YaHei",sans-serif}\n`;
+    if(hSafe)s+=`.${px}-wrap .${px}-title,.${px}-wrap .${px}-eyebrow,.${px}-wrap .${px}-gnum,.${px}-wrap .${px}-ghead,.${px}-wrap .${px}-revt,.${px}-wrap .${px}-cd-title,.${px}-wrap .${px}-tl-title,.${px}-wrap .${px}-qa-title,.${px}-wrap .${px}-bgm-title,.${px}-wrap .${px}-authh,.${px}-wrap .${px}-pname{font-family:"${hSafe}",${fontSafe?`"${fontSafe}",`:``}"Segoe UI","Microsoft YaHei",sans-serif}\n`;
     s+=`@media(prefers-reduced-motion:reduce){.${px}-wrap>div>*,.${px}-lb.on,.${px}-lb.on img,.${px}-cd-done .${px}-cd-val,.${px}-hr::after{animation:none!important}}
 `;
     /* 增量跟随：引用色作用于引言/引用元素；强调色作用于斜体/着重内容 */
@@ -113,26 +113,50 @@ ${bk} .${px}-title::after{right:-24px;border-left:12px solid ${th.accent}33}
           break;
         }
         case 'profile':
+          /* 登场名录·立牌：≤2 并列主演横向卡 / >2 群像墙折叠立牌。
+             序号水印 + accent 顶线 + L 形相框角，全部主题令牌着色；radius 此前存在
+             `border-radius:px` 缺插值的非法输出（引擎丢弃致卡直角），本次一并修复 */
           s+=`
-${bk} .${px}-profile{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.06);border:1px solid ${th.primary}66;border-radius:px;padding:14px;margin:12px 0}
-${bk} .${px}-avatar{width:${b.avatarRound?'84px':'100px'};height:${b.avatarRound?'84px':'120px'};object-fit:cover;border-radius:${b.avatarRound?'50%':'8px'};border:2px solid ${th.accent};flex-shrink:0;background:rgba(255,255,255,.08) center/cover no-repeat}
-${bk} .${px}-pname{font-size:18px;font-weight:700;color:${th.accent};margin-bottom:6px}
-${bk} .${px}-pdesc{font-size:13px;line-height:1.7;opacity:.9;white-space:pre-wrap}
-${bk} .${px}-ptags{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-${bk} .${px}-ptag{font-size:11px;padding:2px 10px;border:1px solid ${th.primary};border-radius:20px;color:${th.primary};opacity:.9}
+${bk} .${px}-profile{position:relative;display:flex;gap:16px;align-items:flex-start;background:linear-gradient(135deg,${th.primary}12,transparent 55%),rgba(255,255,255,.035);border:1px solid ${th.primary}44;border-radius:${radius}px;padding:16px 18px;margin:12px 0;overflow:hidden}
+${bk} .${px}-profile::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${th.accent},${th.primary},transparent 80%)}
+${bk} .${px}-profile::after{content:"";position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-right:1px solid ${th.accent};border-bottom:1px solid ${th.accent};opacity:.5;pointer-events:none}
+${bk} .${px}-profile .${px}-pno{position:absolute;top:4px;right:12px;font-family:Georgia,"Times New Roman",serif;font-size:56px;font-weight:700;line-height:1;color:${th.accent};opacity:.08;pointer-events:none}
+${bk} .${px}-avatar{width:${b.avatarRound?'84px':'100px'};height:${b.avatarRound?'84px':'120px'};object-fit:cover;border-radius:${b.avatarRound?'50%':'8px'};border:2px solid ${th.accent};box-shadow:0 0 0 4px ${th.primary}2e,0 0 0 1px rgba(255,255,255,.18) inset;flex-shrink:0;background:rgba(255,255,255,.08) center/cover no-repeat;transition:transform .25s ease,box-shadow .25s ease}
+${bk} .${px}-profile:hover .${px}-avatar{transform:scale(1.02);box-shadow:0 0 0 4px ${th.primary}55,0 0 0 1px rgba(255,255,255,.25) inset}
+${bk} .${px}-pcol{min-width:0;flex:1}
+${bk} .${px}-pname{font-size:19px;font-weight:700;margin-bottom:4px;width:fit-content;background:linear-gradient(90deg,${th.accent},${th.primary});-webkit-background-clip:text;background-clip:text;color:transparent}
+${bk} .${px}-pname::after{content:"";display:block;width:22px;height:2px;margin-top:5px;border-radius:1px;background:linear-gradient(90deg,${th.accent},transparent)}
+${bk} .${px}-pdesc{font-size:13px;line-height:1.75;opacity:.9;white-space:pre-wrap}
+${bk} .${px}-ptags{margin-top:9px;display:flex;flex-wrap:wrap;gap:6px}
+${bk} .${px}-ptag{font-size:11px;padding:2px 10px;border:1px solid ${th.accent}55;background:${th.accent}0d;border-radius:20px;color:${th.accent}}
 `;
-          /* 角色 >2 个：折叠为名字列表，点击名字展开完整卡片 */
+          /* 群像墙：>2 折叠为网格立牌（展开=竖版小卡）；卡片 hover 抬升 + accent 描边 */
           s+=`
-${bk} .${px}-profc{background:rgba(255,255,255,.06);border:1px solid ${th.primary}66;border-radius:px;padding:12px 14px;margin:12px 0}
-${bk} .${px}-phead{cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:8px}
+${bk} .${px}-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:12px 0}
+${bk} .${px}-profc{position:relative;background:linear-gradient(160deg,${th.primary}0e,transparent 60%),rgba(255,255,255,.035);border:1px solid ${th.primary}44;border-radius:${radius}px;padding:12px 14px;margin:0;overflow:hidden;transition:transform .2s ease,border-color .2s ease}
+${bk} .${px}-profc:hover{transform:translateY(-2px);border-color:${th.accent}88}
+${bk} .${px}-profc::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,${th.accent},${th.primary},transparent 80%);opacity:.7;pointer-events:none}
+${bk} .${px}-profc[open]::after{content:"";position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-right:1px solid ${th.accent};border-bottom:1px solid ${th.accent};opacity:.5;pointer-events:none}
+${bk} .${px}-phead{cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:9px;min-width:0}
 ${bk} .${px}-phead::-webkit-details-marker{display:none}
-${bk} .${px}-phead:hover{opacity:.85}
+${bk} .${px}-phead:hover .${px}-pname{filter:brightness(1.12)}
+${bk} .${px}-phead .${px}-pno{font-family:Georgia,"Times New Roman",serif;font-size:15px;font-weight:700;letter-spacing:1px;color:${th.accent};opacity:.55;flex-shrink:0}
 ${bk} .${px}-phead .${px}-pname{margin-bottom:0;font-size:16px}
-${bk} .${px}-parrow{transition:transform .25s ease;font-size:12px;opacity:.6;flex-shrink:0}
+${bk} .${px}-phead .${px}-pname::after{display:none}
+${bk} .${px}-parrow{margin-left:auto;transition:transform .25s ease;font-size:12px;opacity:.55;flex-shrink:0;color:${th.accent}}
 ${bk} .${px}-profc[open] .${px}-parrow{transform:rotate(90deg);opacity:1}
 ${bk} .${px}-profc[open] .${px}-phead{margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08)}
-${bk} .${px}-pbody{display:flex;gap:14px;align-items:flex-start}
+${bk} .${px}-pbody{display:flex;flex-direction:column;gap:10px;min-width:0}
+${bk} .${px}-pbody .${px}-avatar{width:96px;height:${b.avatarRound?'96px':'128px'}}
 `;
+          /* 群像墙逐卡错峰入场：接管全局「块级单元素」动画（pgrid 整体动画置空），
+             动效档位感知——off 不产出；keyframes 复用全局 ${px}-in */
+          if(motion!=='off'){
+            const dur=motion==='soft'?'.3s':'.45s';
+            s+=`${bk} .${px}-pgrid{animation:none}\n`;
+            s+=`${bk} .${px}-pgrid>*{animation:${px}-in ${dur} ease both}\n`;
+            s+=[1,2,3,4,5,6,7,8].map(n=>`${bk} .${px}-pgrid>*:nth-child(${n}){animation-delay:.${(n*5).toString().padStart(2,'0')}s}`).join('\n')+'\n';
+          }
           break;
         case 'disclaimer':
           s+=`
