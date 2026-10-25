@@ -1,5 +1,5 @@
 /* 工程数据规范化 / 迁移逻辑单元测试 */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project, setUI } from '../src/js/project.js';
 import { BLOCK_DEFS, BLOCK_ORDER, defaultProject } from '../src/js/defs.js';
 
@@ -105,19 +105,20 @@ describe('Project.migrate 旧版迁移',()=>{
     expect(pr.characters[0].avatar).toBe('http://x');
     expect(pr.placeholderName).toBeUndefined();
   });
-  it('greetings clickAction insert/缺省迁移为 go',()=>{
+  it('greetings 仅缺省或空值点击行为补为 go',()=>{
     const p={name:'t',blocks:[
-      {type:'greetings',enabled:true,clickAction:'insert'},
       {type:'greetings',enabled:true},
+      {type:'greetings',enabled:true,clickAction:null},
+      {type:'greetings',enabled:true,clickAction:''},
     ]};
     Project.migrate(p);
-    /* normalize 会补齐其他默认区块，需过滤后断言 */
     p.blocks.filter(b=>b.type==='greetings').forEach(b=>expect(b.clickAction).toBe('go'));
   });
-  it('greetings 合法的 send 行为保留',()=>{
-    const p={name:'t',blocks:[{type:'greetings',enabled:true,clickAction:'send'}]};
+  it.each(['insert','send','go','button'])('greetings 显式 %s 行为多次迁移仍保留',clickAction=>{
+    const p={name:'t',blocks:[{type:'greetings',enabled:true,clickAction}]};
     Project.migrate(p);
-    expect(p.blocks[0].clickAction).toBe('send');
+    Project.migrate(p);
+    expect(p.blocks[0].clickAction).toBe(clickAction);
   });
 });
 
@@ -191,5 +192,222 @@ describe('快照纳入区块配置',()=>{
       expect(Project.redo()).toBe(true);
       expect(Project.cur.blocks.length).toBe(2);
     }finally{Project.save=origSave;Project.saveDebounced=origDeb}
+  });
+});
+
+describe('输入历史与工程往返保存',()=>{
+  let original;
+  beforeEach(()=>{
+    original={...Project};
+    vi.useFakeTimers();
+    const storage=new Map();
+    vi.stubGlobal('localStorage',{
+      getItem:k=>storage.get(k)??null,
+      setItem:vi.fn((k,v)=>storage.set(k,String(v))),
+    });
+    Project.list=[defaultProject('A')];Project.cur=Project.list[0];Project.templates=[];
+    Project._svT=null;Project._resetting=false;
+    setUI({renderAll(){}});
+    Project.resetHistory();
+  });
+  afterEach(()=>{
+    vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();
+    Object.assign(Project,original);setUI(undefined);
+  });
+
+  it.each(['insert','send','go'])('%s 经导出迁移和保存加载后均保持不变',clickAction=>{
+    Project.cur.blocks.find(b=>b.type==='greetings').clickAction=clickAction;
+    const imported=Project.exportData();
+    Project.migrate(imported);
+    expect(imported.blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
+    Project.save();Project.load();
+    expect(Project.cur.blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
+    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
+  });
+
+  it('输入后不足 600ms 就添加区块，撤销只移除新增区块',()=>{
+    const title=Project.cur.blocks[0].title,n=Project.cur.blocks.length;
+    Project.cur.blocks[0].title='刚编辑的标题';Project.saveDebounced();
+    vi.advanceTimersByTime(100);
+    Project.cur.blocks.push({type:'quote',enabled:true,text:'新引言'});
+    Project.save();Project.saveSnapshot();
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks).toHaveLength(n);
+    expect(Project.cur.blocks[0].title).toBe('刚编辑的标题');
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe(title);
+    expect(Project.redo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('刚编辑的标题');
+    expect(Project.redo()).toBe(true);
+    expect(Project.cur.blocks).toHaveLength(n+1);
+  });
+
+  it('输入立即记录，同一防抖批次合并，间隔 600ms 后独立记录',()=>{
+    const title=Project.cur.blocks[0].title;
+    Project.cur.blocks[0].title='第一个字';Project.saveDebounced();
+    expect(Project._history).toHaveLength(2);
+    expect(Project._history[1].blocks[0].title).toBe('第一个字');
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(300);
+    Project.cur.blocks[0].title='完整一句';Project.saveDebounced();
+    expect(Project._history).toHaveLength(2);
+    expect(Project._history[0].blocks[0].title).toBe(title);
+    expect(Project._history[1].blocks[0].title).toBe('完整一句');
+    vi.advanceTimersByTime(599);
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].blocks[0].title).toBe('完整一句');
+    expect(Project._history).toHaveLength(2);
+    Project.cur.blocks[0].title='下一批输入';Project.saveDebounced();
+    expect(Project._history).toHaveLength(3);
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('完整一句');
+  });
+
+  it('结构快照结束输入合并；重复快照去重但下一次输入仍独立',()=>{
+    Project.cur.blocks[0].title='批次一';Project.saveDebounced();
+    Project.saveSnapshot();Project.saveSnapshot();
+    expect(Project._history).toHaveLength(2);
+    Project.cur.blocks[0].title='批次二';Project.saveDebounced();
+    expect(Project._history).toHaveLength(3);
+    Project.cur.blocks.push({type:'quote',enabled:true,text:'结构操作'});
+    Project.saveSnapshot();Project.saveSnapshot();
+    expect(Project._history).toHaveLength(4);
+    Project.cur.blocks[0].title='结构操作后的输入';Project.saveDebounced();
+    expect(Project._history).toHaveLength(5);
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('批次二');
+    expect(Project.cur.blocks.at(-1).text).toBe('结构操作');
+  });
+
+  it('撤销后新输入立即截断 redo，不会被重做覆盖',()=>{
+    const title=Project.cur.blocks[0].title;
+    Project.cur.blocks[0].title='旧分支';Project.saveSnapshot();
+    expect(Project.undo()).toBe(true);
+    Project.cur.blocks[0].title='新分支';Project.saveDebounced();
+    expect(Project.redo()).toBe(false);
+    expect(Project.cur.blocks[0].title).toBe('新分支');
+    vi.advanceTimersByTime(600);
+    expect(Project.redo()).toBe(false);
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe(title);
+    expect(Project.redo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('新分支');
+  });
+
+  it('仅保存或重复快照不增加历史，也不截断 redo',()=>{
+    Project.cur.blocks[0].title='待重做';Project.saveSnapshot();
+    Project.undo();
+    const history=JSON.stringify(Project._history),idx=Project._historyIdx;
+    Project.save();Project.saveDebounced();Project.saveSnapshot();
+    vi.advanceTimersByTime(600);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    expect(Project._historyIdx).toBe(idx);
+    expect(Project.redo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('待重做');
+  });
+
+  it('非 block 输入不生成历史或清除 redo，重做也不回退这些字段',()=>{
+    Project.cur.blocks[0].title='待重做';Project.saveSnapshot();Project.undo();
+    const history=JSON.stringify(Project._history);
+    Project.cur.theme.primary='#123456';
+    Project.cur.ai.baseURL='https://example.test/v1';
+    Project.cur.macros[0].v='新宏值';
+    Project.cur.preview.theme='light';
+    Project.saveDebounced();vi.advanceTimersByTime(600);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    expect(Project.redo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('待重做');
+    expect(Project.cur.theme.primary).toBe('#123456');
+    expect(Project.cur.ai.baseURL).toBe('https://example.test/v1');
+    expect(Project.cur.macros[0].v).toBe('新宏值');
+    expect(Project.cur.preview.theme).toBe('light');
+  });
+
+  it('undo/redo 的防抖保存不生成历史，且终止此前输入批次',()=>{
+    Project.cur.blocks[0].title='编辑值';Project.saveDebounced();
+    const history=JSON.stringify(Project._history);
+    expect(Project.undo()).toBe(true);
+    vi.advanceTimersByTime(600);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    expect(Project._historyIdx).toBe(0);
+    expect(Project.redo()).toBe(true);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    /* 紧接重做输入：不能把重做的快照当成仍在输入中的批次覆盖 */
+    Project.cur.blocks[0].title='重做后输入';Project.saveDebounced();
+    expect(Project._history).toHaveLength(3);
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('编辑值');
+    vi.advanceTimersByTime(600);
+    expect(Project.redo()).toBe(true);
+    vi.advanceTimersByTime(600);
+    expect(Project.cur.blocks[0].title).toBe('重做后输入');
+    expect(Project._history).toHaveLength(3);
+  });
+
+  it('undo/redo 重渲染即使补齐 block 字段，也不能由保存写入新历史',()=>{
+    Project.cur.blocks[0].title='待重做';Project.saveSnapshot();
+    const history=JSON.stringify(Project._history);
+    setUI({renderAll(){Project.cur.blocks[0].subtitle='渲染补齐'}});
+    expect(Project.undo()).toBe(true);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    expect(Project.redo()).toBe(true);
+    vi.advanceTimersByTime(600);
+    expect(JSON.stringify(Project._history)).toBe(history);
+    expect(Project.cur.blocks[0].title).toBe('待重做');
+  });
+
+  it('输入历史仍受 MAX_HISTORY 限制，合并与撤销不越界',()=>{
+    for(let i=1;i<=Project.MAX_HISTORY+3;i++){
+      Project.cur.blocks[0].title=String(i);Project.saveDebounced();
+      vi.advanceTimersByTime(600);
+    }
+    expect(Project._history).toHaveLength(Project.MAX_HISTORY);
+    expect(Project._historyIdx).toBe(Project.MAX_HISTORY-1);
+    for(let i=1;i<Project.MAX_HISTORY;i++)expect(Project.undo()).toBe(true);
+    expect(Project.undo()).toBe(false);
+    expect(Project.cur.blocks[0].title).toBe('4');
+    for(let i=1;i<Project.MAX_HISTORY;i++)expect(Project.redo()).toBe(true);
+    expect(Project.redo()).toBe(false);
+    expect(Project.cur.blocks[0].title).toBe(String(Project.MAX_HISTORY+3));
+  });
+
+  it('输入防抖未结束时切工程，B 的首轮输入不能合并到 A 或覆盖 B 基线',()=>{
+    const a=Project.cur,b=defaultProject('B'),titleB=b.blocks[0].title;
+    Project.list.push(b);
+    a.blocks[0].title='A 的输入';Project.saveDebounced();
+    Project.select(b.id);
+    expect(Project.undo()).toBe(false);
+    expect(Project.redo()).toBe(false);
+    b.blocks[0].title='B 的输入';Project.saveDebounced();
+    expect(Project._history).toHaveLength(2);
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe(titleB);
+    expect(Project.redo()).toBe(true);
+    vi.advanceTimersByTime(600);
+    expect(a.blocks[0].title).toBe('A 的输入');
+    Project.select(a.id);
+    expect(Project.undo()).toBe(false);
+    expect(Project.redo()).toBe(false);
+    expect(Project.cur.blocks[0].title).toBe('A 的输入');
+    const saved=JSON.parse(localStorage.getItem(Project.LS_KEY));
+    expect(saved.find(p=>p.id===b.id).blocks[0].title).toBe('B 的输入');
+  });
+
+  it('重复 load 重建当前基线，不保留此前工程或待重做历史',()=>{
+    Project.cur.blocks[0].title='已保存';Project.saveSnapshot();Project.save();
+    Project.cur.blocks[0].title='未落盘输入';Project.saveDebounced();
+    Project.load();
+    expect(Project.cur.blocks[0].title).toBe('已保存');
+    expect(Project._history).toHaveLength(1);
+    expect(Project.undo()).toBe(false);
+    expect(Project.redo()).toBe(false);
+    Project.cur.blocks[0].title='加载后输入';Project.saveDebounced();
+    expect(Project.undo()).toBe(true);
+    expect(Project.cur.blocks[0].title).toBe('已保存');
+    Project.load();vi.advanceTimersByTime(600);
+    expect(Project._history).toHaveLength(1);
+    expect(Project.undo()).toBe(false);
+    expect(Project.redo()).toBe(false);
   });
 });

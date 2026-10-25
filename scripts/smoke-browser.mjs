@@ -59,23 +59,34 @@ try {
       b.click();
     }, name).catch(e => errors.push('tab switch: ' + e.message));
     await page.waitForTimeout(300);
-    const active = await page.evaluate(n =>
-      [...document.querySelectorAll('button')].some(x => x.textContent.trim() === n), name);
+    const active = await page.evaluate(n => {
+      const tab = [...document.querySelectorAll('#tabs .tab')].find(x => x.textContent.trim() === n);
+      return !!tab?.classList.contains('active') && document.getElementById(tab.dataset.page)?.classList.contains('active');
+    }, name);
     assert(`页签「${name}」可切`, active);
   }
 
-  /* 预览重挂后 iframe 内容非空（第二个 iframe 才是预览帧，遍历取 body 最长的） */
+  /* 只检查活动预览帧，避免隐藏的配置页预览掩盖当前页空白。 */
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === '预览');
     if (b) b.click();
   });
   await page.waitForTimeout(600);
-  const previewLen = await page.evaluate(() => {
-    const frames = [...document.querySelectorAll('iframe')]
-      .map(f => { try { return (f.contentDocument?.body?.innerHTML || '').length; } catch (e) { return 0; } });
-    return Math.max(0, ...frames);
+  const previewLen = await page.evaluate(() => (document.querySelector('#pagePreview.active iframe')?.contentDocument?.body?.innerHTML || '').length);
+  assert('活动预览 iframe 内容非空', previewLen > 1000);
+
+  /* 明暗切换后返回配置页，两帧的实际底色须与共享设置一致。 */
+  await page.locator('#pagePreview [data-v="light"]').click();
+  await page.waitForFunction(() => {
+    const f = document.querySelector('#pagePreview iframe');
+    return f?.contentDocument?.body && f.contentWindow.getComputedStyle(f.contentDocument.body).backgroundColor === 'rgb(242, 242, 245)';
   });
-  assert('预览 iframe 内容非空', previewLen > 1000);
+  await page.locator('#tabs [data-page="pageConfig"]').click();
+  await page.waitForFunction(() => {
+    const f = document.querySelector('#previewFrameLive');
+    return f?.contentDocument?.body && f.contentWindow.getComputedStyle(f.contentDocument.body).backgroundColor === 'rgb(242, 242, 245)';
+  });
+  assert('返回配置页后预览底色同步', true);
 
   /* 汇总 */
   const bad = checks.filter(c => !c.ok);

@@ -43,7 +43,8 @@ export function comicReader(px){
   var rbodyOf=function(rd){var b=rd.getElementsByClassName(PX+'-rbody')[0];return b};
   var pagedOf=function(rd){var b=rbodyOf(rd);return !!(b&&b.classList.contains('paged'))};
   function show(rd,i){
-    var pgs=rd.querySelectorAll('[data-opg="comic-page"]'),n=pgs.length;
+    /* 翻页 CSS 控制 figure 的显示，状态类必须落在整页容器（连同说明一起切换）。 */
+    var pgs=rd.querySelectorAll('.'+PX+'-rpg'),n=pgs.length;
     if(!n)return;
     if(i<0)i=0;if(i>n-1)i=n-1;
     curIdx=i;
@@ -174,6 +175,8 @@ export function bgmScript(px){
     audio.addEventListener('timeupdate',function(){
       if(audio.duration){progBar.value=audio.currentTime/audio.duration*100;timeEl.textContent=fmt(audio.currentTime)+'/'+fmt(audio.duration);}
     });
+    /* 单曲循环交给原生 audio；关闭后接续列表下一首，不影响酒馆助手音频分支。 */
+    audio.addEventListener('ended',function(){if(!audio.loop)next();});
     /* 源失效/加载失败：切下一曲或提示。失败计数封顶曲目数——全部失效时终止，防 error→next 无限重试循环 */
     var errCount=0;
     audio.addEventListener('error',function(){

@@ -1052,3 +1052,77 @@ describe('Gen.build 漫画阅读器（comic，v1.14）',()=>{
     expect(Gen.auditCompat(p).items.some(x=>/http:\/\//.test(x.msg))).toBe(true);
   });
 });
+
+describe('Gen 生成/导出行为回归',()=>{
+  /* 只运行目标产物脚本，使用局部 DOM 替身，不污染全局或依赖酒馆 API。 */
+  const runtime=(html,needle)=>[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].find(m=>m[1].includes(needle))[1];
+  const classList=()=>{const set=new Set();return {add:k=>set.add(k),remove:k=>set.delete(k),contains:k=>set.has(k),toggle:(k,on)=>on?set.add(k):set.delete(k)}};
+  it('更新日志默认全角分隔符生成独立版本、日期与内容字段（预览/导出）',()=>{
+    const b={type:'changelog',enabled:true,...BLOCK_DEFS.changelog.create()},p=proj([b]),px=Gen.prefix(p);
+    for(const isPreview of [true,false]){
+      const html=Gen.build(p,{isPreview});
+      expect(html).toContain(`class="${px}-clv">v1.2</span>`);
+      expect(html).toContain(`class="${px}-cld">2025-06-01</span>`);
+      expect(html).toContain(`class="${px}-clt">新增两张地图与隐藏结局</span>`);
+    }
+  });
+  it('更新日志兼容半角与混合分隔符，内容中的后续分段不丢失',()=>{
+    const p=proj([{type:'changelog',enabled:true,lines:'v1|2025-01-01|甲|乙\nv2｜2025-02-01|丙｜丁'}]),px=Gen.prefix(p);
+    const html=Gen.build(p,{isPreview:false});
+    expect(html).toContain(`class="${px}-cld">2025-01-01</span>`);
+    expect(html).toContain(`class="${px}-clt">甲|乙</span>`);
+    expect(html).toContain(`class="${px}-clv">v2</span>`);
+    expect(html).toContain(`class="${px}-cld">2025-02-01</span>`);
+    expect(html).toContain(`class="${px}-clt">丙|丁</span>`);
+  });
+  it('漫画翻页首屏与下一页将 onp 加在 figure 而非 img，并更新页码和按钮',()=>{
+    const p=proj([{type:'comic',enabled:true,mode:'paged',entry:'banner',pages:[{url:'a.png'},{url:'b.png'}]}]),px=Gen.prefix(p);
+    const html=Gen.build(p,{isPreview:true});
+    expect(html).toContain(`<figure class="${px}-rpg"><img data-opg="comic-page"`);
+    expect(html).toContain(`.${px}-rbody.paged .${px}-rpg.onp{display:flex`);
+    const figures=[{classList:classList()},{classList:classList()}],images=[{classList:classList()},{classList:classList()}];
+    const info={},prev={},next={},controls={'[data-opg="comic-pageinfo"]':info,'[data-opg="comic-prev"]':prev,'[data-opg="comic-next"]':next};
+    const reader={classList:classList(),setAttribute(){},getElementsByClassName:()=>[{classList:{contains:k=>k==='paged'}}],
+      querySelectorAll:s=>s===`.${px}-rpg`?figures:s==='[data-opg="comic-page"]'?images:[],querySelector:s=>controls[s]};
+    let onClick;
+    const root={querySelector:()=>reader,addEventListener:(name,fn)=>{if(name==='click')onClick=fn}};
+    new Function('document',runtime(html,'function openRd'))({getElementById:()=>root,addEventListener(){}});
+    const click=kind=>onClick({target:{closest:s=>s===`[data-opg="comic-${kind}"]`?{getAttribute:()=> 'bk0'}:null}});
+    click('open');
+    expect(figures.map(f=>f.classList.contains('onp'))).toEqual([true,false]);
+    expect(images.map(f=>f.classList.contains('onp'))).toEqual([false,false]);
+    expect(info.textContent).toBe('1 / 2');expect(prev.disabled).toBe(true);expect(next.disabled).toBe(false);
+    click('next');
+    expect(figures.map(f=>f.classList.contains('onp'))).toEqual([false,true]);
+    expect(info.textContent).toBe('2 / 2');expect(prev.disabled).toBe(false);expect(next.disabled).toBe(true);
+    click('prev');
+    expect(figures.map(f=>f.classList.contains('onp'))).toEqual([true,false]);
+  });
+  const localBgm=loop=>{
+    const tracks=[{name:'A',url:'a.mp3'},{name:'B',url:'b.mp3'}];
+    const p=proj([{type:'bgm',enabled:true,tracks,volume:50,loop}]),px=Gen.prefix(p),events={},controls={};
+    ['play','name','prog','time','vol','loop'].forEach(k=>{controls[`.${px}-bgm-${k}`]={value:50,classList:classList(),events:{},addEventListener(name,fn){this.events[name]=fn}}});
+    if(loop)controls[`.${px}-bgm-loop`].classList.add('on');
+    const sources=tracks.map(t=>({src:t.url,dataset:{name:t.name}}));
+    const audio={loop,src:'',paused:true,playCount:0,querySelectorAll:()=>sources,previousElementSibling:{querySelector:s=>controls[s]},
+      addEventListener:(name,fn)=>{events[name]=fn},play(){this.playCount++;this.paused=false;return Promise.resolve()},pause(){this.paused=true}};
+    new Function('document','window',runtime(Gen.build(p,{isPreview:true}),'var audios='))({getElementById:()=>({querySelectorAll:()=>[audio]})},{});
+    return {audio,emit:name=>events[name]?.(),name:controls[`.${px}-bgm-name`],play:controls[`.${px}-bgm-play`],loop:controls[`.${px}-bgm-loop`]};
+  };
+  it('本地 BGM 关闭单曲循环时播完顺序切下一首，末曲回绕第一首',()=>{
+    const b=localBgm(false);
+    b.emit('ended');
+    expect(b.audio.src).toBe('b.mp3');expect(b.name.textContent).toBe('B');expect(b.audio.playCount).toBe(1);expect(b.play.textContent).toBe('⏸');
+    b.emit('ended');
+    expect(b.audio.src).toBe('a.mp3');expect(b.name.textContent).toBe('A');expect(b.audio.playCount).toBe(2);
+  });
+  it('本地 BGM 单曲循环不切曲，关闭循环开关后恢复播完下一首',()=>{
+    const b=localBgm(true);
+    b.emit('ended');
+    expect(b.audio.src).toBe('a.mp3');expect(b.audio.playCount).toBe(0);
+    b.loop.events.click();
+    expect(b.audio.loop).toBe(false);
+    b.emit('ended');
+    expect(b.audio.src).toBe('b.mp3');expect(b.audio.playCount).toBe(1);
+  });
+});

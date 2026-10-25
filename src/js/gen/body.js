@@ -299,7 +299,8 @@ export function body(p,px,blocks,isPreview){
           if(rows.length){
             out+=`  <div class="${px}-cl">\n`;
             rows.forEach(r=>{
-              const seg=r.split('|');
+              /* 默认值与编辑器提示用全角分隔符，归一后仍兼容已有半角日志。 */
+              const seg=r.replace(/｜/g,'|').split('|');
               const ver=(seg[0]||'').trim(),date=(seg[1]||'').trim(),txt=seg.slice(2).join('|').trim();
               out+=`    <div class="${px}-clrow"><span class="${px}-clv">${esc(ver)}</span>${date?`<span class="${px}-cld">${esc(date)}</span>`:''}<span class="${px}-clt">${esc(txt)}</span></div>\n`;
             });

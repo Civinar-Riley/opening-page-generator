@@ -14,7 +14,6 @@ import { renderHelp } from './renderHelp.js';
 
 const UI={
   previewDebounce:null,
-  _lastPreviewKey:'',
   _helpBuilt:false,
   _curGame:null,
 
@@ -61,7 +60,7 @@ const UI={
     </div>`;
     $('#segDevice',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.mode=e.target.dataset.v;this.refreshPreview();Project.save()}});
     $('#segTheme',slot).addEventListener('click',e=>{if(e.target.dataset.v){Project.cur.preview.theme=e.target.dataset.v;this.refreshPreview();Project.save()}});
-    $('#btnRefresh',slot).addEventListener('click',()=>{this._lastPreviewKey='';Macros.resetCache();this.refreshPreview()});
+    $('#btnRefresh',slot).addEventListener('click',()=>{$('#'+id,slot)._lastPreviewKey='';Macros.resetCache();this.refreshPreview()});
     $('#'+id,slot).addEventListener('load',()=>this.fitPreviewHeight($('#'+id,slot)));
   },
 
@@ -102,13 +101,14 @@ const UI={
     try{comp=Gen.build(p,{isPreview:true})}
     catch(e){
       console.error('[预览] 生成失败',e);
+      frame._lastPreviewKey='';
       frame.srcdoc=`<!DOCTYPE html><html><body style="background:#14161c;color:#e06c5c;font:13px/1.7 sans-serif;padding:16px;white-space:pre-wrap">⚠️ 预览生成失败：${esc(e.message)}</body></html>`;
       return;
     }
-    /* 增量更新：内容+主题未变则跳过 iframe 重建（完整内容比对，避免长文本尾部改动被漏判） */
+    /* 缓存跟随各自 iframe：隐藏页未更新，不能用另一页的内容 key 跳过重建。 */
     const key=comp+'\u0000'+p.preview.theme;
-    if(key===this._lastPreviewKey)return;
-    this._lastPreviewKey=key;
+    if(key===frame._lastPreviewKey)return;
+    frame._lastPreviewKey=key;
     const tavernVars=p.preview.theme==='light'
       ?'--SmartThemeBodyColor:#eee;--SmartThemeQuoteColor:#ccc;--SmartThemeEmColor:#ffd280;--SmartThemeFont:\'Noto Sans SC\',sans-serif'
       :'--SmartThemeBodyColor:#2a2a35;--SmartThemeQuoteColor:#666;--SmartThemeEmColor:#8fa8ff;--SmartThemeFont:\'Noto Sans SC\',sans-serif';
@@ -193,8 +193,6 @@ $$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
          ≤900px 视口下会按 0 高度钉死 2px，预览塌缩 */
       n.addEventListener('load',()=>UI.fitPreviewHeight(n));
       f.replaceWith(n);
-      /* 新 iframe 无 srcdoc，必须清空增量 key，否则下方 refreshPreview 会因内容未变而跳过 → 预览页空白 */
-      UI._lastPreviewKey='';
     }
   }
   /* 预览只刷活动页，切换页签后统一刷新当前页 */

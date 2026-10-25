@@ -5,8 +5,8 @@ import { Project } from '../project.js';
 import { UI } from './core.js';
 import { resolveAiChannel, tavernGenerate } from './extBridge.js';
 
-/* 会话内暂存 Key：勾掉「在本机记住 Key」时 Key 只活在本模块内存，不进 localStorage（导出剔除逻辑照旧） */
-let _sessionKey='';
+/* 会话 Key 按工程隔离，只存内存；工程释放后随 WeakMap 回收，不带入其他工程的接口。 */
+const _sessionKeys=new WeakMap();
 
 export function renderAI(){
   const p=Project.cur,col=$('#aiCol');
@@ -24,7 +24,7 @@ export function renderAI(){
         ?`<div style="font-size:12px;color:var(--txt2)">✓ 生成将走酒馆当前连接的模型与参数（经酒馆助手 <code>generateRaw</code> 静默生成，不带预设与世界书污染）。在酒馆里连好 API 即可，无需下方配置。</div>`
         :`<div class="row3">
         <div><label>API Base URL</label><input id="aiBase" value="${esc(p.ai.baseURL)}" placeholder="https://api.openai.com/v1"></div>
-        <div><label>API Key（勾选「记住」才落盘，导出工程不含）</label><div style="display:flex;gap:6px"><input id="aiKey" type="password" autocomplete="new-password" value="${esc(p.ai.apiKey||_sessionKey)}" placeholder="sk-..." style="min-width:0"><button type="button" class="btn ghost small" id="aiKeyEye" title="显示 / 隐藏 Key">👁</button></div></div>
+        <div><label>API Key（勾选「记住」才落盘，导出工程不含）</label><div style="display:flex;gap:6px"><input id="aiKey" type="password" autocomplete="new-password" value="${esc(p.ai.apiKey||_sessionKeys.get(p)||'')}" placeholder="sk-..." style="min-width:0"><button type="button" class="btn ghost small" id="aiKeyEye" title="显示 / 隐藏 Key">👁</button></div></div>
         <div><label>模型（下拉选择）</label><select id="aiModel"></select></div>
       </div>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -67,15 +67,16 @@ export function renderAI(){
     $('#aiBase',col).addEventListener('input',function(){p.ai.baseURL=this.value.trim();Project.saveDebounced()});
     $('#aiKey',col).addEventListener('change',function(){
       const v=this.value.trim();
-      _sessionKey=v;
+      _sessionKeys.set(p,v);
       if($('#aiRemember',col).checked){p.ai.apiKey=v;Project.save()}
       else if(p.ai.apiKey){p.ai.apiKey='';Project.save()} /* 关闭记住时清掉已落盘的旧 Key */
     });
     $('#aiRemember',col).addEventListener('change',function(){
       p.ai.rememberKey=this.checked;
       /* 勾上：把会话内的 Key 立即落盘；勾掉：清掉已落盘的 Key（输入框里的值仍在，继续可用） */
-      if(this.checked)p.ai.apiKey=_sessionKey||$('#aiKey',col).value.trim();
-      else p.ai.apiKey='';
+      const key=$('#aiKey',col).value.trim();
+      _sessionKeys.set(p,key);
+      p.ai.apiKey=this.checked?key:'';
       Project.save();
     });
     $('#aiKeyEye',col).addEventListener('click',function(){
@@ -149,7 +150,7 @@ export function renderAI(){
       }
     }
     /* Key 取值：关掉「记住」时用会话内存里的（落盘值已被清空） */
-    const apiKey=p.ai.rememberKey===false?_sessionKey:(p.ai.apiKey||_sessionKey);
+    const apiKey=p.ai.rememberKey===false?_sessionKeys.get(p):(p.ai.apiKey||_sessionKeys.get(p));
     if(!apiKey||!p.ai.baseURL){out.textContent='⚠️ 请先填写 API Base URL 和 Key';dot.className='status-dot status-warn';return null}
     dot.className='status-dot status-ok';out.textContent='';
     /* 超时保护：120 秒无响应自动中止，防止永久挂起 */

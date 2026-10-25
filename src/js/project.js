@@ -30,15 +30,21 @@ const Project={
   /** @type {ProjectData[]} */
   templates:[],
   /* ---- 撤销/重做历史栈 ---- */
-  _history:[],_historyIdx:-1,MAX_HISTORY:20,
-  /** 保存当前快照（区块列表，深拷贝），超过 MAX_HISTORY 步时丢弃最早的；新操作会截断 redo 链 */
-  saveSnapshot(){
+  _history:[],_historyIdx:-1,MAX_HISTORY:20,_inputBatch:false,
+  /** 保存区块快照；默认结束输入批次，mergeInput 仅供 saveDebounced 合并连续输入 */
+  saveSnapshot(mergeInput=false){
+    const merge=mergeInput&&this._inputBatch;
+    if(!mergeInput)this._inputBatch=false;
     if(!this.cur)return;
-    /* 截断 redo 链 */
+    const json=JSON.stringify({blocks:this.cur.blocks});
+    /* 无区块变化的保存不占历史，也不能截断 redo 或开启输入合并 */
+    if(json===JSON.stringify(this._history[this._historyIdx]))return;
     this._history=this._history.slice(0,this._historyIdx+1);
-    this._history.push(JSON.parse(JSON.stringify({blocks:this.cur.blocks})));
+    if(merge&&this._historyIdx>0)this._history[this._historyIdx]=JSON.parse(json);
+    else this._history.push(JSON.parse(json));
     if(this._history.length>this.MAX_HISTORY)this._history.shift();
     this._historyIdx=this._history.length-1;
+    this._inputBatch=mergeInput;
   },
   /** 从快照恢复（区块列表） */
   _restore(s){
@@ -47,20 +53,22 @@ const Project={
   },
   /** 撤销一步；无可撤销时返回 false。恢复后触发整个界面重渲染 */
   undo(){
+    this._inputBatch=false;
     if(this._historyIdx<=0)return false;
     this._historyIdx--;
     this._restore(this._history[this._historyIdx]);
     _ui.renderAll();
-    this.saveDebounced();
+    this.saveDebounced(false);
     return true;
   },
   /** 重做一步；无可重做时返回 false。恢复后触发整个界面重渲染 */
   redo(){
+    this._inputBatch=false;
     if(this._historyIdx>=this._history.length-1)return false;
     this._historyIdx++;
     this._restore(this._history[this._historyIdx]);
     _ui.renderAll();
-    this.saveDebounced();
+    this.saveDebounced(false);
     return true;
   },
   /** 清空并重建历史栈：切换/新建/导入/复制/删除工程后必须调用，
@@ -91,7 +99,7 @@ const Project={
     try{curId=localStorage.getItem(this.LS_CUR)}catch(e){}
     this.cur=this.list.find(p=>p.id===curId)||this.list[0];
     this.save();
-    this.saveSnapshot();
+    this.resetHistory();
   },
   /* 深度规范化：补齐工程/区块任意缺失字段，保证旧数据、导入数据、残缺数据都能渲染 */
   normalize(p){
@@ -128,12 +136,12 @@ const Project={
     });
   },
   /* 旧版工程结构迁移：角色简介区从「世界书拉取+占位值」迁移为「手动多角色」；
-     开场白点击行为 insert（旧默认）迁移为 go（切换到对应开场白）。
+     无版本字段无法区分旧默认与主动选择，开场白点击行为仅在缺失时补 go。
      注意：旧字段转换必须先于 normalize —— normalize 会给缺 characters 的
      profile 注入默认值，若后跑会使旧占位迁移分支永远无法命中 */
   migrate(p){
     (p.blocks||[]).forEach(b=>{
-      if(b.type==='greetings'&&(b.clickAction==='insert'||!b.clickAction))b.clickAction='go';
+      if(b.type==='greetings'&&!b.clickAction)b.clickAction='go';
       if(b.type==='profile'&&!Array.isArray(b.characters)){
         b.characters=[{name:b.placeholderName||'{{char}}',desc:b.placeholderDesc||'',tags:b.placeholderTags||'',avatar:b.avatarUrl||''}];
         ['placeholderName','placeholderDesc','placeholderTags','avatarUrl','wbName','wbEntryComment','avatarFromWb'].forEach(k=>delete b[k]);
@@ -156,10 +164,16 @@ const Project={
       this._qTip=setTimeout(()=>toast('⚠️ 保存失败（数据约 '+size+' KB，仅存于内存，关闭页面即丢失）——请精简内容或立即「导出工程」备份',6000),200);
     }
   },
-  /* 高频输入路径用防抖保存，避免每次按键全量序列化所有工程 */
+  /* 区块输入立即入历史，避免紧接结构操作时丢失中间态；仅全工程落盘延迟 600ms */
   _svT:null,
   _resetting:false,
-  saveDebounced(){if(this._resetting)return;clearTimeout(this._svT);this._svT=setTimeout(()=>this.save(),600)},
+  saveDebounced(recordHistory=true){
+    if(this._resetting)return;
+    /* undo/redo 只落盘，不能把重渲染时的字段补齐当成新输入 */
+    if(recordHistory)this.saveSnapshot(true);
+    clearTimeout(this._svT);
+    this._svT=setTimeout(()=>{this._svT=null;this._inputBatch=false;this.save()},600);
+  },
   select(id){
     this.cur=this.list.find(p=>p.id===id)||this.list[0];
     this.save();this.resetHistory();_ui.renderAll();
