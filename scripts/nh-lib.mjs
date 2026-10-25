@@ -53,15 +53,27 @@ export function parseGalleryHtml(html){
   return {mediaId,total:pages.length,pages};
 }
 
-/** 直链构造：入参 pages=[{page,ext}]，返回 {urls:[大图],thumbs:[缩略图]}（与入参同序） */
+/** 直链构造：入参 pages=[{page,ext}]，返回 {urls:[大图],thumbs:[缩略图],pageNumbers:[真实页码]}（三者同序）。
+    pageNumbers 供工具页展示/筛选用真实页码——HTML 解析 rescue 场景页码可能缺口（如 1,2,4），
+    前端按数组序标 P1/P2/P3 会与画廊真实页错位，「按页码选」也就选错图 */
 export function buildPageUrls(mediaId,pages){
-  const urls=[],thumbs=[];
+  const urls=[],thumbs=[],pageNumbers=[];
   (pages||[]).forEach(p=>{
     const ext=p.ext||'jpg',n=p.page;
     urls.push(`https://i.nhentai.net/galleries/${mediaId}/${n}.${ext}`);
     thumbs.push(`https://t.nhentai.net/galleries/${mediaId}/${n}t.${ext}`);
+    pageNumbers.push(n);
   });
-  return {urls,thumbs};
+  return {urls,thumbs,pageNumbers};
+}
+
+/** 勾选页码 → 大图 URL 列表：pageNumbers 为真实页码数组时按页码查下标（缺口场景不取错链），
+    传 null/undefined 回落 pg-1（旧版服务无该字段的兼容路径）；无效页码自动剔除 */
+export function pickUrls(urls,pageNumbers,picked){
+  return (picked||[]).map(pg=>{
+    const i=Array.isArray(pageNumbers)&&pageNumbers.length?pageNumbers.indexOf(pg):pg-1;
+    return i>=0?(urls||[])[i]:undefined; /* indexOf=-1（页码不存在）必须落 undefined 被 filter 剔除，钳 0 会误取首页 */
+  }).filter(Boolean);
 }
 
 /** 从用户输入提取画廊 ID：完整 URL / 纯数字；无效返回 null */

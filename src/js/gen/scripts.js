@@ -61,6 +61,9 @@ export function comicReader(px){
   function openRd(rd){
     if(cur)closeRd();
     cur=rd;rd.classList.add('on');rd.setAttribute('aria-hidden','false');
+    /* 条漫重开回顶：reader 是常驻 DOM（display 切换），上次滚读位置会残留到下次打开 */
+    var rb=rbodyOf(rd);
+    if(rb&&!pagedOf(rd))rb.scrollTop=0;
     show(rd,0);
   }
   function closeRd(){
@@ -81,6 +84,9 @@ export function comicReader(px){
     if(ev.target.closest('[data-opg="comic-next"]')){show(cur,curIdx+1);return}
   });
   document.addEventListener('keydown',function(e){
+    /* 酒馆重渲染楼层会把整个 root 拆离文档，闭包里的 cur 成了僵尸节点——
+       键盘操作前自愈：已拆离则视为未打开，避免对 detached DOM 空转 */
+    if(cur&&!cur.isConnected){cur=null;return}
     if(e.key==='Enter'&&e.target&&e.target.closest){
       var f=e.target.closest('[data-opg="comic-open"]');
       if(f){

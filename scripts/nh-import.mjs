@@ -220,8 +220,8 @@ export async function serve(){
           if(!proxy)return send(200,{ok:false,error:'代理地址格式不对（要 http://host:port，如 http://127.0.0.1:7890）——本次抓取已中止，修正后重试'});
         }
         const g=await fetchGallery(u.searchParams.get('url')||'',{proxy});
-        const {urls,thumbs}=buildPageUrls(g.mediaId,g.pages);
-        return send(200,{ok:true,id:g.id,mediaId:g.mediaId,total:g.total,source:g.source,urls,thumbs});
+        const {urls,thumbs,pageNumbers}=buildPageUrls(g.mediaId,g.pages);
+        return send(200,{ok:true,id:g.id,mediaId:g.mediaId,total:g.total,source:g.source,urls,thumbs,pageNumbers});
       }
       send(404,{ok:false,error:'not found'});
     }catch(e){send(200,{ok:false,error:e.message})}

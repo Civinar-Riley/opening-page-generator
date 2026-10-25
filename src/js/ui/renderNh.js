@@ -4,15 +4,18 @@
    nhentai 会被 CORS 拦截，故本页不直接请求外部站点。 */
 import { $, esc, toast, confirmModal } from '../utils.js';
 import { BLOCK_DEFS } from '../defs.js';
-import { parsePageExpr } from '../../../scripts/nh-lib.mjs';
+import { parsePageExpr, pickUrls } from '../../../scripts/nh-lib.mjs';
 import { Project } from '../project.js';
 import { UI } from './core.js';
 
 const SERVICE_KEY='openingPageGen_v1_nhService';
 const PROXY_KEY='openingPageGen_v1_nhProxy';
 const DEF_ADDR='http://127.0.0.1:8765';
-/* 会话级抓取结果（模块级：页签切换不丢） */
-const st={total:0,urls:[],thumbs:[],source:''};
+/* 会话级抓取结果（模块级：页签切换不丢）。
+   nums=真实页码数组（服务 v1.25+ 响应）：null 表示连续页码/旧服务，卡片与筛选回退数组序 */
+const st={total:0,urls:[],thumbs:[],nums:null,source:''};
+/* 页码 → 大图直链：nums 存在按真实页码查下标（页码缺口场景不取错链），否则页码即下标+1 */
+const pgToUrl=pg=>st.nums?st.urls[st.nums.indexOf(pg)]:st.urls[pg-1];
 
 const getAddr=()=>{try{return localStorage.getItem(SERVICE_KEY)||DEF_ADDR}catch(e){return DEF_ADDR}};
 const setAddr=v=>{try{localStorage.setItem(SERVICE_KEY,v)}catch(e){}};
@@ -58,10 +61,12 @@ async function ensureService(){
   return false;
 }
 
-/** 抓取结果网格（全选初始）；勾选状态以 DOM checkbox 为单一事实源 */
+/** 抓取结果网格（全选初始）；勾选状态以 DOM checkbox 为单一事实源。
+    卡片页码/勾选值用真实页码（nums 缺失回退数组序），去尾等「按位置」逻辑走下标序 */
 function renderGrid(){
   const grid=$('#nhGrid');
-  grid.innerHTML=st.urls.map((u,i)=>`<label class="nh-card"><input type="checkbox" checked data-nhpg="${i+1}"><img loading="lazy" src="${esc(st.thumbs[i]||u)}" alt=""><span class="nh-pg">P${i+1}</span></label>`).join('');
+  grid.innerHTML=st.urls.map((u,i)=>{const pg=st.nums?st.nums[i]:i+1;
+    return `<label class="nh-card"><input type="checkbox" checked data-nhpg="${pg}"><img loading="lazy" src="${esc(st.thumbs[i]||u)}" alt=""><span class="nh-pg">P${pg}</span></label>`}).join('');
   updateCount();
   $('#nhResultCard').style.display='';
   $('#nhTotal').textContent=st.total;
@@ -73,8 +78,8 @@ function checkedPages(){
 function updateCount(){
   $('#nhCount').textContent=`已选 ${checkedPages().length} / ${st.total} 页`;
 }
-function setChecked(fn){ /* fn(page,el) → boolean；统一改勾选并刷新计数 */
-  $('#nhGrid').querySelectorAll('input[data-nhpg]').forEach(el=>{el.checked=fn(+el.dataset.nhpg,el)});
+function setChecked(fn){ /* fn(page,el,idx) → boolean；统一改勾选并刷新计数（idx 为结果网格中的位置序） */
+  $('#nhGrid').querySelectorAll('input[data-nhpg]').forEach((el,idx)=>{el.checked=fn(+el.dataset.nhpg,el,idx)});
   updateCount();
 }
 
@@ -151,6 +156,8 @@ export function renderNh(){
         const j=await res.json();
         if(!j.ok)throw new Error(j.error||'服务返回异常');
         st.total=j.total;st.urls=j.urls;st.thumbs=j.thumbs;st.source=j.source;
+        /* 真实页码数组：长度对齐才可信（旧服务进程无此字段 → null 回退数组序） */
+        st.nums=Array.isArray(j.pageNumbers)&&j.pageNumbers.length===(j.urls||[]).length?j.pageNumbers:null;
         renderGrid();
       };
       this.disabled=true;const old=this.textContent;this.textContent='⏳ 抓取中…';
@@ -179,14 +186,16 @@ export function renderNh(){
     };
     $('#nhTailBtn',col).onclick=()=>{
       const n=Math.max(0,Math.min(st.total,Math.floor(+$('#nhTail',col).value||0)));
-      const from=st.total-n+1;
-      setChecked(pg=>pg<from);
+      /* 去尾按「位置」而非页码：页码缺口场景下末项的页码 ≠ total，页码判据会漏删/错删 */
+      setChecked((pg,el,idx)=>idx<st.total-n);
     };
     $('#nhShowImg',col).addEventListener('change',function(){$('#nhGrid',col).classList.toggle('noimg',!this.checked)});
     $('#nhCopy',col).onclick=async()=>{
-      const list=checkedPages().map(pg=>st.urls[pg-1]).join('\n');
+      const pages=checkedPages();
+      if(!pages.length){toast('没有勾选任何页');return}
+      const list=pickUrls(st.urls,st.nums,pages).join('\n');
       if(!list){toast('没有勾选任何页');return}
-      try{await navigator.clipboard.writeText(list);toast(`已复制 ${checkedPages().length} 条直链`)}
+      try{await navigator.clipboard.writeText(list);toast(`已复制 ${pages.length} 条直链`)}
       catch(e){toast('复制失败（'+e.message+'）——可用命令行 npm run nh 走剪贴板')}
     };
     $('#nhMk',col).onclick=()=>{
@@ -199,15 +208,18 @@ export function renderNh(){
     };
     $('#nhApply',col).onclick=async()=>{
       const p2=Project.cur,idx=+($('#nhTarget',col).value);
+      const blocksRef=p2.blocks; /* undo/redo 会整体替换 blocks 数组引用（_restore 深拷贝），工程对象本身不变——引用比对是唯一可靠判据 */
       const blk=p2.blocks[idx];
       if(!blk||blk.type!=='comic'){toast('请先选择目标区块（或创建一个）');return}
       const pages=checkedPages();
       if(!pages.length){toast('没有勾选任何页');return}
-      if(Project.cur!==p2){toast('⚠️ 已切换工程，请重新操作');return}
       const oldN=Array.isArray(blk.pages)?blk.pages.filter(x=>x.url).length:0;
       if(oldN&&!await confirmModal(`将把「区块 #${idx+1} · ${blk.title||'未命名'}」现有 ${oldN} 页替换为勾选的 ${pages.length} 页（原页与说明清空），确定？`))return;
+      /* await 期间可能发生：切工程（Project.cur 变）/ Ctrl+Z 撤销（blocks 整组替换、idx 错位）。
+         旧判据 Project.cur!==p2 对撤销无效（_restore 不换工程对象），必须比对 blocks 引用 */
+      if(Project.cur!==p2||p2.blocks!==blocksRef){toast('⚠️ 工程结构已变化（可能被撤销/重做），请重新选择目标区块');return}
       Project.saveSnapshot();
-      blk.pages=pages.map(pg=>({url:st.urls[pg-1],cap:''}));
+      blk.pages=pages.map(pg=>({url:pgToUrl(pg),cap:''}));
       UI.renderConfig();UI.refreshPreview();Project.save();
       toast(`已写入 ${pages.length} 页到区块 #${idx+1}`);
     };

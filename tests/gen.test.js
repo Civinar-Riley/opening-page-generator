@@ -1238,6 +1238,32 @@ describe('Gen 生成/导出行为回归',()=>{
     click('prev');
     expect(figures.map(f=>f.classList.contains('onp'))).toEqual([true,false]);
   });
+  it('条漫重开回顶：openRd 对 strip 模式清零 rbody.scrollTop（paged 不动）',()=>{
+    const p=proj([{type:'comic',enabled:true,mode:'strip',entry:'banner',pages:[{url:'a.png'}]}]),px=Gen.prefix(p);
+    const html=Gen.build(p,{isPreview:true});
+    const rbody={classList:{contains:()=>false},scrollTop:800};
+    const reader={classList:classList(),setAttribute(){},getElementsByClassName:()=>[rbody],
+      querySelectorAll:()=>[],querySelector:()=>null};
+    let onClick;
+    const root={querySelector:()=>reader,addEventListener:(name,fn)=>{if(name==='click')onClick=fn}};
+    new Function('document',runtime(html,'function openRd'))({getElementById:()=>root,addEventListener(){}});
+    onClick({target:{closest:s=>s==='[data-opg="comic-open"]'?{getAttribute:()=>'bk0'}:null}});
+    expect(rbody.scrollTop).toBe(0);
+    /* paged 模式 rbody 不清零（无滚动语义） */
+    const rbodyP={classList:{contains:k=>k==='paged'},scrollTop:300};
+    const readerP={classList:classList(),setAttribute(){},getElementsByClassName:()=>[rbodyP],querySelectorAll:()=>[],querySelector:()=>null};
+    let onClickP;
+    const rootP={querySelector:()=>readerP,addEventListener:(name,fn)=>{if(name==='click')onClickP=fn}};
+    new Function('document',runtime(html,'function openRd'))({getElementById:()=>rootP,addEventListener(){}});
+    onClickP({target:{closest:s=>s==='[data-opg="comic-open"]'?{getAttribute:()=>'bk0'}:null}});
+    expect(rbodyP.scrollTop).toBe(300);
+  });
+  it('键盘自愈：root 被酒馆重渲染拆离后（cur.isConnected=false）keydown 不再操作僵尸节点',()=>{
+    const p=proj([{type:'comic',enabled:true,mode:'paged',entry:'banner',pages:[{url:'a.png'}]}]);
+    const html=Gen.build(p,{isPreview:true});
+    expect(html).toContain('cur&&!cur.isConnected');
+    expect(html).toContain('cur=null;return');
+  });
   const localBgm=loop=>{
     const tracks=[{name:'A',url:'a.mp3'},{name:'B',url:'b.mp3'}];
     const p=proj([{type:'bgm',enabled:true,tracks,volume:50,loop}]),px=Gen.prefix(p),events={},controls={};

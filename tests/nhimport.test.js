@@ -1,6 +1,6 @@
 /* nhentai 导入核心库单元测试（纯函数，不打真实网络） */
 import { describe, it, expect } from 'vitest';
-import { parseApiJson, parseGalleryHtml, buildPageUrls, parsePageExpr, applyPageFilter, extractGalleryId, parseProxyUrl } from '../scripts/nh-lib.mjs';
+import { parseApiJson, parseGalleryHtml, buildPageUrls, pickUrls, parsePageExpr, applyPageFilter, extractGalleryId, parseProxyUrl } from '../scripts/nh-lib.mjs';
 
 describe('nh-lib parseApiJson',()=>{
   it('v2 API JSON（pages[].number+path）→ mediaId + 扩展名取自 path，页码用 number',()=>{
@@ -59,13 +59,30 @@ describe('nh-lib parseGalleryHtml',()=>{
 
 describe('nh-lib buildPageUrls',()=>{
   it('大图 i. 域 + 缩略图 t. 域（t 后缀），与入参同序',()=>{
-    const {urls,thumbs}=buildPageUrls('9',[{page:1,ext:'jpg'},{page:2,ext:'png'}]);
+    const {urls,thumbs,pageNumbers}=buildPageUrls('9',[{page:1,ext:'jpg'},{page:2,ext:'png'}]);
     expect(urls).toEqual(['https://i.nhentai.net/galleries/9/1.jpg','https://i.nhentai.net/galleries/9/2.png']);
     expect(thumbs).toEqual(['https://t.nhentai.net/galleries/9/1t.jpg','https://t.nhentai.net/galleries/9/2t.png']);
+    expect(pageNumbers).toEqual([1,2]);
   });
   it('ext 缺省回退 jpg；空入参返回空数组',()=>{
     expect(buildPageUrls('1',[{page:3}]).urls[0]).toBe('https://i.nhentai.net/galleries/1/3.jpg');
-    expect(buildPageUrls('1',[])).toEqual({urls:[],thumbs:[]});
+    expect(buildPageUrls('1',[])).toEqual({urls:[],thumbs:[],pageNumbers:[]});
+  });
+});
+
+describe('nh-lib pickUrls（真实页码取链，v1.25 缺口页码修复）',()=>{
+  const urls=['u1','u2','u4']; /* 画廊页 1,2,4（第 3 页缺失的 rescue 场景） */
+  it('nums 提供时按真实页码查下标：选页 4 拿到 u4 而非数组序的 u3',()=>{
+    expect(pickUrls(urls,[1,2,4],[4])).toEqual(['u4']);
+    expect(pickUrls(urls,[1,2,4],[1,4])).toEqual(['u1','u4']);
+  });
+  it('nums 为 null（旧服务无该字段）回退 pg-1 数组序',()=>{
+    expect(pickUrls(urls,null,[1,2])).toEqual(['u1','u2']);
+    expect(pickUrls(urls,[],[1,2])).toEqual(['u1','u2']);
+  });
+  it('无效页码剔除：缺口场景选了不存在的页 3 返回空',()=>{
+    expect(pickUrls(urls,[1,2,4],[3])).toEqual([]);
+    expect(pickUrls(urls,[1,2,4],[2,9])).toEqual(['u2']);
   });
 });
 
