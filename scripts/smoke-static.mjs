@@ -52,11 +52,32 @@ scripts.forEach((s, i) => {
 }
 
 /* 占位与版本一致性 */
-check('无版本/日期占位残留', !html.includes('__OPG_VERSION__') && !html.includes('__OPG_BUILD_DATE__'));
+check('无版本/日期/助手小包占位残留', !html.includes('__OPG_VERSION__') && !html.includes('__OPG_BUILD_DATE__') && !html.includes('__OPG_HELPER_ZIP__'));
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const m = /<script>window\.OPG_VERSION='([^']*)';?<\/script>/.exec(html);
 check('OPG_VERSION === package.json version', !!m && m[1] === pkg.version,
   m ? `页面 ${m[1]} vs pkg ${pkg.version}` : '未找到 OPG_VERSION 注入');
+
+/* 内嵌助手小包必须等于「用当前仓库脚本现组装」的字节——这是内嵌方案防漂移的唯一硬闸：
+   改了 scripts/ 下四件套却忘了重建，这里立刻失败，而不是等用户下载到过期小包 */
+{
+  const { HELPER_SCRIPTS, helperFiles, zipStore } = await import('./helper-pack.mjs');
+  const sources = {};
+  for (const f of HELPER_SCRIPTS) sources[f] = fs.readFileSync('scripts/' + f, 'utf8');
+  const expectB64 = zipStore(helperFiles({ version: pkg.version, sources })).toString('base64');
+  const emb = /<script>window\.OPG_HELPER_ZIP='([A-Za-z0-9+/=]*)';?<\/script>/.exec(html);
+  check('内嵌助手小包可提取且非空', !!emb && emb[1].length > 1000, emb ? `${emb[1].length} 字符` : '未找到 OPG_HELPER_ZIP 注入');
+  if (emb) {
+    const same = emb[1] === expectB64;
+    check('内嵌助手小包 === 当前脚本现组装的字节（防版本漂移）', same,
+      same ? '' : `内嵌 ${emb[1].length} 字符 vs 现组装 ${expectB64.length} 字符——改过 scripts/ 后请重新 npm run build`);
+    let head = '';
+    try { head = Buffer.from(emb[1], 'base64').subarray(0, 4).toString('latin1'); } catch (e) { /* 下面断言报错 */ }
+    check('内嵌助手小包是 ZIP 头（PK\\x03\\x04）', head === 'PK\u0003\u0004', JSON.stringify(head));
+  }
+  const zipKb = (expectB64.length * 3 / 4 / 1024).toFixed(1);
+  check(`内嵌助手小包体积合理（${zipKb} KB 原始）`, expectB64.length > 1000 && expectB64.length < 400 * 1024);
+}
 
 /* bundle 语法可解析（不执行）：抓压缩/转义环节引入的语法破损 */
 scripts.forEach((s, i) => {

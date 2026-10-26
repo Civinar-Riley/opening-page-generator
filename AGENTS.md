@@ -18,13 +18,13 @@
 | `npm test`（等价 `npx vitest run`） | 全部单元测试——**任何改动后必须全过** |
 | `npm run build` | 构建 `dist/index.html`（压缩版；构建后自动跑静态冒烟 `postbuild`，超体积预算线失败） |
 | `npm run smoke` | 双冒烟：静态检查（script 配平/双转义状态机/版本一致/语法可解析）+ 无头浏览器级冒烟（零 console.error、页签可切、预览挂载、探活 mock） |
-| `npm run watch` | 开发模式（不压缩 + 监视 src 变更自动重建） |
+| `npm run watch` | 开发模式（不压缩 + 监视 `src/` 与助手小包相关 `scripts/` 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 / `<button>` 缺显式 type |
 | `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
 | `npm run nh -- <画廊URL\|ID> [--skip-last N] [--pages a-b] [--proxy http://…]` | nhentai 画廊直链单次导出到剪贴板（`scripts/nh-import.mjs`；`--proxy` 走 CONNECT 隧道，不带则跟随环境变量） |
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端；抓取代理由页面请求 `&proxy=` 参数按次传入（PNA 预检头已内置） |
 | `npm run nh-install` / `nh-uninstall` | 注册/移除 `opg-nh://` 本地协议（HKCU）——工具页「🚀 一键启动服务」按钮的唤起通道 |
-| `npm run pack:helper` | 打包「漫画导入助手」独立小包 → `dist-nh/opg-nh-helper-v*.zip`（Release 第二资产，CI 自动） |
+| `npm run pack:helper` | 打包「漫画导入助手」小包 → `dist-nh/opg-nh-helper-v*.zip`（CI Release 资产；字节与 `build.js` 内嵌进单文件的同一份，来源均为 `scripts/helper-pack.mjs`） |
 | `slots/back-home.json` | 「返回开场页」脚本模板插槽（非命令）：换文件重建即换内置模板，契约见 `slots/README.md` |
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功（postbuild 自动静态冒烟）→ `npm run smoke`（改动涉及工具 UI/壳时必跑）→ **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
@@ -84,6 +84,7 @@ localStorage（openingPageGen_* 键）
 8. **产物运行时 API 守卫**：任何酒馆助手 API 调用必须 `typeof` 守卫 + try/catch + 降级提示（详见 `src/js/gen/TAVERN_API.md`）；禁止依赖 DOMContentLoaded
 9. **自由 HTML 全权限警示**：自由 HTML 区块的脚本在预览（srcdoc 继承父 origin + allow-same-origin）与酒馆导出中均以完整权限运行，可读写 localStorage——文档与区块编辑器须注明「勿粘贴不可信来源的代码」（自伤型风险，与酒馆真实环境一致）
 10. **页面 `theme.skin` 契约**：仅接受 `classic/nebula/royal/festival/cyber/abyss/archive`（枚举真相在 `themes.js`）；新工程默认 `classic`，旧工程缺字段由 normalize 补齐，缺失/未知值渲染时由 `themeSkin` 回落 classic。**禁止根据 `presetRef` 自动换肤**，旧工程保留原有观感，仅用户主动套用才切到新版。试穿/套用统一走 `themePresetPatch`（先复位 `skin:'classic',fontName:'',headingFont:''`，再覆盖预设字段）；六套预设（含紫夜幻金）都带 `skin`/`headingFont`，切换时互不残留。匹配走 `themePresetMatches`，字体/材质微调必须纳入自定义态。材质单选，classic 关闭附加材质；套用不得改区块内容或原有装饰设置。材质仅内联 CSS，字体使用本机字体栈与系统回落，不引入外链字体、运行时依赖或酒馆 API
+11. **助手小包单一字节源**：`scripts/helper-pack.mjs` 是小包文件清单与 ZIP 编码的唯一真相——`build.js` 构建期用它内嵌 base64 进单文件（`window.OPG_HELPER_ZIP`），`scripts/pack-helper.mjs` 用它产出 Release 资产，两者必须逐字节一致。**改了 `scripts/` 下 `nh-import.mjs`/`nh-lib.mjs`/`nh-install.mjs`/`opg-nh.bat` 后必须重新 `npm run build`**，否则单文件里的内嵌小包过期；`smoke-static.mjs` 有「内嵌 === 现组装」硬断言，`smoke-browser.mjs` 有真实下载字节比对，两处都失败即视为交付阻断。ZIP 固定为 store-only（method 0）+ 固定 DOS 时间戳，保证同输入同字节
 
 ## 常见任务配方
 

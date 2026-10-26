@@ -71,3 +71,11 @@
     （`Connection: close` 读到尾 + chunked 解码，先例见 scripts/nh-import.mjs 的 proxyGet）。
     顺带：spawn 的工作目录被删会让整个 shell 工具链 ENOENT（报错指向 bash.exe 缺失，
     实为 cwd 缺失），先重建目录再 cd 走。
+19. **构建期内嵌的资源改完必须重建**（v1.26 助手小包）：`build.js` 把 ZIP 以 base64 注进
+    `window.OPG_HELPER_ZIP`，改 `scripts/nh-import.mjs` 等四件套后不 `npm run build`，
+    单文件里就是过期小包——用户下载到的助手版本与工具不符。两条闸门挡这个：
+    `smoke-static.mjs` 断言「内嵌 === 用当前脚本现组装」，`smoke-browser.mjs` 真实点按钮
+    下载再比字节。别绕过它们，也别把 ZIP 改成 deflate（固定 store-only + 固定时间戳才保证
+    同输入同字节，压缩会让字节随 zlib 版本浮动，两处比对就失去意义）。
+20. **`fs.watch` 递归在 Windows 上只覆盖一层子目录**：watch 模式原先只盯 `src/`，现在补了
+    `scripts/` 的平铺监听（`HELPER_WATCH` 白名单）。若以后把小包脚本挪进子目录，监听要跟着调。

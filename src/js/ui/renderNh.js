@@ -61,6 +61,23 @@ async function ensureService(){
   return false;
 }
 
+/** 导出助手小包：内容来自构建期内嵌的 base64 ZIP（window.OPG_HELPER_ZIP，与 Release 资产
+    同源同字节），让「下载工具本体」与「拿到本机服务」成为一条路径，不必再去 Releases 找第二个文件。
+    开发模式（未注入）显式降级提示，不静默失败 */
+function downloadHelper(){
+  const b64=typeof window.OPG_HELPER_ZIP==='string'?window.OPG_HELPER_ZIP:'';
+  if(!b64){toast('当前为开发模式（未注入小包）——先 npm run build，或 npm run pack:helper 生成到 dist-nh/');return}
+  const bin=atob(b64),bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const ver=typeof window.OPG_VERSION==='string'&&/^[\w.-]+$/.test(window.OPG_VERSION)?window.OPG_VERSION:'latest';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([bytes],{type:'application/zip'}));
+  a.download=`opg-nh-helper-v${ver}.zip`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast('已导出助手小包——解压 → 双击「安装协议.bat」→ 回本页点「🚀 一键启动服务」');
+}
+
 /** 抓取结果网格（全选初始）；勾选状态以 DOM checkbox 为单一事实源。
     卡片页码/勾选值用真实页码（nums 缺失回退数组序），去尾等「按位置」逻辑走下标序 */
 function renderGrid(){
@@ -103,6 +120,11 @@ export function renderNh(){
         <button type="button" class="btn small" id="nhStart" style="display:none">🚀 一键启动服务</button>
         <button type="button" class="btn ghost small" id="nhStop" style="display:none">⏹ 停止服务</button></h3>
       <p class="nh-hint">通过<strong>本机辅助服务</strong>抓取 nhentai 画廊的页面直链（浏览器直连会被跨域拦截，故服务只监听本机 127.0.0.1）。未连接时点 <strong>🚀 一键启动服务</strong>（首次使用先跑一次 <code>npm run nh-install</code> 注册协议，之后浏览器会询问一次是否打开）；也可手动 <code>npm run nh-serve</code>，或单次命令 <code>npm run nh -- 画廊链接 --skip-last 3</code> 直接导出到剪贴板。抓到全本后在下方<strong>勾选要的页</strong>（末尾广告页直接取消勾选），一键写入漫画阅读器区块。</p>
+      <div class="nh-boot">
+        <span class="nh-hint">第一次用、或换了台机器？</span>
+        <button type="button" class="btn ghost small" id="nhHelper">📦 导出助手小包</button>
+        <span class="nh-hint">解压 → 双击「安装协议.bat」→ 回来点「🚀 一键启动服务」（需 Node ≥ 18，仅 Windows 支持协议注册）</span>
+      </div>
       <div class="row2"><div><label>服务地址</label><input id="nhAddr" value="${esc(getAddr())}"></div>
       <div style="display:flex;align-items:flex-end"><button type="button" class="btn ghost small" id="nhProbe">检查连接</button></div></div>
       <div class="row2"><div><label>抓取代理（服务出网用；留空=跟随系统环境变量/直连）</label><input id="nhProxy" placeholder="http://127.0.0.1:7890" value="${esc(getProxy())}"></div>
@@ -132,6 +154,7 @@ export function renderNh(){
     $('#nhAddr',col).addEventListener('change',function(){setAddr(this.value.trim().replace(/\/+$/,'')||DEF_ADDR);probe()});
     $('#nhProxy',col).addEventListener('change',function(){setProxy(this.value.trim());toast(this.value.trim()?'抓取代理已更新':'抓取代理已清空（走环境变量/直连)')});
     $('#nhProbe',col).onclick=()=>probe();
+    $('#nhHelper',col).onclick=()=>downloadHelper();
     $('#nhStart',col).onclick=async function(){
       this.disabled=true;
       try{await ensureService()}finally{this.disabled=false}

@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import http from 'node:http';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { HELPER_SCRIPTS, helperFiles, zipStore } from './helper-pack.mjs';
 
 const ROOT = fileURLToPath(new URL('../dist', import.meta.url));
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css' };
@@ -64,6 +65,28 @@ try {
       return !!tab?.classList.contains('active') && document.getElementById(tab.dataset.page)?.classList.contains('active');
     }, name);
     assert(`页签「${name}」可切`, active);
+  }
+
+  /* 「📦 导出助手小包」：真实点击触发下载，落盘字节必须与 pack:helper 产出的 Release 资产
+     完全一致——这是「单文件自带助手」承诺的唯一端到端验证（静态冒烟只查内嵌 base64） */
+  {
+    const sources = {};
+    for (const f of HELPER_SCRIPTS) sources[f] = fs.readFileSync(fileURLToPath(new URL('../scripts/' + f, import.meta.url)), 'utf8');
+    const pkg = JSON.parse(fs.readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8'));
+    const expectZip = zipStore(helperFiles({ version: pkg.version, sources }));
+    const helperBtn = page.locator('#nhHelper');
+    await page.locator('#tabs [data-page="pageNh"]').click();
+    const visible = await helperBtn.isVisible();
+    assert('漫画导入页显示「导出助手小包」按钮', visible);
+    if (visible) {
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), helperBtn.click()]);
+      const saved = await dl.path();
+      const bytes = saved ? fs.readFileSync(saved) : Buffer.alloc(0);
+      assert('助手小包下载文件名带版本号', /^opg-nh-helper-v\d+\.\d+\.\d+\.zip$/.test(dl.suggestedFilename()));
+      assert('助手小包下载字节 === pack:helper 现组装字节', bytes.equals(expectZip),
+        bytes.equals(expectZip) ? '' : `下载 ${bytes.length} B vs 期望 ${expectZip.length} B`);
+      assert('助手小包是 ZIP 头 PK\\x03\\x04', bytes.subarray(0, 4).toString('latin1') === 'PK\u0003\u0004');
+    }
   }
 
   /* 只检查活动预览帧，避免隐藏的配置页预览掩盖当前页空白。 */

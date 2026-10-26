@@ -1,5 +1,6 @@
 /* 构建脚本：src/ 多文件 → dist/ 单文件 HTML */
 const fs = require('fs');
+const path = require('path');
 const pkg = require('./package.json');
 
 /* 产物体积预算（KB）：超 warn 线告警、超 fail 线构建失败（CI 挡下）。
@@ -11,15 +12,32 @@ let esbuild;
 try { esbuild = require('esbuild'); }
 catch (e) { console.error('缺少 esbuild，请先运行: npm install'); process.exit(1); }
 
+/* watch 模式下也需要跟踪的文件（助手小包正文与清单，改动后内嵌字节才跟着变） */
+const HELPER_WATCH = /^(nh-import\.mjs|nh-lib\.mjs|nh-install\.mjs|opg-nh\.bat|helper-pack\.mjs)$/;
+
+/* 「漫画导入助手」小包：构建期组装 ZIP 并以 base64 内嵌进 bundle，工具页按钮直接下载。
+   字节来自 scripts/helper-pack.mjs（与 npm run pack:helper 的 Release 资产同源），
+   故单文件里那份小包永远与当前版本一致，不会随仓库脚本漂移。
+   该模块是 ESM、build.js 是 CJS，只能异步 import——build() 因此改为 async */
+async function helperZipBase64() {
+  const { HELPER_SCRIPTS, helperFiles, zipStore } = await import('./scripts/helper-pack.mjs');
+  const sources = {};
+  for (const f of HELPER_SCRIPTS) sources[f] = fs.readFileSync(path.join('scripts', f), 'utf8');
+  return zipStore(helperFiles({ version: pkg.version, sources })).toString('base64');
+}
+
 /* 构建脚本：src/ 多文件 → dist/ 单文件 HTML */
-function build() {
+async function build() {
+  const helperB64 = await helperZipBase64();
   const html0 = fs.readFileSync('src/index.html', 'utf8');
   /* 版本号注入：src/index.html 中的 __OPG_VERSION__ 占位替换为 package.json 的 version；
-     __OPG_BUILD_DATE__ 注入构建日期（顶栏常显，出问题截图自带版本信息） */
+     __OPG_BUILD_DATE__ 注入构建日期（顶栏常显，出问题截图自带版本信息）；
+     __OPG_HELPER_ZIP__ 注入助手小包 base64（base64 字母表无 '<'，不会破坏 script 闭合） */
   const buildDate = new Date().toISOString().slice(0, 10);
   const html = html0
     .replace(/__OPG_VERSION__/g, pkg.version)
-    .replace(/__OPG_BUILD_DATE__/g, buildDate);
+    .replace(/__OPG_BUILD_DATE__/g, buildDate)
+    .replace(/__OPG_HELPER_ZIP__/g, helperB64);
   const prevSize = fs.existsSync('dist/index.html') ? fs.statSync('dist/index.html').size : 0;
   const css = fs.readFileSync('src/css/tool.css', 'utf8');
   /* watch 模式不压缩，便于断点调试；正式构建压缩 JS 与 CSS */
@@ -73,8 +91,11 @@ function build() {
   }
   fs.mkdirSync('dist', { recursive: true });
   fs.writeFileSync('dist/index.html', out);
-  const kb = out.length / 1024;
-  const delta = prevSize ? (out.length - prevSize) / 1024 : 0;
+  /* 按 UTF-8 字节计（不是字符数）：中文占 3 字节，用 out.length 会低估体积，
+     且与 prevSize（字节）不同单位时 delta 会算出虚假的减小 */
+  const size = Buffer.byteLength(out, 'utf8');
+  const kb = size / 1024;
+  const delta = prevSize ? (size - prevSize) / 1024 : 0;
   console.log('构建完成 → dist/index.html (' + kb.toFixed(1) + ' KB)'
     + (prevSize ? '，较上次 ' + (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' KB' : ''));
   /* 体积预算：warn 只提示，fail 让构建失败（watch 模式不打断，仅提示） */
@@ -84,18 +105,24 @@ function build() {
   } else if (kb > BUDGET_WARN) {
     console.warn(`⚠ 产物体积 ${kb.toFixed(1)} KB 超告警线 ${BUDGET_WARN} KB，接近预算`);
   }
-  if (out.includes('__OPG_VERSION__') || out.includes('__OPG_BUILD_DATE__')) {
-    throw new Error('版本/日期占位未完全替换，请检查 index.html 占位拼写');
+  if (out.includes('__OPG_VERSION__') || out.includes('__OPG_BUILD_DATE__') || out.includes('__OPG_HELPER_ZIP__')) {
+    throw new Error('版本/日期/助手小包占位未完全替换，请检查 index.html 占位拼写');
   }
 }
 
-build();
+build().catch(e => {
+  console.error('构建失败:', e && e.message || e);
+  process.exit(1);
+});
 
 if (process.argv.includes('--watch')) {
   let t;
-  fs.watch('src', { recursive: true }, () => {
+  const rebuild = () => {
     clearTimeout(t);
-    t = setTimeout(() => { try { build(); } catch (e) { console.error('构建失败:', e.message); } }, 200);
-  });
-  console.log('正在监视 src/ 变更，改动会自动重新构建…');
+    t = setTimeout(() => { build().catch(e => console.error('构建失败:', e && e.message || e)); }, 200);
+  };
+  fs.watch('src', { recursive: true }, rebuild);
+  /* 助手小包正文也在构建期内嵌：改了 scripts/ 下的四件套必须重建，否则内嵌字节过期 */
+  fs.watch('scripts', (ev, f) => { if (f && HELPER_WATCH.test(f)) rebuild(); });
+  console.log('正在监视 src/ 与 scripts/ 变更，改动会自动重新构建…');
 }
