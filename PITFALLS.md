@@ -79,3 +79,8 @@
     同输入同字节，压缩会让字节随 zlib 版本浮动，两处比对就失去意义）。
 20. **`fs.watch` 递归在 Windows 上只覆盖一层子目录**：watch 模式原先只盯 `src/`，现在补了
     `scripts/` 的平铺监听（`HELPER_WATCH` 白名单）。若以后把小包脚本挪进子目录，监听要跟着调。
+21. **「同输入同字节」必须先解决行尾**（v1.26.1 实发版本抓到）：v1.26.0 的 Release 资产比本地
+    小 416 字节，根因是 `opg-nh.bat` 在 CI（Linux 检出）是 LF、本地（Windows 检出）是 CRLF。
+    凡是把仓库文件内容打进产物再跨平台比对的场景，**读盘后立刻按目标平台归一化行尾**再算
+    哈希/CRC——固定 DOS 时间戳只解决了「时间戳浮动」，行尾是另一半。现在的做法是在
+    `helperFiles` 出口统一 `normalizeEol`（bat→CRLF、其余→LF），并配 `.gitattributes`。

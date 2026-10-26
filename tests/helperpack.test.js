@@ -90,6 +90,22 @@ describe('helper-pack helperFiles',()=>{
   it('脚本正文缺失时报错（防静默出空包）',()=>{
     expect(() => helperFiles({ version: '1.0.0', sources: {} })).toThrow(/nh-import\.mjs/);
   });
+  it('行尾按扩展名归一化：bat 恒 CRLF，脚本恒 LF（.mjs 里不能留 CR）',()=>{
+    for (const f of files) {
+      const isBat = f.path.endsWith('.bat');
+      if (isBat) expect(f.data.includes('\r\n'), f.path).toBe(true);
+      else expect(f.data.includes('\r'), f.path).toBe(false);
+    }
+  });
+  it('CRLF 与 LF 两种检出产出的包逐字节相同（CI 与本地一致的前提）',()=>{
+    /* 仓库文件的 .bat 在 Windows 检出是 CRLF、Linux/CI 检出是 LF，
+       .mjs 也可能被 autocrlf 改写——不归一化则两边打出的 zip 差几百字节 */
+    const lfSources = Object.fromEntries(Object.entries(SRC).map(([k, v]) => [k, v.replace(/\r\n?/g, '\n')]));
+    const crlfSources = Object.fromEntries(Object.entries(SRC).map(([k, v]) => [k, v.replace(/\r\n?/g, '\n').replace(/\n/g, '\r\n')]));
+    const a = zipStore(helperFiles({ version: '3.0.0', sources: lfSources }));
+    const b = zipStore(helperFiles({ version: '3.0.0', sources: crlfSources }));
+    expect(a.equals(b)).toBe(true);
+  });
 });
 
 describe('helper-pack zipStore',()=>{

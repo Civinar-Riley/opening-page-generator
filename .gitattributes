@@ -1,0 +1,11 @@
+# 仓库内文本统一以 LF 存储，检出时由各平台自行决定（Windows 走 core.autocrlf）。
+# 助手小包必须与平台无关地产出同一份字节：脚本/清单在 scripts/helper-pack.mjs 出口
+# 统一归一化行尾（.bat → CRLF，其余 → LF），这里再声明一遍意图，避免有人改 autocrlf 后困惑。
+* text=auto eol=lf
+
+# Windows 批处理必须是 CRLF：工作区按 CRLF 检出，进出仓库仍是 LF（行尾由 helper-pack 出口定型）
+*.bat text eol=crlf
+
+# 二进制/产物不参与行尾转换
+*.png binary
+*.zip binary

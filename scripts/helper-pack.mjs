@@ -31,8 +31,17 @@ export function crc32(data) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
-/** 双击 bat：chcp 65001 保中文；CRLF 行尾（Windows cmd 对 LF 解析不稳） */
-const bat = body => body.split('\n').join('\r\n') + '\r\n';
+/** 双击 bat 正文：按 LF 拼装并补尾换行；行尾在 helperFiles 出口统一归一化为 CRLF */
+const bat = body => body + '\n';
+
+/** 仓库文件行尾随 git autocrlf 浮动：Windows 检出 CRLF、Linux/CI 检出 LF。
+   小包必须与平台无关地产出同一份字节（内嵌 base64 与 Release 资产要比对），
+    故进包前一律规范化：.bat 用 CRLF（Windows cmd 硬要求），其余用 LF。
+    否则 CI 打出来的 zip 与本地差几百字节，字节一致性断言就失去意义 */
+export const toCRLF = s => s.replace(/\r\n?/g, '\n').replace(/\n/g, '\r\n');
+export const toLF = s => s.replace(/\r\n?/g, '\n');
+/** 按扩展名归一化行尾：.bat → CRLF，其它 → LF */
+export const normalizeEol = (name, s) => (name.endsWith('.bat') ? toCRLF(s) : toLF(s));
 
 /** 小包使用说明（版本号注入；工具页下载与 CI 资产共用同一份文案） */
 export function helperUsageText(version) {
@@ -114,7 +123,10 @@ export function helperFiles({ version, sources }) {
     'pause',
   ].join('\n')) });
   files.push({ path: `${HELPER_DIR}/使用说明.txt`, data: helperUsageText(version) });
-  return files;
+  /* 出口统一归一化行尾（含上面生成的三个 bat）：仓库检出随 git autocrlf 平台浮动，
+     不归一化则 CI（Linux 检出 LF）与本地（Windows 检出 CRLF）产出的 zip 字节不同，
+     且 Linux 构建出来的助手包双击可能失效。只在出口做一次，源头按自然写法 */
+  return files.map(f => ({ ...f, data: normalizeEol(f.path, f.data) }));
 }
 
 /** store-only ZIP（method 0，不压缩）：脚本都是小文本，压缩收益有限，
