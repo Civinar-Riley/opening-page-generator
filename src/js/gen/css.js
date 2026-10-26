@@ -1,7 +1,8 @@
 /* CSS 样式生成：根容器 + 各区块实例作用域样式（从 gen.js 拆分） */
+import { themeSkin, themeTexture, themeFontStack } from '../themes.js';
 
 export function css(p,px,blocks){
-    const th=p.theme;
+    const th=p.theme,skin=themeSkin(th);
     /* 动效档位：full 华丽 / soft 轻盈（只淡入、时长间隔减半）/ off 关闭（纯静态） */
     const motion=th.motion==='off'?'off':(th.motion==='soft'?'soft':'full');
     const follow=th.followTavern;
@@ -14,7 +15,7 @@ export function css(p,px,blocks){
     const fontSafe=String(th.fontName||'').replace(/[<>"\\]/g,'').trim();
     const font=(fl.font?`var(--SmartThemeFont, `:'')+(fontSafe?`"${fontSafe}",`:``)+`"Segoe UI","Microsoft YaHei",sans-serif`+(fl.font?`)`:'');
     /* radius 来自可导入的工程数据：数值钳制，防 `12px;background:url(x)` 形态的 CSS 注入 */
-    const radius=Math.max(0,Math.min(40,+th.radius||12));
+    const radius=Math.max(0,Math.min(40,Number.isFinite(+th.radius)?+th.radius:12));
     let s=`/* ${px} 组件样式（前缀隔离，勿改类名） */
 .${px}-root{all:initial;font-family:${font};display:block}
 .${px}-root *{box-sizing:border-box;font-family:inherit}
@@ -43,7 +44,7 @@ export function css(p,px,blocks){
     /* 标题字体：空则跟随正文字体；信任面同 fontName（剔除引号/尖括号/反斜杠）。
        标题位集合均无显式 font-family（继承自 root *{font-family:inherit}），声明即生效 */
     const hSafe=String(th.headingFont||'').replace(/[<>"\\]/g,'').trim();
-    if(hSafe)s+=`.${px}-wrap .${px}-title,.${px}-wrap .${px}-eyebrow,.${px}-wrap .${px}-gnum,.${px}-wrap .${px}-ghead,.${px}-wrap .${px}-revt,.${px}-wrap .${px}-cd-title,.${px}-wrap .${px}-tl-title,.${px}-wrap .${px}-qa-title,.${px}-wrap .${px}-bgm-title,.${px}-wrap .${px}-authh,.${px}-wrap .${px}-pname{font-family:"${hSafe}",${fontSafe?`"${fontSafe}",`:``}"Segoe UI","Microsoft YaHei",sans-serif}\n`;
+    if(hSafe)s+=`.${px}-wrap .${px}-title,.${px}-wrap .${px}-eyebrow,.${px}-wrap .${px}-gnum,.${px}-wrap .${px}-ghead,.${px}-wrap .${px}-revt,.${px}-wrap .${px}-cd-title,.${px}-wrap .${px}-tl-title,.${px}-wrap .${px}-qa-title,.${px}-wrap .${px}-bgm-title,.${px}-wrap .${px}-authh,.${px}-wrap .${px}-pname{font-family:${themeFontStack(skin,th.headingFont,th.fontName)}}\n`;
     s+=`@media(prefers-reduced-motion:reduce){.${px}-wrap>div>*,.${px}-lb.on,.${px}-lb.on img,.${px}-cd-done .${px}-cd-val,.${px}-hr::after{animation:none!important}}
 `;
     /* 增量跟随：引用色作用于引言/引用元素；强调色作用于斜体/着重内容 */
@@ -60,7 +61,8 @@ export function css(p,px,blocks){
     else if(bgc.type==='gradient'||bgc.type==='noise')bg=`linear-gradient(160deg, ${_bgCol(bgc.color)}, ${_bgCol(bgc.color2)})`;
     /* 背景图 URL 信任面：剔除引号/尖括号/反斜杠/换行，防 </style> 提前闭合注入 */
     else if(bgc.type==='image')bg=`#0e0e14 url("${String(bgc.image||'').replace(/[<>"\\]/g,'').replace(/[\r\n]/g,'')}") center/cover no-repeat`;
-    s+=`.${px}-wrap{background:${bg}}\n`;
+    const texture=themeTexture(th);
+    s+=`.${px}-wrap{background:${texture?texture+',':''}${bg}}\n`;
     if(bgc.type==='noise')s+=`.${px}-wrap::after{content:"";position:absolute;inset:0;opacity:.08;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;border-radius:inherit}\n`;
     /* 组件库强调色挂钩：COMP_LIB 内联样式以 var(--opg-accent,原色) 引用，随主题联动 */
     s+=`.${px}-wrap{--opg-primary:${th.primary};--opg-accent:${th.accent}}\n`;
@@ -755,5 +757,103 @@ ${bk} .${px}-seg.on .${px}-segh{opacity:0}
           break;
       }
     });
+    /* 皮肤只作用于原生叙事区块；不碰自由 HTML、闸门或阅读器。经典路径零增量，
+       标题装饰/正文/对齐仍由原字段决定，预设不会重写用户的区块数据。 */
+    if(skin!=='classic'){
+      const w=`.${px}-wrap`,q=n=>`${w} .${px}-${n}`;
+      s+=`/* theme-skin:${skin} */
+${q('title')}{max-width:100%;overflow-wrap:anywhere}
+${q('subtitle')}{line-height:1.8;overflow-wrap:anywhere}
+${q('gsend')}{background:${th.accent};color:#10191d;font-weight:700}
+${q('gitem')}{border-radius:${radius}px}
+`;
+      if(skin==='nebula')s+=`
+${w}{padding:26px 20px;box-shadow:inset 0 0 80px -40px ${th.primary}66,0 0 0 1px ${th.accent}14}
+${q('eyebrow')}{color:${th.accent};letter-spacing:7px;opacity:.72}
+${q('title')}{letter-spacing:2px;line-height:1.5}
+${q('subtitle')}{letter-spacing:2px;margin-bottom:24px}
+${q('profile')},${q('profc')}{background:linear-gradient(150deg,${th.primary}16,transparent 62%),rgba(255,255,255,.025);border:1px solid ${th.primary}3d;box-shadow:0 0 26px -14px ${th.primary}99}
+${q('profile')}::before,${q('profc')}::before{height:1px;background:linear-gradient(90deg,transparent,${th.accent}cc 55%,transparent)}
+${q('profile')}::after,${q('profc')}::after{border-color:${th.accent};opacity:.55}
+${q('pname')}{background:none;color:${th.accent};letter-spacing:2px}
+${q('ptag')}{border-color:${th.accent}55;background:${th.primary}12;color:${th.accent};box-shadow:0 0 10px -6px ${th.accent}}
+${q('gitem')}{background:linear-gradient(90deg,${th.primary}10,transparent 70%);border:1px solid ${th.primary}33;padding:12px 15px}
+${q('gitem')}:hover{background:linear-gradient(90deg,${th.primary}1f,transparent 70%);border-color:${th.accent}77;transform:translateX(2px)}
+${q('gnum')}{color:${th.accent};opacity:.85;text-shadow:0 0 10px ${th.accent}59}
+${q('ghead')}{letter-spacing:4px}
+${q('quote')}{border-color:${th.primary}}
+`;
+      if(skin==='royal')s+=`
+${w}{padding:26px;box-shadow:inset 0 0 0 6px ${th.primary}0d,inset 0 0 0 7px ${th.accent}26}
+${q('title')}{letter-spacing:3px;line-height:1.55}
+${q('subtitle')}{letter-spacing:2px;margin-bottom:26px}
+${q('profile')},${q('profc')}{background:${th.primary}0c;border:1px solid ${th.accent}40;padding:18px;box-shadow:inset 0 0 0 3px ${th.accent}09}
+${q('profile')}::before,${q('profc')}::before{height:1px;left:16px;right:16px;top:5px;background:linear-gradient(90deg,transparent,${th.accent}99,transparent)}
+${q('pname')}{background:none;color:${th.accent};letter-spacing:2px}
+${q('ptag')}{border-radius:2px;border-color:${th.primary}80;color:${th.textColor}}
+${q('gitem')}{background:${th.primary}0d;border-color:${th.accent}38;padding:13px 15px}
+${q('gnum')}{color:${th.accent};opacity:.8;border-right:1px solid ${th.accent}40;padding-right:10px}
+${q('ghead')}{letter-spacing:4px}
+`;
+      if(skin==='festival')s+=`
+${w}{padding:22px}
+${q('title')}{letter-spacing:3px;line-height:1.5}
+${q('eyebrow')}{letter-spacing:3px}
+${q('profile')},${q('profc')}{background:${th.primary}0b;border-color:${th.primary}40;box-shadow:3px 3px 0 ${th.primary}0d}
+${q('profile')}::before,${q('profc')}::before{height:2px;background:linear-gradient(90deg,${th.primary} 0 24%,${th.accent}88 24% 33%,transparent 33%)}
+${q('pname')}{background:none;color:${th.primary};letter-spacing:2px}
+${q('ptag')}{border-radius:3px;background:${th.accent}0c}
+${q('gitem')}{background:${th.primary}0c;border:1px solid ${th.primary}3d;border-left:3px solid ${th.primary};padding:12px 14px}
+${q('gnum')}{color:${th.accent};opacity:.9}
+${q('quote')}{border-color:${th.primary}}
+`;
+      if(skin==='cyber')s+=`
+${w}{padding:22px}
+${q('eyebrow')}{font-family:"Consolas","Microsoft YaHei",monospace;letter-spacing:2px}
+${q('title')}{letter-spacing:.5px;line-height:1.3}
+${q('subtitle')}{font-size:12px;letter-spacing:.5px;padding-bottom:12px;border-bottom:1px solid ${th.primary}40}
+${q('profile')},${q('profc')}{background:${th.primary}08;border-color:${th.primary}55;box-shadow:4px 4px 0 ${th.primary}0a}
+${q('profile')}::before,${q('profc')}::before{height:3px;background:linear-gradient(90deg,${th.primary} 0 48px,transparent 48px)}
+${q('profile')}::after{width:22px;height:9px;border-color:${th.accent};opacity:.8}
+${q('pname')}{background:none;color:${th.primary};letter-spacing:1px}
+${q('ptag')}{border-radius:1px;padding:2px 7px}
+${q('gitem')}{background:${th.primary}0a;border-color:${th.primary}45;padding:12px}
+${q('gnum')}{color:${th.primary};opacity:1;font-family:"Consolas","Microsoft YaHei",monospace;border:1px solid ${th.primary}55;padding:5px;font-size:14px}
+${q('ghead')}{font-family:"Consolas","Microsoft YaHei",monospace;letter-spacing:2px;border-left:3px solid ${th.accent};padding-left:9px}
+`;
+      if(skin==='abyss')s+=`
+${w}{padding:26px 22px}
+${q('title')}{letter-spacing:4px;line-height:1.6}
+${q('subtitle')}{letter-spacing:2px;margin-bottom:26px}
+${q('profile')},${q('profc')}{background:linear-gradient(145deg,${th.primary}12,${th.accent}05);border-color:${th.primary}40;padding:20px 18px}
+${q('profile')}::before,${q('profc')}::before{height:1px;left:20%;right:20%;background:linear-gradient(90deg,transparent,${th.accent}99,transparent)}
+${q('profile')}::after{border-radius:0 0 10px 0;border-color:${th.primary};right:10px;bottom:10px}
+${q('pname')}{background:none;color:${th.accent};letter-spacing:3px}
+${q('ptag')}{border-color:${th.primary}55;background:transparent;color:${th.accent}}
+${q('glist')}{gap:10px}
+${q('gitem')}{background:${th.primary}0d;border-color:${th.primary}33;padding:15px 18px}
+${q('gnum')}{color:${th.accent};opacity:.8;font-size:22px}
+${q('gitem')}:hover{background:${th.primary}20;transform:translateY(-1px)}
+`;
+      if(skin==='archive')s+=`
+${w}{padding:22px}
+${q('eyebrow')}{font-family:"Courier New","SimSun",monospace;letter-spacing:2px}
+${q('title')}{letter-spacing:1px;line-height:1.5}
+${q('subtitle')}{font-size:12px;letter-spacing:0;border-bottom:1px dashed ${th.accent}55;padding-bottom:12px}
+${q('profile')},${q('profc')}{background:${th.accent}06;border-color:${th.primary}55;box-shadow:3px 3px 0 ${th.primary}10}
+${q('profile')}::before,${q('profc')}::before{height:1px;background:${th.accent}80}
+${q('profile')}::after{border:none;width:28px;height:6px;background:repeating-linear-gradient(90deg,${th.accent} 0 1px,transparent 1px 3px);opacity:.4}
+${q('pname')}{background:none;color:${th.textColor};letter-spacing:1px}
+${q('pno')}{font-family:"Courier New",monospace}
+${q('ptag')}{border-radius:0;background:none;border-style:dashed;color:${th.accent}}
+${q('glist')}{gap:0;border-top:1px solid ${th.primary}66}
+${q('gitem')}{background:none;border:0;border-bottom:1px dashed ${th.primary}55;border-radius:0;padding:14px 4px}
+${q('gnum')}{font-family:"Courier New","SimSun",monospace;font-size:16px;color:${th.accent};opacity:.9}
+${q('gitem')}:hover{background:${th.accent}0b;transform:none}
+`;
+      /* 封面墙保留图片的零内边距网格，不能被普通列表的皮肤覆盖。 */
+      blocks.forEach((b,i)=>{if(b.type==='greetings'&&b.cardStyle==='wall')s+=`${w} .${px}-bk${i} .${px}-glist{gap:10px;border:0}\n${w} .${px}-bk${i} .${px}-gitem{padding:0;border:1px solid ${th.primary}55}\n`});
+      if(motion==='off')s+=`${q('gitem')},${q('avatar')},${q('profc')}{transition:none}\n`;
+    }
     return s;
 }

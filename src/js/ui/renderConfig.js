@@ -5,6 +5,7 @@ import { Project } from '../project.js';
 import { UI } from './core.js';
 import { bindListEditor, detectFonts } from './shared.js';
 import { collectSearchMatches, replaceAllInProject, replaceAllInString } from '../search.js';
+import { THEME_SKINS, themeSkin, themePresetPatch, themePresetMatches, themeTexture } from '../themes.js';
 /* 组件库分类（与 defs.js COMP_LIB[].cat 对应） */
 const COMP_CATS=[['all','全部'],['text','叙事文本'],['info','信息展示'],['role','角色卡'],['tech','科技终端'],['fx','状态动效'],['fantasy','古风奇幻'],['fun','交互趣味']];
 
@@ -12,9 +13,6 @@ const COMP_CATS=[['all','全部'],['text','叙事文本'],['info','信息展示'
    触发的整页重渲染不再跳回「第一个区块展开」；换工程时重置 */
 let cfgOpen=new Set([0]),cfgOpenProj=null;
 
-/* 主题预设「选中态」判定：全字段一致才算当前预设（bg 深比较） */
-const TH_EQ_FIELDS=['primary','accent','textColor','radius','titleAlign','motion'];
-const themeEq=(a,b)=>TH_EQ_FIELDS.every(k=>String(a[k]??'')===String(b[k]??''))&&JSON.stringify(a.bg||null)===JSON.stringify(b.bg||null);
 /* 预设套用统一入口：对象字段深拷贝写入——直接赋引用会让 THEME_PRESETS 常量
    被后续微调污染（bg 等对象字段尤其危险），全部预设/试穿写入必须走这里 */
 function applyPresetTheme(t){
@@ -27,16 +25,17 @@ let tryCard=null,tryT=null;
    颜色/圆角/动效等输入即时刷新（binder 挂钩），无需整卡重渲染 */
 function presetStatusHtml(){
   const t=Project.cur.theme;
-  const matchedIdx=THEME_PRESETS.findIndex(x=>themeEq(t,x.theme));
+  const matchedIdx=THEME_PRESETS.findIndex(x=>themePresetMatches(t,x.theme));
   if(matchedIdx>=0)return `<span class="thstat">当前预设：<b>${esc(THEME_PRESETS[matchedIdx].name)}</b></span>`;
   if(t.presetRef&&THEME_PRESETS.some(x=>x.name===t.presetRef))return `<span class="thstat thstat-mod">已自定义（基于 ${esc(t.presetRef)}）— Ctrl+Z 可回退套用前状态</span>`;
   return '';
 }
 function updatePresetStatus(){
   const t=Project.cur.theme;
-  const matchedIdx=THEME_PRESETS.findIndex(x=>themeEq(t,x.theme));
+  const matchedIdx=THEME_PRESETS.findIndex(x=>themePresetMatches(t,x.theme));
   document.querySelectorAll('.thpg .thp').forEach((el,i)=>{
     el.classList.toggle('thp-sel',i===matchedIdx);
+    el.setAttribute('aria-pressed',String(i===matchedIdx));
     const nm=el.querySelector('.thp-name');
     if(nm)nm.textContent=THEME_PRESETS[i].name+(i===matchedIdx?' ✓':'');
   });
@@ -79,10 +78,11 @@ export function renderConfig(){
   const pbgType=pbg.type||'gradient';
   /* 选中态初始渲染走 updatePresetStatus（见模块级函数）；这里只铺卡面与状态槽 */
   const presetGrid=`<div class="thpg">${THEME_PRESETS.map((t,i)=>{
-    const b=t.theme.bg||{};
-    return `<button type="button" class="thp" data-preset="${i}" title="悬停试穿，点击套用"
-      style="--tbg:linear-gradient(160deg,${b.color||'#1a1a2e'},${b.color2||'#2d1b3d'});--tp:${t.theme.primary};--ta:${t.theme.accent};--tt:${t.theme.textColor};--tr:${Math.min(12,t.theme.radius||0)}px">
-      <span class="thp-demo"><span class="thp-title">标题字</span><span class="thp-line"></span><span class="thp-text">正文示意 Aa</span><span class="thp-pill">按钮</span></span>
+    const b=t.theme.bg||{},skin=themeSkin(t.theme),texture=themeTexture(t.theme);
+    const bg=b.type==='solid'?b.color:`linear-gradient(160deg,${b.color||'#1a1a2e'},${b.color2||'#2d1b3d'})`;
+    return `<button type="button" class="thp" data-preset="${i}" data-skin="${skin}" title="${esc(t.caption?t.caption+'；悬停试穿，点击套用':'悬停试穿，点击套用')}" aria-pressed="false"
+      style="--tbg:${texture?texture+',':''}${bg};--tp:${t.theme.primary};--ta:${t.theme.accent};--tt:${t.theme.textColor};--tr:${Math.min(22,t.theme.radius||0)}px;--tf:${esc(THEME_SKINS[skin].font)}">
+      <span class="thp-demo">${t.folio?`<span class="thp-folio">${esc(t.folio)}</span>`:''}<span class="thp-title">${esc(t.specimen||'标题字')}</span><span class="thp-line"></span><span class="thp-text">${t.caption?esc(t.caption):'正文示意 Aa'}</span><span class="thp-pill">${t.caption?'翻开此页':'按钮'}</span></span>
       <span class="thp-name">${esc(t.name)}</span>
     </button>`;
   }).join('')}</div><div class="thstat-slot" style="min-height:16px;margin-bottom:4px"></div>`;
@@ -123,6 +123,10 @@ export function renderConfig(){
           <option value="off"${p.theme.motion==='off'?' selected':''}>关闭（纯静态）</option>
         </select></div>
     </div>
+    <div><label>主题材质 / 版式</label><select data-bind="theme.skin">
+      ${Object.entries(THEME_SKINS).map(([v,s])=>`<option value="${v}"${themeSkin(p.theme)===v?' selected':''}>${esc(s.name)}</option>`).join('')}
+    </select></div>
+    <div style="font-size:11px;color:var(--txt2);margin-top:4px">材质只改底纹与版式，不改区块内容；选「经典」可关闭。套用预设包含字体，原有装饰花纹与标题装饰仍由区块管理。</div>
     <div class="thwarn-slot"></div>
     <div class="thgrp">字体</div>
     <div class="row2">
@@ -167,12 +171,12 @@ export function renderConfig(){
     else{
       p.theme.fontName=fontPicker.value;
       fontCustomInput.style.display='none';
-      UI.debouncedPreview();Project.saveDebounced();
+      updatePresetStatus();UI.debouncedPreview();Project.saveDebounced();
     }
   });
   fontCustomInput.addEventListener('input',()=>{
     p.theme.fontName=fontCustomInput.value;
-    UI.debouncedPreview();Project.saveDebounced();
+    updatePresetStatus();UI.debouncedPreview();Project.saveDebounced();
   });
 
   /* 区块卡片 */
@@ -560,7 +564,7 @@ export function renderConfig(){
       /* 背景类型切换换字段集：入库后重渲染本卡（重渲染会销毁触发元素，值须先读完毕） */
       if(bind==='theme.bg.type'){Project.saveDebounced();UI.renderConfig()}
       /* 主题可微调字段的即时反馈：对比度警示 + 预设选中态/已自定义标识 */
-      if(/^theme\.(primary|accent|textColor|radius|titleAlign|motion|bg\.)/.test(bind)){updateContrastWarn();updatePresetStatus()}
+      if(/^theme\.(primary|accent|textColor|radius|titleAlign|motion|skin|headingFont|bg\.)/.test(bind)){updateContrastWarn();updatePresetStatus()}
       this.debouncedPreview();Project.saveDebounced();
     });
     /* 悬停试穿：只覆写预览构建的 theme 拷贝（UI.previewThemeOverride），工程数据不动——
@@ -571,7 +575,7 @@ export function renderConfig(){
       const pi=+card.dataset.preset;
       if(!THEME_PRESETS[pi])return;
       clearTimeout(tryT);tryCard=card;
-      tryT=setTimeout(()=>UI.tryPreview(THEME_PRESETS[pi].theme),120);
+      tryT=setTimeout(()=>UI.tryPreview(themePresetPatch(THEME_PRESETS[pi].theme)),120);
     });
     col.addEventListener('mouseout',e=>{
       if(!tryCard)return;
@@ -591,7 +595,7 @@ export function renderConfig(){
       clearTimeout(tryT);tryCard=null;
       UI.previewThemeOverride=null;
       const tp=THEME_PRESETS[+pi];
-      applyPresetTheme(tp.theme);
+      applyPresetTheme(themePresetPatch(tp.theme));
       Project.cur.theme.presetRef=tp.name;
       Project.saveSnapshot();Project.save();
       UI.renderConfig();UI.refreshPreview();UI.renderExport();

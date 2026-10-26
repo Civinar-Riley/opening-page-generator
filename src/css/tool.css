@@ -505,7 +505,7 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 
 /* ===== 主题风格卡：预设试穿卡 + 分组小标题（v1.24） ===== */
 /* 颜色经行内 CSS 变量逐卡注入（--tbg 底/--tp 主色/--ta 强调/--tt 文字/--tr 圆角），此处只管形态 */
-.thpg{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px}
+.thpg{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
 .thp{
   display:flex;flex-direction:column;gap:6px;padding:6px;min-width:0;
   background:var(--panel2);border:1px solid var(--line);border-radius:10px;
@@ -522,6 +522,32 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 .thp-pill{display:inline-block;font-size:9px;line-height:1;padding:3px 9px;border-radius:999px;background:var(--tp);color:#fff}
 .thp-name{display:block;font-size:11px;color:var(--txt);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .thp-sel .thp-name{color:var(--acc);font-weight:700}
+/* 五册材质样本：卡面与产物共用 themeTexture；经典卡面不叠新版纹样。 */
+.thp[data-skin]:not([data-skin='classic']) .thp-demo{position:relative;overflow:hidden;width:100%;min-height:126px;padding:12px 10px;border:1px solid color-mix(in srgb,var(--ta) 30%,transparent);display:flex;flex-direction:column;align-items:flex-start;gap:0}
+.thp-folio{display:block;font-family:var(--font-mono);font-size:8px;line-height:1.4;letter-spacing:1.3px;color:var(--ta);opacity:.82;margin-bottom:14px}
+.thp[data-skin]:not([data-skin='classic']) .thp-title{font-family:var(--tf);font-size:18px;line-height:1.4;letter-spacing:1px;background:none;color:var(--tt);margin-bottom:0}
+.thp[data-skin]:not([data-skin='classic']) .thp-line{height:1px;width:32px;margin:7px 0}
+.thp[data-skin]:not([data-skin='classic']) .thp-text{font-size:9px;line-height:1.5;opacity:.8;letter-spacing:0;white-space:normal}
+.thp[data-skin]:not([data-skin='classic']) .thp-pill{margin-top:auto;padding:3px 0 0;background:none;border-radius:0;color:var(--ta);font-size:9px;line-height:1.4;letter-spacing:1px}
+.thp[data-skin='royal'] .thp-demo{outline:1px solid color-mix(in srgb,var(--ta) 18%,transparent);outline-offset:-5px;align-items:center!important;text-align:center}
+.thp[data-skin='royal'] .thp-title{color:var(--ta)!important;letter-spacing:2px!important}
+.thp[data-skin='nebula'] .thp-demo{align-items:center!important;text-align:center;box-shadow:inset 0 0 34px -16px var(--tp)}
+.thp[data-skin='nebula'] .thp-folio{color:var(--ta);letter-spacing:2px;opacity:.72}
+.thp[data-skin='nebula'] .thp-title{color:var(--ta)!important;letter-spacing:2px!important;text-shadow:0 0 10px color-mix(in srgb,var(--ta) 45%,transparent)}
+.thp[data-skin='nebula'] .thp-line{width:54px!important;background:linear-gradient(90deg,transparent,var(--ta),transparent)}
+.thp[data-skin='festival'] .thp-demo{border-top:2px solid var(--tp)!important;box-shadow:inset 3px 0 color-mix(in srgb,var(--tp) 16%,transparent)}
+.thp[data-skin='festival'] .thp-title{color:var(--tp)!important;letter-spacing:3px!important}
+.thp[data-skin='festival'] .thp-line{width:18px!important;height:2px!important}
+.thp[data-skin='cyber'] .thp-demo{border-left:3px solid var(--tp)!important}
+.thp[data-skin='cyber'] .thp-title{font-family:var(--tf)!important;color:var(--tp)!important;letter-spacing:0!important}
+.thp[data-skin='cyber'] .thp-line{width:100%!important;background:repeating-linear-gradient(90deg,var(--ta) 0 6px,transparent 6px 9px)}
+.thp[data-skin='abyss'] .thp-demo{align-items:center!important;text-align:center}
+.thp[data-skin='abyss'] .thp-line{width:46px!important;background:linear-gradient(90deg,transparent,var(--ta),transparent)}
+.thp[data-skin='archive'] .thp-demo{border-style:dashed!important}
+.thp[data-skin='archive'] .thp-folio{border-bottom:1px solid var(--ta);padding-bottom:3px;letter-spacing:.8px}
+.thp[data-skin='archive'] .thp-title{font-size:17px!important}
+.thp[data-skin='archive'] .thp-line{width:100%!important;background:repeating-linear-gradient(90deg,var(--ta) 0 3px,transparent 3px 6px)}
+@media(prefers-reduced-motion:reduce){.thp{transition:none}.thp:hover{transform:none}}
 /* 分组小标题：左侧标签 + 通长细线 */
 .thgrp{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--txt2);letter-spacing:2px;margin:14px 0 8px}
 .thgrp::after{content:"";flex:1;height:1px;background:var(--line)}

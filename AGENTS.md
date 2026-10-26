@@ -44,6 +44,7 @@ main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json
 | `src/js/main.js` | 入口：顶栏事件委托（工程 CRUD/导入导出）、工具主题下拉（UI_THEMES 渲染 + localStorage 持久化 + 恢复兜底）、工厂重置（三次确认） |
 | `src/js/utils.js` | `$/$$`、`esc()`（五类转义）、`uid()`（时间戳+单调计数器）、toast、confirmModal/promptModal、导出代码语法高亮 |
 | `src/js/defs.js` | 纯数据：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
+| `src/js/themes.js` | **纯函数/数据**：`THEME_SKINS` 材质枚举与本机字体栈、`themeSkin` 兼容兜底、`themePresetPatch` 试穿/套用补丁、`themePresetMatches` 完整匹配、`themeTexture` 卡片/产物共用纹理；不按 presetRef 推断材质 |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
 | `src/js/project.js` | 工程存储/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
 
@@ -82,6 +83,7 @@ localStorage（openingPageGen_* 键）
 7. **`</script>` 转义**：build.js 已处理 bundle 层；gen 内嵌脚本（body.js 倒计时/粒子、scripts.js 各脚本）手写闭合标签必须用 `<\/script>`
 8. **产物运行时 API 守卫**：任何酒馆助手 API 调用必须 `typeof` 守卫 + try/catch + 降级提示（详见 `src/js/gen/TAVERN_API.md`）；禁止依赖 DOMContentLoaded
 9. **自由 HTML 全权限警示**：自由 HTML 区块的脚本在预览（srcdoc 继承父 origin + allow-same-origin）与酒馆导出中均以完整权限运行，可读写 localStorage——文档与区块编辑器须注明「勿粘贴不可信来源的代码」（自伤型风险，与酒馆真实环境一致）
+10. **页面 `theme.skin` 契约**：仅接受 `classic/nebula/royal/festival/cyber/abyss/archive`（枚举真相在 `themes.js`）；新工程默认 `classic`，旧工程缺字段由 normalize 补齐，缺失/未知值渲染时由 `themeSkin` 回落 classic。**禁止根据 `presetRef` 自动换肤**，旧工程保留原有观感，仅用户主动套用才切到新版。试穿/套用统一走 `themePresetPatch`（先复位 `skin:'classic',fontName:'',headingFont:''`，再覆盖预设字段）；六套预设（含紫夜幻金）都带 `skin`/`headingFont`，切换时互不残留。匹配走 `themePresetMatches`，字体/材质微调必须纳入自定义态。材质单选，classic 关闭附加材质；套用不得改区块内容或原有装饰设置。材质仅内联 CSS，字体使用本机字体栈与系统回落，不引入外链字体、运行时依赖或酒馆 API
 
 ## 常见任务配方
 
@@ -117,7 +119,9 @@ localStorage（openingPageGen_* 键）
 > ⚠️ 改 COMP_LIB 基础文案时：若该组件被官方模板 `BUILTIN_TEMPLATES` 以 `.replace('旧文案',…)` 定制（常见 8 个：CHAPHD/LETTER/QUEST/RATE/TERM/INV/CAL/CHAT_HTML），先全局搜索 defs.js 里的 `.replace('该文案'` 核对模板——否则模板 replace 会静默失效回落到默认文案（模板本就是「开场即改」素材，影响小，但改动前留意即可）。
 
 ### 新增页面主题预设
-`defs.js` `THEME_PRESETS` 追加 `{name,theme:{primary,accent,textColor,radius,titleAlign,motion,bg}}`——bg 为整套观感包的背景（v1.24 起背景归主题，`{type:'gradient'|'solid'|'image'|'noise',color,color2,image}`）；先核对与现有 6 套色相不撞；textColor 必须近白（深底可读，测试有 ≥4.5:1 对比度断言）。UI 层套用/试穿/选中态由 `renderConfig.js` 的 `applyPresetTheme`/`UI.tryPreview`/`updatePresetStatus` 统一处理，新预设无需额外接线
+`defs.js` `THEME_PRESETS` 追加 `{name,caption?,specimen?,folio?,theme:{skin,primary,accent,textColor,fontName,headingFont,radius,titleAlign,motion,bg}}`——bg 为整套观感包的背景（v1.24 起背景归主题，`{type:'gradient'|'solid'|'image'|'noise',color,color2,image}`）；材质选 `themes.js` 的枚举，标题字体配本机回落栈；文字色对背景 ≥4.5:1、强调色 ≥3:1，UI 警示按背景主色（图片按兜底色）估算，不是整张图的对比度审计。先核对与现有 6 套不趋同：紫夜幻金＝紫夜星穹（紫电流金、衬线/星弧流光），荆棘王室＝王室藏书票（绯红旧银、衬线），狐火缘日＝狐火夜祭（朱砂狐青、楷字/噪点），蓝电义体＝义体检修终端（冰蓝信号橙、网格），渊语回廊＝深渊潮汐（深海珍珠、同心潮线/大圆角），档案机＝旧档案卷宗（炭黑黄铜、等宽/横线/静态）。
+
+试穿与点击套用必须先经 `themePresetPatch`，再分别交 `UI.tryPreview` / `applyPresetTheme`（对象深拷贝，禁止污染预设常量）；`updatePresetStatus` 统一用 `themePresetMatches` 比较材质、字体、配色、圆角、对齐、动效与背景。试穿只覆写预览不落盘，点击套用进撤销栈；旧工程与官方模板不得因预设改版自动换肤（见硬约束 10）。新增材质同时维护 `THEME_SKINS` / `themeTexture`、`gen/css.js` 作用域版式与预设卡样式，纹理不可抢占原装饰/噪点层；补齐 `tests/themes.test.js` 的兼容与套用回归。版本暂保持 1.24.0，与此前未发版改动合并，不因本次主题重制单独发布
 
 ### 新增工具 UI 主题
 `defs.js` `UI_THEMES` 追加 + `tool.css` 新 data-theme 块（遵守约束 4）；当前 7 套全深色系，新增浅色需先与作者确认（浅色主题曾因可读性被整体移除）

@@ -85,12 +85,12 @@ const CORE_TYPES=['welcome','decor','profile','greetings','divider','disclaimer'
  * ================================================================ */
 const THEME_PRESETS=[
   /* bg：v1.24 起背景归主题所有，预设随之升级为「整套观感包」（含底色） */
-  {name:'紫夜幻金',theme:{primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',radius:12,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#161228',color2:'#261b42'}}},
-  {name:'荆棘王室',theme:{primary:'#8c1f3f',accent:'#e8a2b8',textColor:'#fbeef2',radius:4,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#1e0b12',color2:'#371420'}}},
-  {name:'狐火缘日',theme:{primary:'#e8792e',accent:'#8fd3e8',textColor:'#fdf2e7',radius:10,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#201305',color2:'#382311'}}},
-  {name:'蓝电义体',theme:{primary:'#00a8cc',accent:'#ff2e88',textColor:'#eafcff',radius:2,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#060b12',color2:'#0d1926'}}},
-  {name:'渊语回廊',theme:{primary:'#0d5c63',accent:'#4de3b0',textColor:'#e6f5f0',radius:12,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#051110',color2:'#0b211e'}}},
-  {name:'档案机',theme:{primary:'#7e8d85',accent:'#a2e3c4',textColor:'#f0f7f4',radius:2,titleAlign:'left',motion:'soft',bg:{type:'gradient',color:'#151714',color2:'#20241f'}}},
+  {name:'紫夜幻金',caption:'星穹笺 · 紫电与流金',specimen:'星落之时',folio:'NOCTURNE · I',theme:{skin:'nebula',primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',fontName:'',headingFont:'Noto Serif SC',radius:12,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#161228',color2:'#261b42'}}},
+  {name:'荆棘王室',caption:'藏书票 · 绯红与旧银',specimen:'荆棘之誓',folio:'EX LIBRIS',theme:{skin:'royal',primary:'#be6078',accent:'#e3cbb0',textColor:'#f5ece6',fontName:'',headingFont:'Noto Serif SC',radius:3,titleAlign:'center',motion:'soft',bg:{type:'gradient',color:'#190e16',color2:'#2b1521'}}},
+  {name:'狐火缘日',caption:'夜祭笺 · 朱砂与狐青',specimen:'今宵有约',folio:'宵 · 祭',theme:{skin:'festival',primary:'#e59065',accent:'#abd7bc',textColor:'#f8efe1',fontName:'',headingFont:'KaiTi',radius:8,titleAlign:'left',motion:'soft',bg:{type:'noise',color:'#181b19',color2:'#29231c'}}},
+  {name:'蓝电义体',caption:'检修台 · 冰蓝与信号橙',specimen:'LINK / 01',folio:'NEURAL SYSTEM',theme:{skin:'cyber',primary:'#62c9e5',accent:'#f4ad70',textColor:'#edf5f8',fontName:'',headingFont:'Bahnschrift',radius:2,titleAlign:'left',motion:'full',bg:{type:'gradient',color:'#09131e',color2:'#102537'}}},
+  {name:'渊语回廊',caption:'潮汐页 · 深海与珍珠',specimen:'潮声来信',folio:'BATHYAL / 04',theme:{skin:'abyss',primary:'#72aaa5',accent:'#d3ddc4',textColor:'#eaf2ed',fontName:'',headingFont:'Noto Serif SC',radius:22,titleAlign:'center',motion:'soft',bg:{type:'gradient',color:'#091a1d',color2:'#183333'}}},
+  {name:'档案机',caption:'旧卷宗 · 炭黑与黄铜',specimen:'未结案记录',folio:'FILE No. 005',theme:{skin:'archive',primary:'#b6ab96',accent:'#ddba78',textColor:'#f0ebe0',fontName:'',headingFont:'Courier New',radius:0,titleAlign:'left',motion:'off',bg:{type:'noise',color:'#191815',color2:'#292720'}}},
 ];
 
 /* ================================================================
@@ -428,7 +428,7 @@ function defaultProject(name){
     marker:'【开场页】',
     theme:{primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',followTavern:false,
       follow:{text:false,quote:false,font:false,em:false},
-      fontName:'',headingFont:'',radius:12,titleAlign:'center',motion:'full',
+      skin:'classic',fontName:'',headingFont:'',radius:12,titleAlign:'center',motion:'full',
       /* 背景归主题所有（v1.24 上收自装饰区）；默认值 = 旧装饰区 create 的默认渐变，新工程观感不变
          presetRef：最近一次套用的主题预设名，用于选中态「已自定义（基于 X）」标识 */
       bg:{type:'gradient',color:'#1a1a2e',color2:'#2d1b3d'},presetRef:''},
