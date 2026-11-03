@@ -198,7 +198,7 @@ opening-page-generator/
 │   ├── smoke-browser.mjs         # 无头浏览器冒烟（playwright）
 │   ├── helper-pack.mjs           # 助手小包文件清单 + store-only ZIP 组装（纯函数）
 │   └── pack-helper.mjs           # 打包「漫画导入助手」小包（构建期内嵌与 Release 资产共用同一份字节）
-├── .github/                      # 工作流（CI / tag 自动发版）+ issue 模板
+├── .github/                      # 工作流（CI / tag 自动发版 + Release 说明模板）+ issue 模板
 ├── reference/                    # 外部参考资料（酒馆助手文档 / API 类型，只读不进构建）
 ├── build.js                      # 构建脚本（esbuild + 产物体积预算）
 ├── lint.js                       # 零依赖 lint

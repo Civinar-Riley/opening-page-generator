@@ -25,9 +25,14 @@ jobs:
       # 产物挂成 Release asset：带版本名的自描述文件名
       - name: Rename artifact
         run: cp dist/index.html "opg-${GITHUB_REF_NAME}.html"
+      # Release 说明头部用模板渲染（{{TAG}} 占位符替换为 tag 名），讲清两个资产各是干嘛的；
+      # generate_release_notes 会把自动更新日志追加在头部之后
+      - name: Render release notes
+        run: sed "s/{{TAG}}/${GITHUB_REF_NAME}/g" .github/release-template.md > release-notes.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release-notes.md
           files: |
             opg-*.html
             dist-nh/opg-nh-helper-*.zip

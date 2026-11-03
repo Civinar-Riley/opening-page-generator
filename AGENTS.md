@@ -28,7 +28,7 @@
 
 交付前闭环：`npm run lint` 通过 → `npm test` 全过 → `npm run build` 成功（postbuild 自动静态冒烟）→ `npm run smoke`（改动涉及工具 UI/壳时必跑）→ **同步根目录 `README.md`**（见「README 同步」）。lint 或测试失败禁止交付。
 
-发版配方（打 tag 自动建 Release 挂 dist 产物，workflow 见 `.github/workflows/release.yml`）：bump `package.json` version → README 标题同步 → 全量闭环 → commit push main → `git tag -a v1.x.0 && git push origin v1.x.0` → GitHub Actions 自动构建并创建 Release（workflow 必须已先在 main 上，tag 才会触发）。
+发版配方（打 tag 自动建 Release 挂 dist 产物，workflow 见 `.github/workflows/release.yml`；Release 说明头部由 `.github/release-template.md` 渲染，{{TAG}} 占位符替换为 tag 名——改资产清单时同步该模板与 README 安装段）：bump `package.json` version → README 标题同步 → 全量闭环 → commit push main → `git tag -a v1.x.0 && git push origin v1.x.0` → GitHub Actions 自动构建并创建 Release（workflow 必须已先在 main 上，tag 才会触发）。
 
 ## 模块地图（src/js js 文件 + index.html + tool.css）
 
