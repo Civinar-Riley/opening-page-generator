@@ -30,6 +30,7 @@ const Project={
   /** @type {ProjectData[]} */
   templates:[],
   /* ---- 撤销/重做历史栈 ---- */
+  /* 快照以 JSON 字符串存储：去重直接比字符串，每次输入省一次 stringify + 一次 parse（大工程逐键输入的热路径） */
   _history:[],_historyIdx:-1,MAX_HISTORY:20,_inputBatch:false,
   /** 保存区块快照；默认结束输入批次，mergeInput 仅供 saveDebounced 合并连续输入 */
   saveSnapshot(mergeInput=false){
@@ -38,20 +39,22 @@ const Project={
     if(!this.cur)return;
     const json=JSON.stringify({blocks:this.cur.blocks,theme:this.cur.theme});
     /* 无区块与主题变化的保存不占历史，也不能截断 redo 或开启输入合并 */
-    if(json===JSON.stringify(this._history[this._historyIdx]))return;
+    if(json===this._history[this._historyIdx])return;
     this._history=this._history.slice(0,this._historyIdx+1);
-    if(merge&&this._historyIdx>0)this._history[this._historyIdx]=JSON.parse(json);
-    else this._history.push(JSON.parse(json));
+    if(merge&&this._historyIdx>0)this._history[this._historyIdx]=json;
+    else this._history.push(json);
     if(this._history.length>this.MAX_HISTORY)this._history.shift();
     this._historyIdx=this._history.length-1;
     this._inputBatch=mergeInput;
   },
   /** 从快照恢复（区块列表 + 主题；v1.24 起主题进撤销栈——主题卡此前是撤销盲区） */
-  _restore(s){
-    if(!s)return;
-    this.cur.blocks=JSON.parse(JSON.stringify(s.blocks||[]));
+  _restore(raw){
+    if(!raw)return;
+    /* 兼容对象形态快照（测试/旧调用方直接塞对象） */
+    const s=typeof raw==='string'?JSON.parse(raw):JSON.parse(JSON.stringify(raw));
+    this.cur.blocks=s.blocks||[];
     /* 旧格式快照（无 theme 键）保持当前主题不动 */
-    if(s.theme)this.cur.theme=JSON.parse(JSON.stringify(s.theme));
+    if(s.theme)this.cur.theme=s.theme;
   },
   /** 撤销一步；无可撤销时返回 false。恢复后触发整个界面重渲染 */
   undo(){
@@ -80,12 +83,34 @@ const Project={
     this.saveSnapshot();
   },
 
-  load(){
-    let raw=null;
+  /* 分键存储（v1.27）：每个工程独占 openingPageGen_v1_proj_<id>，索引键存 id 顺序。
+     旧版整表单键（LS_KEY）每次保存都要序列化全部工程，工程多/含大图时既慢又更快撞配额 */
+  LS_INDEX:'openingPageGen_v1_projIndex',
+  LS_PROJ:'openingPageGen_v1_proj_',
+  /** 已落盘快照（id → JSON）：save 只写有变化的工程，未变的不重复 setItem */
+  _written:new Map(),
+  /** 读取工程列表：优先分键格式；无索引时读旧整表单键（迁移在随后的 save 中完成） */
+  _readList(){
     /* localStorage 本身可能被浏览器禁用（隐私模式/权限策略）： getItem 直抛会杀死启动 */
+    let idx=null;
+    try{idx=JSON.parse(localStorage.getItem(this.LS_INDEX)||'null')}catch(e){}
+    if(Array.isArray(idx)){
+      this._legacy=false;
+      return idx.map(id=>{
+        try{return JSON.parse(localStorage.getItem(this.LS_PROJ+id)||'null')}
+        catch(e){console.error('[工程] 损坏数据已跳过：'+id,e);return null}
+      }).filter(p=>p&&typeof p==='object');
+    }
+    let raw=null;
     try{raw=localStorage.getItem(this.LS_KEY)}catch(e){}
-    try{this.list=JSON.parse(raw||'[]')}catch(e){this.list=[]}
-    if(!Array.isArray(this.list))this.list=[];
+    this._legacy=raw!=null;
+    let list;
+    try{list=JSON.parse(raw||'[]')}catch(e){list=[]}
+    return Array.isArray(list)?list:[];
+  },
+  load(){
+    this._written=new Map();this._writtenIdx=undefined;this._legacyStuck=false;this._lastCur=null;
+    this.list=this._readList();
     /* 单工程损坏只剔除该工程并告警，不让一条坏数据拖死整个应用启动 */
     this.list=this.list.filter(p=>{
       try{this.migrate(p);return true}
@@ -170,16 +195,68 @@ const Project={
   save(){
     /* 工厂重置后 reload 前的空窗期：任何触发保存的操作会把内存旧数据写回，直接短路 */
     if(this._resetting)return;
+    /* 只序列化「当前 + 上次保存时的当前（切工程前的未落盘输入）+ 从未落盘的」工程，其余沿用已写快照 */
+    const jsons=new Map();
+    this.list.forEach(p=>{
+      if(!p.id)p.id=uid();
+      if(p===this.cur||p===this._lastCur||!this._written.has(p.id))jsons.set(p.id,JSON.stringify(p));
+    });
+    const kb=()=>(this.list.reduce((n,p)=>n+(jsons.get(p.id)??this._written.get(p.id)??'').length,0)/1024).toFixed(0);
     try{
-      localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
+      if(this._legacy&&!this._legacyStuck)this._migrateLegacy(jsons);
+      else if(this._legacyStuck)localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
+      else this._writeSplit(jsons);
       localStorage.setItem(this.LS_CUR,this.cur?.id||'');
+      this._lastCur=this.cur;
     }catch(e){
       /* 配额超限（超大图片/HTML）或隐私模式禁写：显式报错 + 强提示（数据仅存内存，关闭即失） */
       clearTimeout(this._qTip);
-      const size=(JSON.stringify(this.list).length/1024).toFixed(0);
+      const size=kb(),big=this._biggest();
       console.error('[Project] localStorage 写入失败（工程数据约 '+size+' KB）:',e);
-      this._qTip=setTimeout(()=>toast('⚠️ 保存失败（数据约 '+size+' KB，仅存于内存，关闭页面即丢失）——请精简内容或立即「导出工程」备份',6000),200);
+      this._qTip=setTimeout(()=>toast('⚠️ 保存失败（数据约 '+size+' KB，仅存于内存，关闭页面即丢失）'+(big?'——占用最大：'+big:'')+'。请精简内容或立即「导出工程」备份',8000),200);
     }
+  },
+  /** 分键写入：只 setItem 内容有变化的工程；索引变化才重写；已移出列表的工程删键 */
+  _writeSplit(jsons){
+    /* 缓存自愈：存储被外部改动（另一标签页/手动清空/重置）时索引对不上，作废缓存全量重写 */
+    if(this._writtenIdx!==undefined&&localStorage.getItem(this.LS_INDEX)!==this._writtenIdx){
+      this._written=new Map();this._writtenIdx=undefined;
+      this.list.forEach(p=>{if(!jsons.has(p.id))jsons.set(p.id,JSON.stringify(p))});
+    }
+    jsons.forEach((json,id)=>{
+      if(this._written.get(id)===json)return;
+      localStorage.setItem(this.LS_PROJ+id,json);this._written.set(id,json);
+    });
+    const ids=this.list.map(p=>p.id),idxJson=JSON.stringify(ids);
+    if(idxJson!==this._writtenIdx){localStorage.setItem(this.LS_INDEX,idxJson);this._writtenIdx=idxJson}
+    [...this._written.keys()].forEach(id=>{
+      if(ids.includes(id))return;
+      try{localStorage.removeItem(this.LS_PROJ+id)}catch(e){}
+      this._written.delete(id);
+    });
+  },
+  /** 旧整表单键 → 分键：先写新键再删旧键；新旧并存撞配额时回滚新键，本会话继续沿用旧格式（数据不丢） */
+  _migrateLegacy(jsons){
+    try{
+      this._writeSplit(jsons);
+      localStorage.removeItem(this.LS_KEY);
+      this._legacy=false;
+    }catch(e){
+      [...this._written.keys()].forEach(id=>{try{localStorage.removeItem(this.LS_PROJ+id)}catch(_){}});
+      try{localStorage.removeItem(this.LS_INDEX)}catch(_){}
+      this._written=new Map();this._writtenIdx=undefined;this._legacyStuck=true;
+      console.error('[Project] 分键迁移空间不足，本会话沿用旧存储格式',e);
+      localStorage.setItem(this.LS_KEY,JSON.stringify(this.list));
+    }
+  },
+  /** 保存失败时定位占用：当前工程里体积最大的区块（多为内嵌 base64 图片 / 大段自由 HTML） */
+  _biggest(){
+    const p=this.cur;if(!p||!Array.isArray(p.blocks))return '';
+    let best=null,max=0;
+    p.blocks.forEach((b,i)=>{const n=JSON.stringify(b).length;if(n>max){max=n;best={b,i}}});
+    if(!best||max<20*1024)return '';
+    const d=BLOCK_DEFS[best.b.type];
+    return `第 ${best.i+1} 个区块「${d?d.name:best.b.type}」约 ${(max/1024).toFixed(0)} KB`;
   },
   /* 区块输入立即入历史，避免紧接结构操作时丢失中间态；仅全工程落盘延迟 600ms */
   _svT:null,

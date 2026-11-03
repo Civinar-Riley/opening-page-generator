@@ -51,6 +51,7 @@ async function build() {
     charset: 'utf8',
     legalComments: 'none',
     logLevel: 'silent',
+    metafile: true,
     minify,
   });
   /* 内联进 <script> 前，把字符串里的 </script> 转义，避免提前闭合 */
@@ -105,6 +106,10 @@ async function build() {
   } else if (kb > BUDGET_WARN) {
     console.warn(`⚠ 产物体积 ${kb.toFixed(1)} KB 超告警线 ${BUDGET_WARN} KB，接近预算`);
   }
+  /* 体积占比 Top 5（压缩后字节，来自 esbuild metafile）：体积上涨时一眼看出是谁涨的 */
+  const outMeta = Object.values(r.metafile.outputs)[0];
+  const top = Object.entries(outMeta.inputs).sort((a, b) => b[1].bytesInOutput - a[1].bytesInOutput).slice(0, 5);
+  console.log('  JS 体积 Top5：' + top.map(([f, v]) => f.replace(/^src\/js\//, '') + ' ' + (v.bytesInOutput / 1024).toFixed(1) + 'KB').join(' · '));
   if (out.includes('__OPG_VERSION__') || out.includes('__OPG_BUILD_DATE__') || out.includes('__OPG_HELPER_ZIP__')) {
     throw new Error('版本/日期/助手小包占位未完全替换，请检查 index.html 占位拼写');
   }

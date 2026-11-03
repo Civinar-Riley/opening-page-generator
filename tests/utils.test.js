@@ -1,6 +1,6 @@
 /* 工具函数单元测试（esc / uid / highlightCode / 对比度 / API Key 加解密） */
 import { describe, it, expect } from 'vitest';
-import { esc, uid, highlightCode, hexLuma, contrastRatio } from '../src/js/utils.js';
+import { esc, uid, highlightCode, hexLuma, contrastRatio, bigDataUrlKB } from '../src/js/utils.js';
 
 describe('hexLuma / contrastRatio 对比度（v1.24 主题警示用）',()=>{
   it('WCAG 锚点值：黑 0 / 白 1 / 黑白对比 21:1',()=>{
@@ -60,5 +60,20 @@ describe('highlightCode 导出代码高亮',()=>{
   it('换行分隔的多个标签全部高亮（含闭合标签前的边界）',()=>{
     const h=highlightCode('<b>\n<i>x</i>\n</b>');
     expect((h.match(/hl-tag/g)||[]).length).toBe(3);
+  });
+});
+
+describe('bigDataUrlKB 内嵌图片预警',()=>{
+  const img=kb=>'data:image/png;base64,'+'A'.repeat(kb*1024);
+  it('低于阈值、普通 URL、非字符串返回 0',()=>{
+    expect(bigDataUrlKB(img(50))).toBe(0);
+    expect(bigDataUrlKB('https://x/'+'a'.repeat(300*1024))).toBe(0);
+    expect(bigDataUrlKB(null)).toBe(0);
+  });
+  it('超阈值返回最大一段的 KB，夹在 HTML 中也能识别',()=>{
+    expect(bigDataUrlKB('<img src="'+img(100)+'"><img src="'+img(300)+'">')).toBe(300);
+  });
+  it('多段小图合计超阈值但单段不超不报', ()=>{
+    expect(bigDataUrlKB(img(120)+' '+img(120))).toBe(0);
   });
 });

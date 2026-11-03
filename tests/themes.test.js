@@ -6,6 +6,8 @@ import { THEME_SKINS, themeSkin, themePresetPatch, themePresetMatches, themeText
 import { Gen } from '../src/js/gen/index.js';
 import { Project, setUI } from '../src/js/project.js';
 import { contrastRatio } from '../src/js/utils.js';
+/* 读取分键存储（v1.27）：索引键 + 每工程独立键 */
+const storedProjects=()=>JSON.parse(localStorage.getItem(Project.LS_INDEX)||'[]').map(id=>JSON.parse(localStorage.getItem(Project.LS_PROJ+id)));
 
 const clone=x=>JSON.parse(JSON.stringify(x));
 const purple=THEME_PRESETS[0],redesigned=THEME_PRESETS.slice(1),all=THEME_PRESETS;
@@ -250,7 +252,7 @@ describe('主题迁移、保存与撤销',()=>{
     expect(exported.theme).toEqual(expected);expect(cssOf(exported)).toBe(css);
     Project.save();Project.load();
     expect(Project.cur.theme).toEqual(expected);expect(cssOf(Project.cur)).toBe(css);
-    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].theme).toEqual(expected);
+    expect(storedProjects()[0].theme).toEqual(expected);
   });
   it('六套主题依次套用后切回紫夜，undo/redo 完整恢复材质与两类字体',()=>{
     const states=[clone(Project.cur.theme)];
@@ -263,6 +265,6 @@ describe('主题迁移、保存与撤销',()=>{
     expect(Project.undo()).toBe(false);
     for(let i=1;i<states.length;i++){expect(Project.redo()).toBe(true);expect(Project.cur.theme).toEqual(states[i])}
     expect(Project.redo()).toBe(false);vi.advanceTimersByTime(600);
-    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].theme).toEqual(states.at(-1));
+    expect(storedProjects()[0].theme).toEqual(states.at(-1));
   });
 });

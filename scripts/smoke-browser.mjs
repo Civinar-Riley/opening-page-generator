@@ -165,11 +165,11 @@ try {
     { index: 5, name: '档案机', skin: 'archive', primary: '#b6ab96', bg: '#191815', headingFont: 'Courier New', radius: 0, texture: 'transparent 0 27px' },
   ];
   const readSaved = () => page.evaluate(() => {
-    const projects = JSON.parse(localStorage.getItem('openingPageGen_v1_projects') || '[]');
+    const projects = JSON.parse(localStorage.getItem('openingPageGen_v1_projIndex') || '[]').map(id => JSON.parse(localStorage.getItem('openingPageGen_v1_proj_' + id) || 'null')).filter(Boolean);
     return projects.find(p => p.id === localStorage.getItem('openingPageGen_v1_current'));
   });
   const waitSaved = expected => page.waitForFunction(fields => {
-    const projects = JSON.parse(localStorage.getItem('openingPageGen_v1_projects') || '[]');
+    const projects = JSON.parse(localStorage.getItem('openingPageGen_v1_projIndex') || '[]').map(id => JSON.parse(localStorage.getItem('openingPageGen_v1_proj_' + id) || 'null')).filter(Boolean);
     const p = projects.find(p => p.id === localStorage.getItem('openingPageGen_v1_current'));
     return p && Object.entries(fields).every(([key, value]) => p.theme[key] === value);
   }, expected, { timeout: 5000 });

@@ -122,5 +122,27 @@ function contrastRatio(a,b){
   return (hi+0.05)/(lo+0.05);
 }
 
-export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode, hexLuma, contrastRatio};
+/* 内嵌图片预警阈值：base64 dataURL 是撑爆 localStorage（约 5MB）的头号来源 */
+const DATAURL_WARN_KB=200;
+/** 返回字符串中最大一段 data: URL 的 KB 数（无或低于阈值返回 0）；纯函数，便于测试 */
+function bigDataUrlKB(s,limitKB=DATAURL_WARN_KB){
+  if(typeof s!=='string'||s.length<limitKB*1024||!s.includes('data:'))return 0;
+  let max=0;
+  const re=/data:[\w.+-]+\/[\w.+-]+;base64,[A-Za-z0-9+/=]+/g;
+  let m;while((m=re.exec(s)))if(m[0].length>max)max=m[0].length;
+  const kb=Math.round(max/1024);
+  return kb>=limitKB?kb:0;
+}
+/* 同一输入框连续敲字不刷屏：每个元素只提示一次，直到内容降回阈值以下 */
+const _warnedEls=new WeakSet();
+function warnBigDataUrl(el){
+  if(!el||typeof el.value!=='string')return;
+  const kb=bigDataUrlKB(el.value);
+  if(!kb){_warnedEls.delete(el);return}
+  if(_warnedEls.has(el))return;
+  _warnedEls.add(el);
+  toast(`⚠️ 检测到约 ${kb} KB 的内嵌图片（base64），本地存储上限约 5MB，易导致保存失败——建议改用图床链接`,6000);
+}
+
+export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode, hexLuma, contrastRatio, bigDataUrlKB, warnBigDataUrl};
 

@@ -3,6 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project, setUI } from '../src/js/project.js';
 import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, THEME_PRESETS, defaultProject } from '../src/js/defs.js';
 import { contrastRatio } from '../src/js/utils.js';
+/* 读取分键存储（v1.27）：索引键 + 每工程独立键 */
+const storedProjects=()=>JSON.parse(localStorage.getItem(Project.LS_INDEX)||'[]').map(id=>JSON.parse(localStorage.getItem(Project.LS_PROJ+id)));
 
 describe('Project.normalize 规范化',()=>{
   it('空工程补齐全部默认区块（未启用）',()=>{
@@ -223,7 +225,7 @@ describe('输入历史与工程往返保存',()=>{
     expect(imported.blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
     Project.save();Project.load();
     expect(Project.cur.blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
-    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
+    expect(storedProjects()[0].blocks.find(b=>b.type==='greetings').clickAction).toBe(clickAction);
   });
 
   it('输入后不足 600ms 就添加区块，撤销只移除新增区块',()=>{
@@ -247,17 +249,17 @@ describe('输入历史与工程往返保存',()=>{
     const title=Project.cur.blocks[0].title;
     Project.cur.blocks[0].title='第一个字';Project.saveDebounced();
     expect(Project._history).toHaveLength(2);
-    expect(Project._history[1].blocks[0].title).toBe('第一个字');
+    expect(JSON.parse(Project._history[1]).blocks[0].title).toBe('第一个字');
     expect(localStorage.setItem).not.toHaveBeenCalled();
     vi.advanceTimersByTime(300);
     Project.cur.blocks[0].title='完整一句';Project.saveDebounced();
     expect(Project._history).toHaveLength(2);
-    expect(Project._history[0].blocks[0].title).toBe(title);
-    expect(Project._history[1].blocks[0].title).toBe('完整一句');
+    expect(JSON.parse(Project._history[0]).blocks[0].title).toBe(title);
+    expect(JSON.parse(Project._history[1]).blocks[0].title).toBe('完整一句');
     vi.advanceTimersByTime(599);
     expect(localStorage.setItem).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
-    expect(JSON.parse(localStorage.getItem(Project.LS_KEY))[0].blocks[0].title).toBe('完整一句');
+    expect(storedProjects()[0].blocks[0].title).toBe('完整一句');
     expect(Project._history).toHaveLength(2);
     Project.cur.blocks[0].title='下一批输入';Project.saveDebounced();
     expect(Project._history).toHaveLength(3);
@@ -398,7 +400,7 @@ describe('输入历史与工程往返保存',()=>{
     expect(Project.undo()).toBe(false);
     expect(Project.redo()).toBe(false);
     expect(Project.cur.blocks[0].title).toBe('A 的输入');
-    const saved=JSON.parse(localStorage.getItem(Project.LS_KEY));
+    const saved=storedProjects();
     expect(saved.find(p=>p.id===b.id).blocks[0].title).toBe('B 的输入');
   });
 
@@ -500,5 +502,95 @@ describe('主题预设（v1.24 整套观感包）',()=>{
     const p=defaultProject('t');
     expect(p.theme.bg).toEqual({type:'gradient',color:'#1a1a2e',color2:'#2d1b3d'});
     expect(p.theme.presetRef).toBe('');
+  });
+});
+
+describe('分键存储（v1.27）',()=>{
+  let original,storage,quota;
+  beforeEach(()=>{
+    original={...Project};storage=new Map();quota=Infinity;
+    const used=()=>[...storage.values()].reduce((n,v)=>n+v.length,0);
+    vi.stubGlobal('localStorage',{
+      getItem:k=>storage.get(k)??null,
+      setItem:vi.fn((k,v)=>{v=String(v);if(used()-(storage.get(k)||'').length+v.length>quota)throw new Error('QuotaExceededError');storage.set(k,v)}),
+      removeItem:k=>storage.delete(k),
+    });
+    setUI({renderAll(){}});
+  });
+  afterEach(()=>{vi.unstubAllGlobals();Object.assign(Project,original);setUI(undefined)});
+
+  it('旧整表单键首次加载迁移为分键并删除旧键，迁移后再载入幂等',()=>{
+    const a=defaultProject('A'),b=defaultProject('B');
+    storage.set(Project.LS_KEY,JSON.stringify([a,b]));storage.set(Project.LS_CUR,b.id);
+    Project.load();
+    expect(storage.has(Project.LS_KEY)).toBe(false);
+    expect(JSON.parse(storage.get(Project.LS_INDEX))).toEqual([a.id,b.id]);
+    expect(storedProjects().map(p=>p.name)).toEqual(['A','B']);
+    expect(Project.cur.id).toBe(b.id);
+    const snap=new Map(storage);
+    Project.load();
+    expect(new Map(storage)).toEqual(snap);
+    expect(Project.list.map(p=>p.name)).toEqual(['A','B']);
+  });
+  it('保存只写有变化的工程键，未改动工程不重复写入',()=>{
+    Project.list=[defaultProject('A'),defaultProject('B')];Project.cur=Project.list[0];Project._written=new Map();
+    Project.save();
+    localStorage.setItem.mockClear();
+    Project.cur.blocks[0].title='改 A';Project.save();
+    const keys=localStorage.setItem.mock.calls.map(c=>c[0]);
+    expect(keys).toContain(Project.LS_PROJ+Project.list[0].id);
+    expect(keys).not.toContain(Project.LS_PROJ+Project.list[1].id);
+    expect(keys).not.toContain(Project.LS_INDEX);
+  });
+  it('切工程后上一工程的未落盘修改仍会写入',()=>{
+    Project.list=[defaultProject('A'),defaultProject('B')];Project.cur=Project.list[0];Project._written=new Map();
+    Project.save();
+    Project.list[0].blocks[0].title='A 未落盘';
+    Project.cur=Project.list[1];Project.save();
+    expect(storedProjects()[0].blocks[0].title).toBe('A 未落盘');
+  });
+  it('删除工程同步移除其存储键与索引项',()=>{
+    Project.list=[defaultProject('A'),defaultProject('B')];Project.cur=Project.list[0];Project._written=new Map();
+    Project.save();
+    const gone=Project.list[1].id;
+    Project.list=[Project.list[0]];Project.save();
+    expect(storage.has(Project.LS_PROJ+gone)).toBe(false);
+    expect(JSON.parse(storage.get(Project.LS_INDEX))).toEqual([Project.list[0].id]);
+  });
+  it('存储被外部清空后缓存自愈，下一次保存全量重写',()=>{
+    Project.list=[defaultProject('A'),defaultProject('B')];Project.cur=Project.list[0];Project._written=new Map();
+    Project.save();storage.clear();Project.save();
+    expect(storedProjects().map(p=>p.name)).toEqual(['A','B']);
+  });
+  it('单个工程键损坏只跳过该工程',()=>{
+    const a=defaultProject('A'),b=defaultProject('B');
+    storage.set(Project.LS_INDEX,JSON.stringify([a.id,b.id]));
+    storage.set(Project.LS_PROJ+a.id,'{坏');storage.set(Project.LS_PROJ+b.id,JSON.stringify(b));
+    const err=vi.spyOn(console,'error').mockImplementation(()=>{});
+    Project.load();err.mockRestore();
+    expect(Project.list.map(p=>p.name)).toEqual(['B']);
+  });
+  it('新旧并存超配额时回滚分键、保留旧键，数据不丢',()=>{
+    const a=defaultProject('A');
+    const legacy=JSON.stringify([a]);
+    storage.set(Project.LS_KEY,legacy);quota=legacy.length*1.5;
+    const err=vi.spyOn(console,'error').mockImplementation(()=>{});
+    Project.load();err.mockRestore();
+    expect(storage.has(Project.LS_INDEX)).toBe(false);
+    expect(storage.has(Project.LS_PROJ+a.id)).toBe(false);
+    expect(JSON.parse(storage.get(Project.LS_KEY))[0].name).toBe('A');
+    Project.cur.blocks[0].title='继续编辑';Project.save();
+    expect(JSON.parse(storage.get(Project.LS_KEY))[0].blocks[0].title).toBe('继续编辑');
+  });
+  it('撤销栈以字符串存储，恢复后与栈内快照互不共享引用',()=>{
+    Project.list=[defaultProject('A')];Project.cur=Project.list[0];Project._written=new Map();
+    Project.save=()=>{};Project.saveDebounced=()=>{};
+    Project.resetHistory();
+    expect(typeof Project._history[0]).toBe('string');
+    const t=Project.cur.blocks[0].title;
+    Project.cur.blocks[0].title='X';Project.saveSnapshot();
+    Project.undo();Project.cur.blocks[0].title='污染';
+    Project.redo();Project.undo();
+    expect(Project.cur.blocks[0].title).toBe(t);
   });
 });

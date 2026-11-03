@@ -1,11 +1,12 @@
 /* UI 核心壳：UI 对象定义 + renderAll + 预览四件套 + 启动代码 */
-import { $, $$, esc, toast } from '../utils.js';
+import { $, $$, esc, toast, warnBigDataUrl } from '../utils.js';
 import { Project } from '../project.js';
 import { Gen } from '../gen/index.js';
 import { Macros } from '../macros.js';
 /* 页面模块在模块顶层只做「导出方法定义」，不读 UI 值——挂载由本文件在 UI 初始化后统一执行，
  * 从而规避 ES 循环 import 的 TDZ 问题 */
-import { renderConfig, renderBlockBody } from './renderConfig.js';
+import { renderConfig } from './renderConfig.js';
+import { renderBlockBody } from './blockEditors.js';
 import { hasBridge } from './extBridge.js';
 import { renderExport } from './renderExport.js';
 import { renderAI } from './renderAI.js';
@@ -226,6 +227,8 @@ UI.renderAll();
    切聊天）或独立版关页时，窗口内输入会随上下文一起消失——pagehide 同步写一次 localStorage ---- */
 window.addEventListener('pagehide',()=>{clearTimeout(Project._svT);Project.save()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')Project.save()});
+/* 内嵌 base64 图片预警：捕获阶段统一监听全部输入框（背景/头像/图库/自由 HTML 等），不必逐个编辑器挂钩 */
+document.addEventListener('input',e=>{const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'))warnBigDataUrl(t)},true);
 
 /* ---- 扩展内嵌（extBridge 桥存在）时，Esc 请求宿主关闭工坊 overlay：
    iframe 获焦后宿主 document 收不到按键，只能由工具侧转发（无弹窗打开时才转发，

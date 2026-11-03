@@ -20,7 +20,6 @@
 | `npm run smoke` | 双冒烟：静态检查（script 配平/双转义状态机/版本一致/语法可解析）+ 无头浏览器级冒烟（零 console.error、页签可切、预览挂载、探活 mock） |
 | `npm run watch` | 开发模式（不压缩 + 监视 `src/` 与助手小包相关 `scripts/` 变更自动重建） |
 | `npm run lint` | 零依赖 lint（`node lint.js`）：未使用 import / 未定义标识符（调用位漏 import·typo） / localStorage key 前缀 / console.log 残留 / TODO·FIXME 标记 / `<button>` 缺显式 type |
-| `npm run build:ext` | 扩展产物（仅 extension 分支）：build 后把 dist/index.html 复制为仓库根 tool.html |
 | `npm run nh -- <画廊URL\|ID> [--skip-last N] [--pages a-b] [--proxy http://…]` | nhentai 画廊直链单次导出到剪贴板（`scripts/nh-import.mjs`；`--proxy` 走 CONNECT 隧道，不带则跟随环境变量） |
 | `npm run nh-serve` | nhentai 导入本地服务（127.0.0.1:8765，`NH_PORT` 可覆盖）——工具「📚 漫画导入」页签的后端；抓取代理由页面请求 `&proxy=` 参数按次传入（PNA 预检头已内置） |
 | `npm run nh-install` / `nh-uninstall` | 注册/移除 `opg-nh://` 本地协议（HKCU）——工具页「🚀 一键启动服务」按钮的唤起通道 |
@@ -31,10 +30,6 @@
 
 发版配方（打 tag 自动建 Release 挂 dist 产物，workflow 见 `.github/workflows/release.yml`）：bump `package.json` version → README 标题同步 → 全量闭环 → commit push main → `git tag -a v1.x.0 && git push origin v1.x.0` → GitHub Actions 自动构建并创建 Release（workflow 必须已先在 main 上，tag 才会触发）。
 
-## extension 分支（酒馆扩展形态）
-
-main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json` / `ext/index.js` / `ext/overlay.css` / `ext/README.md` / `ext-build.js` / `tool.html` 产物），以 iframe 全屏内嵌工具 + `__OPG_EXT__` 桥（`src/js/ui/extBridge.js` 的写入角色卡能力只在桥存在时激活，独立版休眠）。**同步配方**：双击根目录 `sync-extension.bat`（工作区需干净；自动完成 checkout extension → merge main → build:ext 重建 tool.html → lint/test → 提交推送 → 切回原分支；合并冲突自动中止回退）。手动等价流程：`git checkout extension && git merge main && npm run build:ext && npm run lint && npm test` → 提交推送（tool.html 是产物，merge 后必须重建再提交）；`manifest.json` 的 version 手动与 `package.json` 对齐。安装方式见 `ext/README.md`（Install extension 填仓库 URL + 分支名 `extension`）。胶水层改动勿反向 merge 回 main（main 无 manifest/ext，保持纯本地单文件形态）。
-
 ## 模块地图（src/js js 文件 + index.html + tool.css）
 
 | 文件 | 职责 |
@@ -43,13 +38,14 @@ main 为主开发线；`extension` 分支 = main + 扩展胶水（`manifest.json
 | `src/css/tool.css` | 工具自身 UI；令牌在 `:root`（暖铜金默认），其余主题为 `html[data-theme='x']` 块（星夜/蓝图/磷光/深海/绯幕/月岩，共 7 套） |
 | `src/js/main.js` | 入口：顶栏事件委托（工程 CRUD/导入导出）、工具主题下拉（UI_THEMES 渲染 + localStorage 持久化 + 恢复兜底）、工厂重置（三次确认） |
 | `src/js/utils.js` | `$/$$`、`esc()`（五类转义）、`uid()`（时间戳+单调计数器）、toast、confirmModal/promptModal、导出代码语法高亮 |
-| `src/js/defs.js` | 纯数据：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
+| `src/js/defs.js` | 纯数据汇总出口（大体量数据拆在 `defs/blocks.js`·`defs/complib.js`·`defs/templates.js`，调用方一律从 defs.js import）：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
 | `src/js/themes.js` | **纯函数/数据**：`THEME_SKINS` 材质枚举与本机字体栈、`themeSkin` 兼容兜底、`themePresetPatch` 试穿/套用补丁、`themePresetMatches` 完整匹配、`themeTexture` 卡片/产物共用纹理；不按 presetRef 推断材质 |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
-| `src/js/project.js` | 工程存储/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
+| `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
 
 | `src/js/ui/core.js` | UI 壳 + `UI.renderAll()` 总入口（各渲染页有独立 try/catch 隔离）+ renderProjectSelect + 预览四件套（mountPreview/fitPreviewHeight/refreshPreview/debouncedPreview）+ 页签切换/全局快捷键/启动；经 `Object.assign(UI,…)` 挂载页面方法（模块顶层不读 UI 值，规避循环 import TDZ） |
-| `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig + renderBlockBody 区块编辑器 + 区块拖拽/全局搜索替换 UI 层） |
+| `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig：主题/宏/区块列表拖拽/全局搜索替换 UI 层） |
+| `src/js/ui/blockEditors.js` | renderBlockBody 各区块编辑表单 + 组件库插入/选择器弹窗 `openCompPicker` |
 | `src/js/ui/renderExport.js` / `renderAI.js` / `renderHelp.js` | 导出页 / AI 助手页 / 说明页渲染 |
 | `src/js/ui/shared.js` | 跨页辅助：bindListEditor / detectFonts |
 | `src/js/search.js` | **纯函数**全局搜索替换：collectSearchMatches / replaceAllInString / replaceAllInProject（UI 层仅调 API，逻辑可测） |
@@ -74,7 +70,7 @@ localStorage（openingPageGen_* 键）
 
 ## 硬约束（红线）
 
-1. **组件库 `COMP_LIB`**（defs.js，55+ 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器/点击切换消息三个特例（IIFE 局部作用域 + `data-bound` 防重绑，交互一律 addEventListener 禁用内联 onclick）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（renderConfig）
+1. **组件库 `COMP_LIB`**（`defs/complib.js`，55+ 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器/点击切换消息三个特例（IIFE 局部作用域 + `data-bound` 防重绑，交互一律 addEventListener 禁用内联 onclick）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（blockEditors）
 2. **gen 产物自包含**：style+script 全内联；容器 `opg-{id}` 前缀隔离；同类区块多实例用 `display:contents` 作用域层（`.opg-{id}-bk{i}`）
 3. **宏双轨**：`gen/body.js` 的 `tx`（预览经 Macros.apply 替换）/`raw`（导出原样保留交酒馆解析）——新增区块渲染必须双轨支持，只写一边会让预览或导出失真
 4. **工具 UI 主题**：`tool.css` 的 `html[data-theme='x']` 块必须覆盖**全部令牌**（`:root` 的全部令牌，含 `--star-c`——星夜主题星点背景依赖）+ `#topbar/#tabs/#main` z-index 三件套（若用 body::before 纹理层）；`bronze` 是 `:root` 默认，不挂 data-theme 属性
@@ -107,17 +103,17 @@ localStorage（openingPageGen_* 键）
 涉及新增/修改 工具主题（`UI_THEMES`+`tool.css`）、页面主题预设（`THEME_PRESETS`）、`COMP_LIB` 组件、或任何可见界面视觉设计时：**必须先调用 skill 工具加载 `frontend-design`**，按其方法论（概念先行/纹理氛围/克制动效/破格排版）执行设计，并遵守本文件硬约束与该技能内的「opening-page-generator 项目适配注记」。设计前先查 `defs.js` 现有视觉资产（6 套页面主题 / 59 组件），避免趋同。
 
 ### 新增区块类型（6 文件 checklist）
-1. `defs.js`：`BLOCK_DEFS` 加 `type:{name,icon,create()}` + `BLOCK_ORDER` 追加（可选 `BLOCK_PRESETS` 预设）
-2. `ui/renderConfig.js` renderBlockBody：新 `case`（编辑器 HTML + 事件）
+1. `defs/blocks.js`：`BLOCK_DEFS` 加 `type:{name,icon,create()}` + `BLOCK_ORDER` 追加（可选 `BLOCK_PRESETS` 预设）
+2. `ui/blockEditors.js` renderBlockBody：新 `case`（编辑器 HTML + 事件）
 3. `gen/css.js`：新 `case`（作用域样式，用 `${bk}` 前缀）
 4. `gen/body.js`：新 `case`（tx/raw 双轨渲染）
 5. 需要运行时脚本 → `gen/scripts.js`（守卫+降级）
 6. 帮助文案（ui/renderHelp.js）+ 补测试（tests/gen.test.js）
 
 ### 新增组件库组件
-`defs.js` 定义 HTML 常量（遵守约束 1）+ `COMP_LIB` 追加 `{icon,name,html}` → ui/renderHelp.js 枚举追加
+`defs/complib.js` 定义 HTML 常量（遵守约束 1）+ `COMP_LIB` 追加（模板要定制的常量同时加进该文件 export） `{icon,name,html}` → ui/renderHelp.js 枚举追加
 
-> ⚠️ 改 COMP_LIB 基础文案时：若该组件被官方模板 `BUILTIN_TEMPLATES` 以 `.replace('旧文案',…)` 定制（常见 8 个：CHAPHD/LETTER/QUEST/RATE/TERM/INV/CAL/CHAT_HTML），先全局搜索 defs.js 里的 `.replace('该文案'` 核对模板——否则模板 replace 会静默失效回落到默认文案（模板本就是「开场即改」素材，影响小，但改动前留意即可）。
+> ⚠️ 改 COMP_LIB 基础文案时：若该组件被官方模板 `BUILTIN_TEMPLATES` 以 `.replace('旧文案',…)` 定制（常见 8 个：CHAPHD/LETTER/QUEST/RATE/TERM/INV/CAL/CHAT_HTML），先全局搜索 `defs/templates.js` 里的 `.replace('该文案'` 核对模板——否则模板 replace 会静默失效回落到默认文案（模板本就是「开场即改」素材，影响小，但改动前留意即可）。
 
 ### 新增页面主题预设
 `defs.js` `THEME_PRESETS` 追加 `{name,caption?,specimen?,folio?,theme:{skin,primary,accent,textColor,fontName,headingFont,radius,titleAlign,motion,bg}}`——bg 为整套观感包的背景（v1.24 起背景归主题，`{type:'gradient'|'solid'|'image'|'noise',color,color2,image}`）；材质选 `themes.js` 的枚举，标题字体配本机回落栈；文字色对背景 ≥4.5:1、强调色 ≥3:1，UI 警示按背景主色（图片按兜底色）估算，不是整张图的对比度审计。先核对与现有 6 套不趋同：紫夜幻金＝紫夜星穹（紫电流金、衬线/星弧流光），荆棘王室＝王室藏书票（绯红旧银、衬线），狐火缘日＝狐火夜祭（朱砂狐青、楷字/噪点），蓝电义体＝义体检修终端（冰蓝信号橙、网格），渊语回廊＝深渊潮汐（深海珍珠、同心潮线/大圆角），档案机＝旧档案卷宗（炭黑黄铜、等宽/横线/静态）。
