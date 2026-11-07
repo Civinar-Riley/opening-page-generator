@@ -12,7 +12,7 @@ export function body(p,px,blocks,isPreview){
     const raw=i=>String(i??'');           // 导出时保留宏
     const tx=isPreview?g:raw;
     const motionOff=p.theme&&p.theme.motion==='off'; // 动效档位：off 时解码等纯装饰脚本不产出
-    let out='',lbOut=false;               // lbOut：灯箱层全页仅输出一份
+    let out='',lbOut=false,greetOrd=0;    // lbOut：灯箱层全页仅输出一份；greetOrd：开场白实例序号（运行时按 data-gi 对应各实例配置）
     /* 按用户配置的顺序逐块渲染（↑↓/拖拽排序真实生效）；
        每块包一层实例作用域 div（display:contents），支持同类型多实例 */
     blocks.forEach((b,i)=>{
@@ -117,8 +117,9 @@ export function body(p,px,blocks,isPreview){
           break;
         }
         case 'greetings':{
+          const gi=greetOrd++; /* 实例序号：运行时脚本按 data-gi 取本实例的点击行为/封面音轨配置 */
           if(b.showTitle&&b.title)out+=`  <div class="${px}-ghead">${esc(tx(b.title))}</div>\n`;
-          out+=`  <div class="${px}-glist" data-opg="glist">\n`;
+          out+=`  <div class="${px}-glist" data-opg="glist" data-gi="${gi}">\n`;
           const items=tx(b.placeholderList).split('\n').map(s=>s.trim()).filter(Boolean);
           const wall=b.cardStyle==='wall';
           items.forEach((it,i)=>{
@@ -141,7 +142,7 @@ export function body(p,px,blocks,isPreview){
           });
           out+=`  </div>\n`;
           if(b.clickAction==='send'){
-            out+=`  <button type="button" class="${px}-gsend" data-opg="gsend">${esc(tx(b.buttonText||'开始'))}</button>\n`;
+            out+=`  <button type="button" class="${px}-gsend" data-opg="gsend" data-gi="${gi}">${esc(tx(b.buttonText||'开始'))}</button>\n`;
           }
           break;
         }
@@ -265,8 +266,7 @@ export function body(p,px,blocks,isPreview){
             const vol=Math.max(0,Math.min(100,Number.isFinite(+b.volume)?+b.volume:50));
             const loopAttr=b.loop?' loop':'';
             const titleHtml=b.showTitle?`<div class="${px}-bgm-title">${esc(tx(b.title))}</div>`:'';
-            const dataCmds=b.useTavernCmd?` data-cmds="1"`:'';
-            out+=`  <div class="${px}-bgm"${dataCmds}>\n${titleHtml}    <div class="${px}-bgm-bar">\n      <button type="button" class="${px}-bgm-btn ${px}-bgm-play" data-opg="bgm-play">▶</button>\n      <span class="${px}-bgm-name">${esc(tx(tracks[0]?.name||''))}</span>\n      <input type="range" class="${px}-bgm-prog" min="0" max="100" value="0">\n      <span class="${px}-bgm-time">0:00</span>\n      <input type="range" class="${px}-bgm-vol" min="0" max="100" value="${vol}">\n      <button type="button" class="${px}-bgm-btn ${px}-bgm-loop${b.loop?' on':''}" data-opg="bgm-loop">🔁</button>\n    </div>\n  </div>\n  <audio class="${px}-bgm-audio" preload="auto"${loopAttr}>\n${tracks.map(t=>`    <source data-name="${esc(tx(t.name))}" src="${esc(tx(t.url))}">`).join('\n')}\n  </audio>\n`;
+            out+=`  <div class="${px}-bgm">\n${titleHtml}    <div class="${px}-bgm-bar">\n      <button type="button" class="${px}-bgm-btn ${px}-bgm-play" data-opg="bgm-play">▶</button>\n      <span class="${px}-bgm-name">${esc(tx(tracks[0]?.name||''))}</span>\n      <input type="range" class="${px}-bgm-prog" min="0" max="100" value="0">\n      <span class="${px}-bgm-time">0:00</span>\n      <input type="range" class="${px}-bgm-vol" min="0" max="100" value="${vol}">\n      <button type="button" class="${px}-bgm-btn ${px}-bgm-loop${b.loop?' on':''}" data-opg="bgm-loop">🔁</button>\n    </div>\n  </div>\n  <audio class="${px}-bgm-audio" preload="auto"${loopAttr}>\n${tracks.map(t=>`    <source data-name="${esc(tx(t.name))}" src="${esc(tx(t.url))}">`).join('\n')}\n  </audio>\n`;
           }
           break;
         }
@@ -308,7 +308,8 @@ export function body(p,px,blocks,isPreview){
               /* 默认值与编辑器提示用全角分隔符，归一后仍兼容已有半角日志。 */
               const seg=r.replace(/｜/g,'|').split('|');
               const ver=(seg[0]||'').trim(),date=(seg[1]||'').trim(),txt=seg.slice(2).join('|').trim();
-              out+=`    <div class="${px}-clrow"><span class="${px}-clv">${esc(ver)}</span>${date?`<span class="${px}-cld">${esc(date)}</span>`:''}<span class="${px}-clt">${esc(txt)}</span></div>\n`;
+              /* 行内容同 timeline 走 tx 双轨：预览替换宏，导出原样保留交酒馆解析 */
+              out+=`    <div class="${px}-clrow"><span class="${px}-clv">${esc(tx(ver))}</span>${date?`<span class="${px}-cld">${esc(tx(date))}</span>`:''}<span class="${px}-clt">${esc(tx(txt))}</span></div>\n`;
             });
             out+=`  </div>\n`;
           }

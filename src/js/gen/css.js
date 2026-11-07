@@ -2,7 +2,11 @@
 import { themeSkin, themeTexture, themeFontStack } from '../themes.js';
 
 export function css(p,px,blocks){
-    const th=p.theme,skin=themeSkin(th);
+    /* 主/强调/正文三色与 fontName、bg 色值同一信任面（工程 JSON 可分享）：剔除引号/尖括号/
+       反斜杠，防 </style> 提前闭合注入。在克隆上清洗，不污染工程数据 */
+    const th={...p.theme};
+    ['primary','accent','textColor'].forEach(k=>{th[k]=String(th[k]??'').replace(/[<>"\\]/g,'')});
+    const skin=themeSkin(th);
     /* 动效档位：full 华丽 / soft 轻盈（只淡入、时长间隔减半）/ off 关闭（纯静态） */
     const motion=th.motion==='off'?'off':(th.motion==='soft'?'soft':'full');
     const follow=th.followTavern;

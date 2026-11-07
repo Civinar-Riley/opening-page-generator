@@ -122,9 +122,19 @@ build().catch(e => {
 
 if (process.argv.includes('--watch')) {
   let t;
+  let building = false, dirty = false;
   const rebuild = () => {
     clearTimeout(t);
-    t = setTimeout(() => { build().catch(e => console.error('构建失败:', e && e.message || e)); }, 200);
+    t = setTimeout(async () => {
+      /* 构建进行中又收到变更：置 dirty 位等当前构建结束后补跑一轮。
+         两个 async build 并发会各自读盘写 dist，旧输入后完成会覆盖新输出（陈旧 dist 直到下次变更才自愈） */
+      if (building) { dirty = true; return; }
+      building = true;
+      try { await build(); }
+      catch (e) { console.error('构建失败:', e && e.message || e); }
+      building = false;
+      if (dirty) { dirty = false; rebuild(); }
+    }, 200);
   };
   fs.watch('src', { recursive: true }, rebuild);
   /* 助手小包正文也在构建期内嵌：改了 scripts/ 下的四件套必须重建，否则内嵌字节过期 */

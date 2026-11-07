@@ -1,6 +1,6 @@
 /* nhentai 导入核心库单元测试（纯函数，不打真实网络） */
 import { describe, it, expect } from 'vitest';
-import { parseApiJson, parseGalleryHtml, buildPageUrls, pickUrls, parsePageExpr, applyPageFilter, extractGalleryId, parseProxyUrl } from '../scripts/nh-lib.mjs';
+import { parseApiJson, parseGalleryHtml, buildPageUrls, pickUrls, parsePageExpr, pickGalleryPages, extractGalleryId, parseProxyUrl } from '../scripts/nh-lib.mjs';
 
 describe('nh-lib parseApiJson',()=>{
   it('v2 API JSON（pages[].number+path）→ mediaId + 扩展名取自 path，页码用 number',()=>{
@@ -92,6 +92,11 @@ describe('nh-lib parsePageExpr',()=>{
     expect(parsePageExpr('2,1-2,7')).toEqual([1,2,7]);
     expect(parsePageExpr('1～3 5')).toEqual([1,2,3,5]);
   });
+  it('范围两侧带空格不被拆分器截断成端点（回归：1 - 20 只取 1、20）',()=>{
+    expect(parsePageExpr('1 - 20',20)).toEqual([...Array(20).keys()].map(i=>i+1));
+    expect(parsePageExpr('3 ~ 5')).toEqual([3,4,5]);
+    expect(parsePageExpr('1- 3,7',10)).toEqual([1,2,3,7]);
+  });
   it('a>b 交换；越界钳制到 1..max',()=>{
     expect(parsePageExpr('3-1')).toEqual([1,2,3]);
     expect(parsePageExpr('13-99',14)).toEqual([13,14]);
@@ -104,17 +109,25 @@ describe('nh-lib parsePageExpr',()=>{
   });
 });
 
-describe('nh-lib applyPageFilter',()=>{
-  it('默认全量；skip-last 去尾（广告页场景）',()=>{
-    expect(applyPageFilter(5,{})).toEqual([1,2,3,4,5]);
-    expect(applyPageFilter(20,{skipLast:3})).toEqual([...Array(17).keys()].map(i=>i+1));
+describe('nh-lib pickGalleryPages（CLI 页码选取，位置/真实页码双语义）',()=>{
+  const gap={total:3,pages:[{page:1,ext:'jpg'},{page:2,ext:'jpg'},{page:4,ext:'png'}]};
+  it('默认全量按位置选：缺口场景末项真实页 4 不被丢',()=>{
+    expect(pickGalleryPages(gap,{})).toEqual(gap.pages);
   });
-  it('pages 表达式优先于 skipLast；越界钳制',()=>{
-    expect(applyPageFilter(20,{skipLast:3,pages:'1-2, 19-99'})).toEqual([1,2,19,20]);
+  it('skip-last 按位置去尾（广告页场景）',()=>{
+    expect(pickGalleryPages({total:5,pages:[1,2,3,4,5].map(page=>({page,ext:'jpg'}))},{skipLast:3})).toEqual([{page:1,ext:'jpg'},{page:2,ext:'jpg'}]);
+    expect(pickGalleryPages({total:5,pages:[1,2,3,4,5].map(page=>({page,ext:'jpg'}))},{skipLast:'2.7'})).toHaveLength(3);
+    expect(pickGalleryPages({total:5,pages:[1,2,3,4,5].map(page=>({page,ext:'jpg'}))},{skipLast:9})).toEqual([]);
   });
-  it('保护：skip-last 不小于总页数 → 空；小数/字符串数字宽容',()=>{
-    expect(applyPageFilter(5,{skipLast:9})).toEqual([]);
-    expect(applyPageFilter('20',{skipLast:'2.7'})).toEqual([...Array(18).keys()].map(i=>i+1));
+  it('--pages 按真实页码匹配：缺口场景页 4 可选、不存在的页不匹配',()=>{
+    expect(pickGalleryPages(gap,{pages:'4'})).toEqual([{page:4,ext:'png'}]);
+    expect(pickGalleryPages(gap,{pages:'1-2'})).toEqual([{page:1,ext:'jpg'},{page:2,ext:'jpg'}]);
+    expect(pickGalleryPages(gap,{pages:'3'})).toEqual([]);
+  });
+  it('表达式解析不出返回 null（调用方报错退出，不得静默全本）',()=>{
+    expect(pickGalleryPages(gap,{pages:'999'})).toBeNull();
+    expect(pickGalleryPages(gap,{pages:'abc'})).toBeNull();
+    expect(pickGalleryPages(gap,{pages:'1O0'})).toBeNull();
   });
 });
 

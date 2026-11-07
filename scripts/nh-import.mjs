@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { parseApiJson, parseGalleryHtml, buildPageUrls, applyPageFilter, extractGalleryId, parseProxyUrl } from './nh-lib.mjs';
+import { parseApiJson, parseGalleryHtml, buildPageUrls, pickGalleryPages, extractGalleryId, parseProxyUrl } from './nh-lib.mjs';
 
 const VERSION=JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)),'..','package.json'),'utf8')).version;
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
@@ -174,8 +174,9 @@ async function cli(argv){
   }
   if(!input){console.log(USAGE);process.exitCode=1;return}
   const g=await fetchGallery(input,{proxy});
-  const picked=applyPageFilter(g.total,{skipLast,pages});
-  const sel=g.pages.filter(p=>picked.includes(p.page));
+  const sel=pickGalleryPages(g,{skipLast,pages});
+  if(sel===null){console.error('✗ 页码表达式没解析出有效页（示例：1-20,25）');process.exitCode=1;return}
+  if(!sel.length){console.error('✗ 没有匹配任何页（检查 --pages 与画廊页码）');process.exitCode=1;return}
   const {urls}=buildPageUrls(g.mediaId,sel);
   const list=urls.join('\n');
   console.log(`画廊 ${g.id}（media_id ${g.mediaId}，来源 ${g.source}）：全本 ${g.total} 页 → 选取 ${urls.length} 页\n`);
