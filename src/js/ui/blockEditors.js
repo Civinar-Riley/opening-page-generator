@@ -243,10 +243,13 @@ export function renderBlockBody(container,b,i){
         ${area('nodes','节点列表（每行一条）')}`;
       break;
     case 'freehtml':
-      /* 含脚本时提示完整权限运行风险（自伤型：与酒馆真实环境一致） */
+      /* 完整权限运行风险常驻提示（v1.29，硬约束 9）：无脚本时也提示「粘贴脚本后将以完整权限运行」——
+         防用户先存干净内容、后被替换成恶意代码的场景（自伤型风险：与酒馆真实环境一致） */
       const hasScript=/<script/i.test(b.html||'');
       html=`<div><label>自由 HTML（支持宏；可用 AI 助手生成）</label></div>
-        ${hasScript?`<div style="font-size:11px;color:var(--err);margin:2px 0">⚠️ 内容含脚本：预览与酒馆导出中以完整权限运行（与页面同源，可访问本地数据），勿粘贴不可信来源的代码</div>`:''}
+        ${hasScript
+          ?`<div style="font-size:11px;color:var(--err);margin:2px 0">⚠️ 内容含脚本：预览与酒馆导出中以完整权限运行（与页面同源，可访问本地数据），勿粘贴不可信来源的代码</div>`
+          :`<div style="font-size:11px;color:var(--txt2);margin:2px 0">⚠️ 粘贴含脚本的代码后，预览与酒馆导出中将以完整权限运行（与页面同源，可访问本地数据）——勿粘贴不可信来源的代码</div>`}
         <div><textarea data-bkey="${i}.html" data-freehtml="${i}" style="min-height:140px;font-family:Consolas,monospace" placeholder="<div>自定义内容…</div>">${esc(b.html)}</textarea></div>
         <div style="margin-top:8px"><label>🧺 组件库（${COMP_LIB.length} 个，分类 + 搜索）</label>
           <button type="button" class="btn ghost small" data-compopen="1" style="width:100%;margin-top:4px">🧩 打开组件库选择器</button>

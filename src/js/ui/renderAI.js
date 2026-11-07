@@ -25,7 +25,7 @@ export function renderAI(){
         :`<div class="row3">
         <div><label>API Base URL</label><input id="aiBase" value="${esc(p.ai.baseURL)}" placeholder="https://api.openai.com/v1"></div>
         <div><label>API Key（勾选「记住」才落盘，导出工程不含）</label><div style="display:flex;gap:6px"><input id="aiKey" type="password" autocomplete="new-password" value="${esc(p.ai.apiKey||_sessionKeys.get(p)||'')}" placeholder="sk-..." style="min-width:0"><button type="button" class="btn ghost small" id="aiKeyEye" title="显示 / 隐藏 Key">👁</button></div></div>
-        <div><label>模型（下拉选择）</label><select id="aiModel"></select></div>
+        <div><label>模型（下拉选择，可输关键词过滤）</label><input id="aiModelFilter" placeholder="输入关键词过滤模型…" style="margin-bottom:4px"><select id="aiModel"></select></div>
       </div>
       <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button type="button" class="btn ghost small" id="aiFetchModels">🔄 获取模型列表</button>
@@ -54,15 +54,19 @@ export function renderAI(){
     </div>`;
 
   if(channel==='custom'){
-    /* 模型下拉：优先展示已拉取的列表（p.ai.models），保存过但不在列表中的模型也保留可选 */
+    /* 模型下拉：优先展示已拉取的列表（p.ai.models），保存过但不在列表中的模型也保留可选；
+       v1.29 起支持关键词过滤（本地 substring 匹配，不发请求） */
     const renderModelSel=()=>{
       const list=Array.isArray(p.ai.models)?p.ai.models:[];
-      const opts=list.map(m=>`<option value="${esc(m)}"${m===p.ai.model?' selected':''}>${esc(m)}</option>`);
-      if(p.ai.model&&!list.includes(p.ai.model))opts.unshift(`<option value="${esc(p.ai.model)}" selected>${esc(p.ai.model)}（不在列表中）</option>`);
-      if(!opts.length)opts.push('<option value="">（点击「获取模型列表」填充）</option>');
+      const fEl=$('#aiModelFilter',col);const kw=((fEl&&fEl.value)||'').trim().toLowerCase(); /* 测试环境的最小 DOM mock 可能没有过滤框，防御式读取 */
+      const shown=kw?list.filter(m=>m.toLowerCase().includes(kw)):list;
+      const opts=shown.map(m=>`<option value="${esc(m)}"${m===p.ai.model?' selected':''}>${esc(m)}</option>`);
+      if(p.ai.model&&!shown.includes(p.ai.model))opts.unshift(`<option value="${esc(p.ai.model)}" selected>${esc(p.ai.model)}（${kw?'当前选择':'不在列表中'}）</option>`);
+      if(!opts.length)opts.push(`<option value="">${kw?'（无匹配模型，清空关键词重试）':'（点击「获取模型列表」填充）'}</option>`);
       $('#aiModel',col).innerHTML=opts.join('');
     };
     renderModelSel();
+    const fInp=$('#aiModelFilter',col);if(fInp)fInp.addEventListener('input',renderModelSel);
 
     $('#aiBase',col).addEventListener('input',function(){p.ai.baseURL=this.value.trim();Project.saveDebounced()});
     $('#aiKey',col).addEventListener('change',function(){

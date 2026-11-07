@@ -59,6 +59,32 @@ describe('Gen.backHomeScript 返回开场页角色脚本（模板插槽 v1.22.0�
     expect(c.includes('`')).toBe(false);
     expect(()=>new Function(c)).not.toThrow();
   });
+  it('backHome 配置烘焙：非默认替换模板 CFG 行，默认逐字透传',()=>{
+    const p=defaultProject('t');
+    expect(Gen.backHomeScript(p).content).toBe(backHomeTpl.content);
+    p.backHome={mode:'img',text:'回首页',img:'https://x/y.png',primary:'#112233',accent:'#445566',fromSwipe:3};
+    const c=Gen.backHomeScript(p).content;
+    expect(c).not.toBe(backHomeTpl.content);
+    expect(c).toContain('var CFG={mode:"img",text:"回首页",img:"https://x/y.png",primary:"#112233",accent:"#445566",fromSwipe:3};');
+    expect(c).toContain('sw<CFG.fromSwipe');
+    expect(c.includes('`')).toBe(false);
+    expect(()=>new Function(c)).not.toThrow();
+  });
+  it('backHome 颜色非法值清空回落模板默认，text 空缺省回落，fromSwipe 非法回落 1',()=>{
+    const p=defaultProject('t');
+    /* img 非空逼出烘焙分支（全回落到默认时会走透传分支，CFG 不注入） */
+    p.backHome={mode:'text',text:'',img:'https://x/i.png',primary:'red',accent:'#12345',fromSwipe:0};
+    const c=Gen.backHomeScript(p).content;
+    expect(c).toContain('var CFG={mode:"text",text:"← 返回开场页",img:"https://x/i.png",primary:"",accent:"",fromSwipe:1};');
+    expect(()=>new Function(c)).not.toThrow();
+  });
+  it('CFG 文案含替换模式字符（$& 等）时不被展开',()=>{
+    const p=defaultProject('t');
+    p.backHome.text='返回 $& $` ${y} 主页';
+    const c=Gen.backHomeScript(p).content;
+    expect(c).toContain('text:"返回 $& $` ${y} 主页"');
+    expect(()=>new Function(c)).not.toThrow();
+  });
 });
 describe('Gen.build 转义与宏',()=>{
   it('divider 自定义文字被转义（预览与导出）',()=>{

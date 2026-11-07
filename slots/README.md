@@ -19,4 +19,5 @@
 
 - `id` 每次导出自动重新生成（防止脚本库内撞 ID），模板里的 `id` 只是占位
 - `content` 是**字符串**不是对象——直接改 JSON 里转义过的 JS 源码即可；本地调试可在 Node 里 `new Function(JSON.parse(...).content)` 快速验语法
+- v1.29 起导出页 ③ 的表单配置（`mode/text/img/primary/accent/fromSwipe`）在生成时以字面量替换 content 里的 `var CFG={…};` 行；工程全部默认配置时 content 原样透传。**CFG 行必须保留**（烘焙锚点），缺行时非默认导出会报错
 - 换完记得跑 `npm test`（测试含模板契约守卫与语法解析），再 `npm run build`

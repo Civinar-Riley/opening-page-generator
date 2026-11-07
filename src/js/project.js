@@ -1,6 +1,6 @@
 /* 工程管理：存储 / 迁移 / 模板 */
 import { esc, toast, uid, download, confirmModal, promptModal } from './utils.js';
-import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject } from './defs.js';
+import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject, SCHEMA_VERSION } from './defs.js';
 
 /**
  * 工程对象（localStorage 持久化单元，id 同时作为生成组件的容器前缀）
@@ -8,6 +8,9 @@ import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject } from './de
  * @property {string} id - 唯一 id（容器前缀 opg-{id}）
  * @property {string} name - 工程名
  * @property {string} createdAt - 创建时间（ISO）
+ * @property {number} schemaVersion - 工程数据 schema 版本（migrate 分段迁移锚点）
+ * @property {string|null} updatedAt - 最近修改时间（save 触碰；null=从未编辑，展示回落 createdAt）
+ * @property {{mode:string,text:string,img:string,primary:string,accent:string,fromSwipe:number}} backHome - 返回开场页脚本配置（空串=模板默认）
  * @property {string} marker - 正则脚本标记文本
  * @property {import('./defs.js').ThemeConfig} theme - 主题配置
  * @property {import('./defs.js').Block[]} blocks - 区块列表（数组顺序即渲染顺序）
@@ -125,7 +128,7 @@ const Project={
     let curId=null;
     try{curId=localStorage.getItem(this.LS_CUR)}catch(e){}
     this.cur=this.list.find(p=>p.id===curId)||this.list[0];
-    this.save();
+    this._loading=true;this.save();this._loading=false;
     this.resetHistory();
   },
   /* 深度规范化：补齐工程/区块任意缺失字段，保证旧数据、导入数据、残缺数据都能渲染 */
@@ -144,6 +147,12 @@ const Project={
     ['baseURL','apiKey','model','models','rememberKey'].forEach(k=>{if(p.ai[k]===undefined)p.ai[k]=def.ai[k]});
     if(!p.preview||typeof p.preview!=='object')p.preview={};
     ['mode','theme'].forEach(k=>{if(p.preview[k]===undefined)p.preview[k]=def.preview[k]});
+    if(p.schemaVersion===undefined)p.schemaVersion=def.schemaVersion; /* 直调 normalize 的路径（模板/测试）补锚点；载入路径已由 migrate 先行升版 */
+    /* 返回开场页脚本配置（v1.29）：子字段白名单补齐，fromSwipe 非法值回落 1 */
+    if(!p.backHome||typeof p.backHome!=='object')p.backHome={};
+    ['mode','text','img','primary','accent'].forEach(k=>{if(p.backHome[k]===undefined)p.backHome[k]=def.backHome[k]});
+    const bfsw=+p.backHome.fromSwipe;if(!Number.isFinite(bfsw)||bfsw<1)p.backHome.fromSwipe=1;
+    if(p.updatedAt===undefined)p.updatedAt=null;
     delete p.statusbar; /* 状态栏生成器已移除，清理旧存档/导入数据中的残留节点 */
     delete p.mvu; /* MVU 状态栏生成器已拆分为独立工具，清理旧存档残留节点 */
     if(!Array.isArray(p.blocks))p.blocks=[];
@@ -181,6 +190,11 @@ const Project={
      注意：旧字段转换必须先于 normalize —— normalize 会给缺 characters 的
      profile 注入默认值，若后跑会使旧占位迁移分支永远无法命中 */
   migrate(p){
+    /* 版本锚点（v1.29）：缺字段视为 v1。v1→v2 无破坏性重排（引入锚点与 backHome/updatedAt，补齐交 normalize）；
+       后续破坏性变换在此按 v 分段追加——常规新增字段优先走 normalize 白名单，不必次次升版本 */
+    const v=+p.schemaVersion||1;
+    if(v<SCHEMA_VERSION)console.info('[工程] schema v'+v+' → v'+SCHEMA_VERSION+'：'+(p.name||'?'));
+    p.schemaVersion=SCHEMA_VERSION;
     this._hoistBg(p);
     (p.blocks||[]).forEach(b=>{
       if(b.type==='greetings'&&!b.clickAction)b.clickAction='go';
@@ -195,6 +209,7 @@ const Project={
   save(){
     /* 工厂重置后 reload 前的空窗期：任何触发保存的操作会把内存旧数据写回，直接短路 */
     if(this._resetting)return;
+    if(this.cur&&!this._loading)this.cur.updatedAt=new Date().toISOString(); /* 统计行「最近修改」数据源；载入/迁移落盘不算修改 */
     /* 只序列化「当前 + 上次保存时的当前（切工程前的未落盘输入）+ 从未落盘的」工程，其余沿用已写快照 */
     const jsons=new Map();
     this.list.forEach(p=>{
@@ -374,23 +389,44 @@ const Project={
     if(!await confirmModal(`确定删除工程「${this.cur.name}」？此操作不可撤销。`))return;
     this.list=this.list.filter(p=>p.id!==this.cur.id);this.cur=this.list[0];this.save();this.resetHistory();_ui.renderAll();toast('已删除');
   },
-  /* 导出为可分享文件：剔除 API Key 等敏感字段，防止明文 Key / 加密密文随文件外泄 */
-  exportData(){
-    const clean=JSON.parse(JSON.stringify(this.cur));
+  /* 导出为可分享文件：剔除 API Key 等敏感字段，防止明文 Key / 加密密钥随文件外泄 */
+  exportData(p=this.cur){
+    const clean=JSON.parse(JSON.stringify(p));
     if(clean.ai&&typeof clean.ai==='object'){delete clean.ai.apiKey;delete clean.ai.keyEnc}
     return clean;
   },
-  exportProject(){
-    download(`${this.cur.name}.opg.json`,JSON.stringify(this.exportData(),null,2));toast('工程已导出（不含 API Key）')
+  /** 一键备份全部工程为一个 JSON（v1.29）：逐个走 exportData 剔 Key；备份文件可经「导入工程」整包还原 */
+  exportAll(){
+    download(`opening-page-generator-全部工程备份-${new Date().toISOString().slice(0,10)}.json`,
+      JSON.stringify({type:'opg-backup',schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),
+        projects:this.list.map(x=>this.exportData(x))},null,2));
+    toast('已备份 '+this.list.length+' 个工程（不含 API Key）');
   },
   importProject(input){
     const f=input.files[0];if(!f)return;
     const r=new FileReader();
     r.onload=()=>{
       try{
-        const p=JSON.parse(r.result);
-        if(!p.blocks||!p.theme)throw 0;
-        p.id=uid();p.name=p.name||'导入工程';this.migrate(p);this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();toast('工程已导入');
+        const d=JSON.parse(r.result);
+        if(d&&d.type==='opg-backup'&&Array.isArray(d.projects)){
+          /* 整包备份还原：逐个迁移入列，坏条目跳过不拖死整包；导入后落在最后一个有效工程上 */
+          let ok=0;
+          d.projects.forEach(x=>{
+            try{
+              if(!x.blocks||!x.theme)return;
+              const c=JSON.parse(JSON.stringify(x));
+              c.id=uid();c.name=c.name||'导入工程';this.migrate(c);this.list.push(c);ok++;
+              this.cur=c;
+            }catch(e){}
+          });
+          if(!ok)throw 0;
+          this.save();this.resetHistory();_ui.renderAll();
+          toast('备份已导入：'+ok+' 个工程'+(d.projects.length-ok?`，${d.projects.length-ok} 个无效已跳过`:''));
+        }else{
+          const p=d;
+          if(!p.blocks||!p.theme)throw 0;
+          p.id=uid();p.name=p.name||'导入工程';this.migrate(p);this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();toast('工程已导入');
+        }
       }catch(e){toast('导入失败：不是有效的工程文件')}
       input.value='';
     };

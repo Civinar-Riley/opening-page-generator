@@ -171,21 +171,37 @@ ${comp}
   },
 
 /** 「返回开场页」角色脚本：模板外置于仓库根 slots/back-home.json（插槽式，换文件重建即换，
- *  契约见 slots/README.md）。本函数只做规范化：id 每次导出重新生成（防脚本库撞 ID）、
- *  name 支持 {{工程名}} 占位、可选字段缺省回落。旧硬编码模板与主题烘焙已随 v1.22.0 移除
- *  （模板即真相，样式改 slots/back-home.json）。
+ *  契约见 slots/README.md）。本函数做规范化与 CFG 烘焙：id 每次导出重新生成（防脚本库撞 ID）、
+ *  name 支持 {{工程名}} 占位、可选字段缺省回落；工程 backHome 配置（v1.29）以字面量替换模板的
+ *  var CFG={…}; 行（生成期烘焙惯例，见 PITFALLS 3），全默认时原样透传——模板即真相。
  * @param {import('../project.js').ProjectData} p
  * @returns {{type:string,enabled:boolean,name:string,id:string,content:string,info:string,button:Object,data:Object,export_with:Object}}
  */
   backHomeScript(p,tpl=backHomeTpl){
     const t=tpl||{};
     if(t.type!=='script'||typeof t.content!=='string'||!t.content.trim())throw new Error('slots/back-home.json 插槽模板非法：需要 type:"script" 与非空 content 字符串（契约见 slots/README.md）');
+    /* CFG 烘焙：只有非默认配置才替换。replace 用函数形态，防文案里的 $& 等替换模式字符被展开；
+       颜色只接受六位 hex，非法清空回落模板默认（模板 cssText 里 || 兜底） */
+    const cfg=p.backHome||{};
+    const mode=cfg.mode==='img'?'img':'text';
+    const text=String(cfg.text??'← 返回开场页').trim()||'← 返回开场页';
+    const img=String(cfg.img||'').trim();
+    const hex=s=>/^#[0-9a-fA-F]{6}$/.test(s)?s:'';
+    const prim=hex(String(cfg.primary||'').trim());
+    const acc=hex(String(cfg.accent||'').trim());
+    const fsw=Math.max(1,Math.floor(+cfg.fromSwipe)||1);
+    const customized=mode!=='text'||text!=='← 返回开场页'||img||prim||acc||fsw!==1;
+    let content=t.content;
+    if(customized){
+      if(!/var CFG=\{[^}]*\};/.test(content))throw new Error('slots/back-home.json 缺少 var CFG={…}; 行，无法烘焙配置（契约见 slots/README.md）');
+      content=content.replace(/var CFG=\{[^}]*\};/,()=>`var CFG={mode:${JSON.stringify(mode)},text:${JSON.stringify(text)},img:${JSON.stringify(img)},primary:${JSON.stringify(prim)},accent:${JSON.stringify(acc)},fromSwipe:${fsw}};`);
+    }
     return {
       type:'script',
       enabled:t.enabled!==false,
       name:String(t.name||'返回开场页-{{工程名}}').replace('{{工程名}}',p.name||'未命名工程'),
       id:uid(),
-      content:t.content,
+      content,
       info:String(t.info??''),
       button:t.button||{enabled:false,buttons:[]},
       data:t.data||{},

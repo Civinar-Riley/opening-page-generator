@@ -585,3 +585,51 @@ describe('分键存储（v1.27）',()=>{
     expect(Project.cur.blocks[0].title).toBe(t);
   });
 });
+
+describe('schemaVersion 与 v2 字段（v1.29）',()=>{
+  it('defaultProject 带 schemaVersion、backHome 默认值与 updatedAt=null',()=>{
+    const p=defaultProject('t');
+    expect(p.schemaVersion).toBe(2);
+    expect(p.backHome).toEqual({mode:'text',text:'← 返回开场页',img:'',primary:'',accent:'',fromSwipe:1});
+    expect(p.updatedAt).toBeNull();
+  });
+  it('migrate 给无版本旧工程升版并补 backHome',()=>{
+    const p={name:'旧工程',theme:{primary:'#111111'}};
+    Project.migrate(p);
+    expect(p.schemaVersion).toBe(2);
+    expect(p.backHome.text).toBe('← 返回开场页');
+    expect(p.backHome.fromSwipe).toBe(1);
+  });
+  it('normalize 补齐 backHome 缺失子字段，fromSwipe 非法值回落 1',()=>{
+    const p={name:'t',backHome:{text:'回去看看',fromSwipe:0}};
+    Project.normalize(p);
+    expect(p.backHome.text).toBe('回去看看');
+    expect(p.backHome.mode).toBe('text');
+    expect(p.backHome.img).toBe('');
+    expect(p.backHome.primary).toBe('');
+    expect(p.backHome.fromSwipe).toBe(1);
+  });
+  it('backHome.fromSwipe 合法值保留',()=>{
+    const p={name:'t',backHome:{fromSwipe:3}};
+    Project.normalize(p);
+    expect(p.backHome.fromSwipe).toBe(3);
+  });
+  it('updatedAt：save 触碰当前工程，载入迁移路径不触碰',()=>{
+    const original={...Project};const storage=new Map();
+    vi.stubGlobal('localStorage',{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,String(v)),removeItem:k=>storage.delete(k)});
+    setUI({renderAll(){}});
+    try{
+      Project.list=[defaultProject('A')];Project.cur=Project.list[0];Project._written=new Map();
+      Project._loading=true;Project.save();
+      expect(Project.cur.updatedAt).toBeNull();
+      Project._loading=false;Project.cur.blocks[0].title='改';Project.save();
+      expect(typeof Project.cur.updatedAt).toBe('string');
+    }finally{vi.unstubAllGlobals();Object.assign(Project,original);setUI(undefined)}
+  });
+  it('exportData 支持传入任意工程并剔 Key、不污染原对象（备份全部工程用）',()=>{
+    const p=defaultProject('A');p.ai.apiKey='sk-secret';
+    const clean=Project.exportData(p);
+    expect(clean.ai.apiKey).toBeUndefined();
+    expect(p.ai.apiKey).toBe('sk-secret');
+  });
+});

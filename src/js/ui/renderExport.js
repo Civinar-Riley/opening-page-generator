@@ -37,6 +37,29 @@ export function renderExport(){
       :`<span class="exp-seal ok" title="导出自检通过${audit.problems.length?`，另有 ${audit.problems.length} 条提示见底部付印审读`:''}">✓ 钤印 · 审读通过</span>`}`;
   col.appendChild(head);
 
+  /* ── 统计行 + 一键备份（v1.29）：只读当前工程实时算数；备份走 Project.exportAll（逐工程剔 Key） ── */
+  const enN=p.blocks.filter(b=>b.enabled).length;
+  const greetB=p.blocks.find(b=>b.enabled&&b.type==='greetings');
+  const greetN=greetB&&Array.isArray(greetB.entries)?greetB.entries.length:0;
+  let imgN=0;
+  p.blocks.forEach(b=>{
+    if(!b||!b.enabled)return;
+    if(b.type==='gallery'&&Array.isArray(b.images))imgN+=b.images.filter(x=>x&&x.url).length;
+    if(b.type==='comic'){if(b.cover)imgN++;if(Array.isArray(b.pages))imgN+=b.pages.filter(x=>x&&x.url).length}
+    if(b.type==='profile'&&Array.isArray(b.characters))imgN+=b.characters.filter(c=>c&&c.avatar).length;
+  });
+  if(p.theme&&p.theme.bg&&p.theme.bg.type==='image'&&p.theme.bg.image)imgN++;
+  const upd=(p.updatedAt||p.createdAt||'').slice(0,10);
+  const stats=document.createElement('div');stats.className='card export-box';
+  stats.innerHTML=`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--txt2)">
+    <span style="font-weight:700;color:var(--txt)">📊 统计</span>
+    <span>区块 ${enN}/${p.blocks.length}</span><span>开场白 ${greetN} 条</span><span>图片 ${imgN} 张</span>
+    <span>产物 ${(fullDoc.length/1024).toFixed(0)} KB</span><span>最近修改 ${esc(upd)||'—'}</span>
+    <button type="button" class="btn ghost small" id="backupAll" title="全部工程合并为一个 JSON（剔除 API Key），可经「导入工程」整包还原">💾 一键备份全部工程</button>
+  </div>`;
+  $('#backupAll',stats).onclick=()=>Project.exportAll();
+  col.appendChild(stats);
+
   /* ── 格式分段切换 ── */
   const seg=document.createElement('div');seg.className='seg exp-seg';
   seg.innerHTML=`
@@ -49,6 +72,15 @@ export function renderExport(){
   const p1=document.createElement('div');p1.className='card export-box exp-panel active';p1.dataset.fmt='doc';
   p1.innerHTML=`<h3>① 开场白版 <span class="hint">整段贴进 first_mes 或 alternate_greetings，保留 \`\`\` 围栏与 body 标签</span></h3>
     <div class="exp-note">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签（正文自带 <code>\`\`\`</code> 时已自动升级四反引号长围栏）。</div>
+    <div class="exp-note">⚠️ 最关键的一句：<strong>原生酒馆不执行完整 HTML</strong>——本页依赖酒馆助手（TavernHelper）的 iframe 渲染路径，没装酒馆助手时整段只会被当作纯代码块展示。
+    <details style="margin-top:4px"><summary style="cursor:pointer;font-size:12px;color:var(--txt2)">各环境降级对照（点开）</summary>
+      <div style="font-size:12px;color:var(--txt2);margin-top:6px;line-height:1.9">
+        <strong style="color:var(--txt)">有酒馆助手</strong>：完整体验——开场白列表与切换、BGM 接续播放、标题库覆盖、返回开场页脚本、年龄闸门「离开」。<br>
+        <strong style="color:var(--txt)">仅正则、无酒馆助手</strong>：页面正常渲染，但——开场白列表可见而点击无效（切换/填入/按钮全依赖 API）；BGM 回落各楼独立播放、刷新不接续；标题库回落「首行作标题」自动提取；年龄闸门「离开」不退出。<br>
+        <strong style="color:var(--txt)">原生酒馆（纯文本）</strong>：整段 HTML 被当作代码块展示原文，不渲染。<br>
+        ⚠️ 酒馆用户设置「在响应中显示标签」开启时，正则插入的 HTML 可能被转义为纯文本显示（该开关行为待真机核实，遇到此现象先关闭它重试）；消息 HTML 会经 DOMPurify 清洗——<code>&lt;style&gt;</code> 被限定作用域到楼层内、<code>&lt;custom-style&gt;</code> 标签被放行（酒馆 1.19 源码核对）。
+      </div>
+    </details></div>
     <div class="export-actions">
       <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带围栏，推荐）</button>
       <button type="button" class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
@@ -121,18 +153,41 @@ export function renderExport(){
   col.appendChild(p2);
 
   /* ── ③ 返回开场页脚本 ── */
-  /* 内置模板外置于 slots/back-home.json（插槽式，换文件重建即换，契约见 slots/README.md），
-     本区块只做规范化输出与下载，不再有样式配置 */
-  const bhScript=Gen.backHomeScript(p);
+  /* 内置模板外置于 slots/back-home.json（插槽式，换文件重建即换，契约见 slots/README.md）；
+     v1.29 起工程 backHome 配置经下方表单烘焙进脚本 CFG（文案/颜色/图片/出现时机），全默认=模板原样透传 */
+  const bhName=Gen.backHomeScript(p).name;
   const p3=document.createElement('div');p3.className='card export-box exp-panel';p3.dataset.fmt='bh';
   p3.innerHTML=`<h3>③ 返回开场页 <span class="hint">酒馆助手角色脚本：切到其它开场白后，第 0 楼末尾出现「返回开场页」按钮</span></h3>
-    <div class="exp-note">当前模板：<strong>${esc(bhScript.name)}</strong>（模板文件 <code>slots/back-home.json</code>——替换该文件后重新构建即生效，契约见 <code>slots/README.md</code>）。</div>
-    <div class="exp-steps">使用：① 酒馆助手 → 角色脚本 → 导入本 JSON 并启用　② 第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即切回开场页并顺带停掉联动音轨；开场页本身（第 0 张）不会出现按钮。原理：swipe 切换会整体销毁楼层 iframe，返回按钮只能由不随楼层销毁的角色脚本注入。</div>
+    <div class="exp-opts">
+      <div><label>按钮样式</label><select id="bhMode">
+        <option value="text" ${p.backHome.mode!=='img'?'selected':''}>文字按钮</option>
+        <option value="img" ${p.backHome.mode==='img'?'selected':''}>图片按钮</option>
+      </select></div>
+      <div><label>按钮文案（图片模式下作 alt）</label><input id="bhText" value="${esc(p.backHome.text)}"></div>
+      <div><label>按钮图片 URL（图片模式用）</label><input id="bhImg" value="${esc(p.backHome.img)}" placeholder="https://…"></div>
+      <div><label>主色（六位 hex，留空=模板默认）</label><input id="bhPrimary" value="${esc(p.backHome.primary)}" placeholder="#6e63bf"></div>
+      <div><label>强调色（六位 hex，留空=模板默认）</label><input id="bhAccent" value="${esc(p.backHome.accent)}" placeholder="#e8c47c"></div>
+      <div><label>出现时机：第几张 swipe 起出现（1=所有非首页 swipe）</label><input type="number" min="1" id="bhFromSwipe" value="${+p.backHome.fromSwipe||1}"></div>
+    </div>
+    <div class="exp-note">内置模板：<strong>${esc(bhName)}</strong>（<code>slots/back-home.json</code>——替换该文件后重新构建即生效，契约见 <code>slots/README.md</code>）。以上配置生成时烘焙进脚本，全部默认则与模板逐字一致。</div>
+    <div class="exp-steps">使用：① 酒馆助手 → 角色脚本 → 导入本 JSON 并启用　② 第 0 楼开场白 swipe 到第 <span id="bhFswEcho">${+p.backHome.fromSwipe||1}</span> 张及以后时，正文末尾自动出现返回按钮，点击即切回开场页并顺带停掉联动音轨；开场页本身（第 0 张）不会出现按钮。原理：swipe 切换会整体销毁楼层 iframe，返回按钮只能由不随楼层销毁的角色脚本注入。</div>
     <div class="export-actions">
       <button type="button" class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
       <button type="button" class="btn ghost small" id="bhDownload">💾 下载角色脚本 .json</button>
     </div>`;
-  const bhJson=()=>JSON.stringify(bhScript,null,2);
+  const bhJson=()=>JSON.stringify(Gen.backHomeScript(p),null,2);
+  const bhSync=()=>{
+    p.backHome.mode=$('#bhMode',p3).value;
+    p.backHome.text=$('#bhText',p3).value.trim()||'← 返回开场页';
+    p.backHome.img=$('#bhImg',p3).value.trim();
+    p.backHome.primary=$('#bhPrimary',p3).value.trim();
+    p.backHome.accent=$('#bhAccent',p3).value.trim();
+    p.backHome.fromSwipe=Math.max(1,Math.floor(+$('#bhFromSwipe',p3).value)||1);
+    Project.save();
+    $('#bhFswEcho',p3).textContent=p.backHome.fromSwipe;
+    renderViewer(true);
+  };
+  ['#bhMode','#bhText','#bhImg','#bhPrimary','#bhAccent','#bhFromSwipe'].forEach(s=>$(s,p3).addEventListener('change',bhSync));
   $('#bhCopy',p3).onclick=()=>copyText(bhJson());
   $('#bhDownload',p3).onclick=()=>download(`backhome-开场页-${p.name}.json`,bhJson());
   col.appendChild(p3);

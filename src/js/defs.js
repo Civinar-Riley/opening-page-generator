@@ -19,9 +19,13 @@ const THEME_PRESETS=[
   {name:'档案机',caption:'旧卷宗 · 炭黑与黄铜',specimen:'未结案记录',folio:'FILE No. 005',theme:{skin:'archive',primary:'#b6ab96',accent:'#ddba78',textColor:'#f0ebe0',fontName:'',headingFont:'Courier New',radius:0,titleAlign:'left',motion:'off',bg:{type:'noise',color:'#191815',color2:'#292720'}}},
 ];
 
+/* 工程数据 schema 版本（v1.29 引入）：project.js migrate() 按此分段迁移；新增破坏性字段变换时 +1 并在 migrate() 加对应段 */
+const SCHEMA_VERSION=2;
+
 function defaultProject(name){
   return {
     id:uid(),name:name||'未命名工程',createdAt:new Date().toISOString(),
+    schemaVersion:SCHEMA_VERSION,
     marker:'【开场页】',
     theme:{primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',followTavern:false,
       follow:{text:false,quote:false,font:false,em:false},
@@ -33,6 +37,10 @@ function defaultProject(name){
     macros:[{k:'char',v:'艾莉丝'},{k:'user',v:'旅行者'}],
     ai:{baseURL:'https://api.openai.com/v1',apiKey:'',model:'',models:[],rememberKey:true},
     preview:{mode:'mobile',theme:'dark'},
+    /* 返回开场页脚本配置（v1.29）：空串=沿用 slots/back-home.json 模板默认（模板即真相）；
+       fromSwipe=第几张 swipe 起出现（1=所有非首页 swipe，与旧模板行为一致） */
+    backHome:{mode:'text',text:'← 返回开场页',img:'',primary:'',accent:'',fromSwipe:1},
+    updatedAt:null, /* 最近修改时间：save() 触碰；null=从未编辑（统计行回落 createdAt） */
   };
 }
 
@@ -118,5 +126,5 @@ const UI_THEMES=[
   {id:'moonstone',name:'月岩'},
 ];
 
-export {BLOCK_DEFS, BLOCK_ORDER, CORE_TYPES, THEME_PRESETS, COMP_LIB, BUILTIN_TEMPLATES, BLOCK_PRESETS, defaultProject, UI_THEMES, applyBlockPreset, syncGateThemeCopy};
+export {BLOCK_DEFS, BLOCK_ORDER, CORE_TYPES, THEME_PRESETS, COMP_LIB, BUILTIN_TEMPLATES, BLOCK_PRESETS, defaultProject, UI_THEMES, applyBlockPreset, syncGateThemeCopy, SCHEMA_VERSION};
 

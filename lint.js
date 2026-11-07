@@ -8,6 +8,8 @@
  *   5. undef-ident    调用位未定义标识符（文件内无声明且非白名单全局——防漏 import/typo，曾漏过 renderConfig 的 replaceAllInString）
  *   6. html-comment   JS 源码含 '<!--' 字面序列——触发 HTML script 双转义状态机（build.js 闸门同因），必须用 '\u003c' 转义或字符串拆接
  *   7. button-type    <button> 必须显式 type="button"（表单内默认 submit，回车/点击可能触发表单提交丢数据；扫 JS 字符串内 HTML 与 src/index.html）
+ *   8. gnum-sync      GNUM 中文数字常量在 gen/body.js 与 gen/scripts.js 双源各一份（自包含运行时引用不了 gen 层
+ *                     常量，源码注释注明「改动须两处同步」）——漂移会让列表徽标与按钮序号字形不一致，直接比对两份字面量
  * 注：各规则已对当前代码库校准（零误报）；新增规则前先在本地验证不产生假阳性。
  */
 const fs=require('fs'),path=require('path');
@@ -230,6 +232,15 @@ for(const file of files){
 /* 规则 7 补扫工具壳 HTML（walk 只收 .js，index.html 单独扫） */
 const shellHtml=path.join(ROOT,'index.html');
 if(fs.existsSync(shellHtml))checkButtonType('src/index.html',fs.readFileSync(shellHtml,'utf8'));
+
+/* 规则 8：GNUM 双源一致性（跨文件检查，读两份字面量比对；任一侧找不到即报错防静默失效） */
+function checkGnumSync(){
+  const grab=f=>{const m=/GNUM\s*=\s*'([^']*)'/.exec(fs.readFileSync(path.join(ROOT,f),'utf8'));return m?m[1]:null};
+  const a=grab(path.join('js','gen','body.js')),b=grab(path.join('js','gen','scripts.js'));
+  if(a===null||b===null){issues.push({file:'gen',line:0,rule:'gnum-sync',level:'error',msg:'GNUM 常量未找到（gen/body.js 与 gen/scripts.js 应各一份）'});return}
+  if(a!==b)issues.push({file:'gen',line:0,rule:'gnum-sync',level:'error',msg:'GNUM 两处不一致：body.js「'+a+'」 vs scripts.js「'+b+'」——运行时徽标与序号须同字形，两处同步修改'});
+}
+checkGnumSync();
 
 /* 输出 */
 let errCount=0,warnCount=0;
