@@ -1,5 +1,5 @@
-/* 导出页渲染 */
-import { $, esc, copyText, download, highlightCode, toast } from '../utils.js';
+/* 导出页渲染（付梓台：审读 → 钤印 → 发付）——分段切换三种格式，共用一个产物查看器 */
+import { $, $$, esc, copyText, download, highlightCode, toast } from '../utils.js';
 import { Project } from '../project.js';
 import { Gen } from '../gen/index.js';
 import { hasBridge, openCardWriter } from './extBridge.js';
@@ -10,42 +10,63 @@ export function renderExport(){
      围栏必须走 Gen.fencedFullDoc——正文含 ``` 时会升级四反引号长围栏，手拼三反引号会提前闭合 */
   const fullDoc=Gen.buildFullDoc(p);
   const fenced=Gen.fencedFullDoc(p);
+  const audit=Gen.auditFullDoc(fullDoc);
+  const compat=Gen.auditCompat(p);
   /* 预览截断：超长文档只高亮前 2 万字符（防切在 emoji 代理对中间），复制/下载始终为完整内容 */
   const hlDoc=s=>{
     if(s.length<=20000)return highlightCode(s);
-    s=s.slice(0,20000);
-    if(/[\uD800-\uDBFF]$/.test(s))s=s.slice(0,-1);
-    return highlightCode(s)+'\n…（预览截断，完整内容以复制/下载为准）';
+    let t=s.slice(0,20000);
+    if(/[\uD800-\uDBFF]$/.test(t))t=t.slice(0,-1);
+    return highlightCode(t)+'\n…（预览截断，完整内容以复制/下载为准）';
   };
+  const blockers=audit.problems.filter(x=>x.level==='阻断');
+  /* 导出自检：阻断级问题阻止复制/下载（产物固定，报告只算一次） */
+  const guard=()=>{if(blockers.length){toast('自检未通过：'+blockers[0].msg);return false}return true};
 
-  /* ① 开场白版：完整 HTML 文档 + ``` 围栏（酒馆助手只渲染「代码块内 + 含 <body></body>」的代码） */
-  /* 导出自检：单次构建后跑 auditFullDoc，阻断级问题阻止复制/下载（产物固定，报告只算一次） */
-  const audit=Gen.auditFullDoc(fullDoc);
-  const auditLine=audit.ok
-    ?`<div style="font-size:12px;color:var(--ok,#7fc97f);margin:4px 0">✓ 自检通过${audit.problems.length?`（${audit.problems.length} 条提示）`:''}</div>`
-    :`<div style="font-size:12px;color:var(--danger,#e07070);margin:4px 0">✗ 自检未通过（${audit.problems.filter(x=>x.level==='阻断').length} 项阻断）：${esc(audit.problems.map(x=>x.msg).join('；'))}</div>`;
-  const auditHints=audit.problems.filter(x=>x.level==='提示');
-  const guard=()=>{const b=audit.problems.find(x=>x.level==='阻断');if(b){toast('自检未通过：'+b.msg);return false}return true};
+  /* ── 头部：工程徽章 + 体积预警 + 审读钤印 ── */
   /* 工程数据体积：localStorage 约 5MB 上限的显式预警（导出即备份的场景下最容易看到） */
   const dataKB=(JSON.stringify(p).length/1024).toFixed(0);
-  const dataColor=dataKB>1024?'var(--danger,#e07070)':dataKB>512?'#e0a040':'var(--txt2)';
-  const dataHint=dataKB>1024?'（超 1MB——接近浏览器存储上限，建议拆分工程或精简图片/HTML）':dataKB>512?'（偏大，注意增长）':'';
-  const box1=document.createElement('div');box1.className='card export-box';
-  box1.innerHTML=`<h3>① 开场白版 <span class="hint">整段贴进 first_mes 或 alternate_greetings，保留 \`\`\` 围栏与 body 标签</span></h3>
-    <div style="font-size:12px;color:var(--txt2);margin:6px 0">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此这里导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签。</div>
-    ${auditLine}${auditHints.length?`<div style="font-size:12px;color:var(--txt2);margin:4px 0">提示：${esc(auditHints.map(x=>x.msg).join('；'))}</div>`:''}
-    <div style="font-size:12px;color:${dataColor};margin:4px 0">📦 工程数据体积 ${dataKB} KB${dataHint}</div>
+  const sizeCls=dataKB>1024?' err':dataKB>512?' warn':'';
+  const sizeHint=dataKB>1024?'超 1MB——接近浏览器存储上限，建议拆分工程或精简图片/HTML':dataKB>512?'偏大，注意增长':'';
+  const head=document.createElement('div');head.className='exp-head';
+  head.innerHTML=`<span class="t">📤 导出</span>
+    <span class="exp-chip">📄 ${esc(p.name||'未命名工程')}</span>
+    <span class="exp-chip${sizeCls}" ${sizeHint?`title="${esc(sizeHint)}"`:''}>📦 ${dataKB} KB${sizeHint?' ⚠':''}</span>
+    ${blockers.length
+      ?`<span class="exp-seal bad" title="存在阻断级问题，复制/下载会被拦截，详见底部付印审读">✗ ${blockers.length} 项阻断</span>`
+      :`<span class="exp-seal ok" title="导出自检通过${audit.problems.length?`，另有 ${audit.problems.length} 条提示见底部付印审读`:''}">✓ 钤印 · 审读通过</span>`}`;
+  col.appendChild(head);
+
+  /* ── 格式分段切换 ── */
+  const seg=document.createElement('div');seg.className='seg exp-seg';
+  seg.innerHTML=`
+    <button type="button" data-fmt="doc" class="active">① 开场白版</button>
+    <button type="button" data-fmt="rx">② 标记 + 正则</button>
+    <button type="button" data-fmt="bh">③ 返回开场页</button>`;
+  col.appendChild(seg);
+
+  /* ── ① 开场白版 ── */
+  const p1=document.createElement('div');p1.className='card export-box exp-panel active';p1.dataset.fmt='doc';
+  p1.innerHTML=`<h3>① 开场白版 <span class="hint">整段贴进 first_mes 或 alternate_greetings，保留 \`\`\` 围栏与 body 标签</span></h3>
+    <div class="exp-note">⚠️ 酒馆助手只渲染「位于 <code>\`\`\`</code> 代码块内且同时含 <code>&lt;body&gt;</code> 与 <code>&lt;/body&gt;</code> 标签」的代码，因此导出的是完整 HTML 文档而非组件片段——请整段复制，不要删除围栏或 body 标签（正文自带 <code>\`\`\`</code> 时已自动升级四反引号长围栏）。</div>
     <div class="export-actions">
-      <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带代码围栏，推荐）</button>
+      <button type="button" class="btn small" id="exp1CopyFenced">📋 复制（带围栏，推荐）</button>
       <button type="button" class="btn ghost small" id="exp1CopyRaw">📋 复制 HTML 文档</button>
       <button type="button" class="btn ghost small" id="exp1Dl">💾 下载 .html</button>
+      <button type="button" class="btn ghost small" id="exp1Peek" title="在浏览器新标签页打开最终成品——贴进酒馆前的最后一眼">👁 新窗看产物</button>
       ${hasBridge()?'<button type="button" class="btn small" id="exp1ToCard" title="经酒馆接口直写当前酒馆里的角色卡">📤 写入角色卡…</button>':''}
-    </div><pre></pre>`;
-  $('pre',box1).innerHTML=hlDoc(fenced);
-  $('#exp1CopyFenced',box1).onclick=()=>{if(guard())copyText(fenced)};
-  $('#exp1CopyRaw',box1).onclick=()=>{if(guard())copyText(fullDoc)};
-  $('#exp1Dl',box1).onclick=()=>{if(guard())download(`${p.name}-开场白版.html`,fullDoc)};
-  const toCardBtn=$('#exp1ToCard',box1);
+    </div>`;
+  $('#exp1CopyFenced',p1).onclick=()=>{if(guard())copyText(fenced)};
+  $('#exp1CopyRaw',p1).onclick=()=>{if(guard())copyText(fullDoc)};
+  $('#exp1Dl',p1).onclick=()=>{if(guard())download(`${p.name}-开场白版.html`,fullDoc)};
+  $('#exp1Peek',p1).onclick=()=>{
+    if(!guard())return;
+    const u=URL.createObjectURL(new Blob([fullDoc],{type:'text/html'}));
+    const w=window.open(u,'_blank');
+    if(!w)toast('浏览器拦截了新窗口，请允许本页弹出');
+    setTimeout(()=>URL.revokeObjectURL(u),60000);
+  };
+  const toCardBtn=$('#exp1ToCard',p1);
   if(toCardBtn){
     /* 写卡时按所选卡重建文档：把卡的真实开场白烘焙进 greetings 区块静态列表
        （Gen.greetSnapshotLines 转占位行），替代编辑器占位文本；无 greetings 区块则不传 */
@@ -58,74 +79,103 @@ export function renderExport(){
     }:null;
     toCardBtn.onclick=()=>{if(guard())openCardWriter(fenced,rebuildGreet)};
   }
-  col.appendChild(box1);
+  col.appendChild(p1);
 
-  /* ④ 兼容审查报告：与 ① 导出自检并列（提示级避坑清单，不阻断复制/下载；报告只算一次） */
-  const compat=Gen.auditCompat(p);
-  if(compat.items.length){
-    const cc=document.createElement('div');cc.className='card export-box';
-    cc.innerHTML=`<h3>⚠️ 兼容审查报告 <span class="hint">提示级避坑清单，不阻断导出，逐条核对即可</span></h3>
-      ${compat.items.map(x=>`<div style="font-size:12px;color:var(--txt2);margin:4px 0">• ${esc(x.msg)}</div>`).join('')}`;
-    col.appendChild(cc);
-  }
-
-  /* ② 标记 + 正则脚本版：生成可直接导入酒馆的正则 JSON */
-  const rx=document.createElement('div');rx.className='card export-box';
-  rx.innerHTML=`<h3>② 标记 + 正则脚本版 <span class="hint">把「标记」贴进开场白/世界书，导入生成的正则脚本即可渲染</span></h3>
-    <div class="row2">
+  /* ── ② 标记 + 正则脚本版 ── */
+  const rxOpts=()=>({
+    placement:$('#rxPlacement').value.split(',').map(x=>+x),
+    runOnEdit:$('#rxRunOnEdit').checked,
+    maxDepth:$('#rxMaxDepth').value===''?null:Math.max(0,+$('#rxMaxDepth').value||0),
+  });
+  const rxJson=()=>JSON.stringify(Gen.regexScript(p,rxOpts()),null,2);
+  /* ② 查看器预览：replaceString 即整份页面文档（常超 2 万字符），原样展示会把 placement 等
+     选项字段全部挤出截断线——预览版把该字段缩略为字符数说明，完整 JSON 以复制/下载为准 */
+  const rxPreview=()=>{
+    const o=Gen.regexScript(p,rxOpts());
+    return JSON.stringify({...o,replaceString:`（…完整页面文档 ${o.replaceString.length.toLocaleString()} 字符，随 JSON 下载，此处省略…）`},null,2);
+  };
+  const p2=document.createElement('div');p2.className='card export-box exp-panel';p2.dataset.fmt='rx';
+  p2.innerHTML=`<h3>② 标记 + 正则 <span class="hint">把「标记」贴进开场白/世界书，正则脚本导入酒馆后把标记替换为页面</span></h3>
+    <div class="exp-opts">
       <div><label>标记文本（正则查找目标，避免与正文重复）</label><input id="markerInput" value="${esc(p.marker||'【开场页】')}"></div>
-      <div style="display:flex;align-items:flex-end;gap:8px">
-        <button type="button" class="btn small" id="markerCopy">📋 复制标记</button>
-        <button type="button" class="btn small" id="rxDownload">💾 下载正则脚本 .json</button>
-      </div>
-    </div>
-    <div class="row2">
       <div><label>替换生效位置（placement）</label><select id="rxPlacement">
         <option value="2" selected>AI 输出（开场白正文，默认）</option>
         <option value="1">用户输入</option>
         <option value="1,2">用户输入 + AI 输出</option>
       </select></div>
-      <div style="display:flex;align-items:end;padding-bottom:4px"><label class="inline-check"><input type="checkbox" id="rxRunOnEdit" checked>编辑消息时也重新渲染（runOnEdit）</label></div>
-      <div style="margin-top:4px"><label>渲染楼层限制 maxDepth（留空=全部楼层；0=仅最后一楼，防 AI 复读标记时旧楼重复渲染）</label><input type="number" min="0" id="rxMaxDepth" placeholder="不限"></div>
+      <div><label class="inline-check"><input type="checkbox" id="rxRunOnEdit" checked>编辑消息时也重新渲染（runOnEdit）</label></div>
+      <div><label>渲染楼层限制 maxDepth（留空=全部楼层；0=仅最后一楼，防 AI 复读标记时旧楼重复渲染）</label><input type="number" min="0" id="rxMaxDepth" placeholder="不限"></div>
     </div>
-    <div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">使用：酒馆 → 扩展 → 正则（Regex）→ 导入下载的 JSON → 把上面的标记文本贴进开场白或世界书条目。渲染时正则会把标记替换为完整页面代码围栏（由酒馆助手渲染为 iframe）。</div>
-    <pre></pre>`;
-  const rxOpts=()=>({
-    placement:$('#rxPlacement',rx).value.split(',').map(x=>+x),
-    runOnEdit:$('#rxRunOnEdit',rx).checked,
-    maxDepth:$('#rxMaxDepth',rx).value===''?null:Math.max(0,+$('#rxMaxDepth',rx).value||0),
-  });
-  /* replaceString 与 marker/placement/runOnEdit 无关（仅在下载时读取），pre 只渲染一次 */
-  $('pre',rx).innerHTML=hlDoc(fenced);
-  $('#markerCopy',rx).onclick=()=>copyText($('#markerInput',rx).value.trim()||'【开场页】');
-  $('#rxDownload',rx).onclick=()=>{
-    p.marker=$('#markerInput',rx).value.trim()||'【开场页】';
-    Project.save();
-    download(`regex-开场页-${p.name}.json`,JSON.stringify(Gen.regexScript(p,rxOpts()),null,2));
-  };
-  $('#markerInput',rx).addEventListener('change',e=>{
-    p.marker=e.target.value.trim()||'【开场页】';
-    Project.save();
-  });
-  col.appendChild(rx);
+    <div class="exp-steps">使用：① 酒馆 → 扩展 → 正则（Regex）→ 导入下载的 JSON 并启用　② 把标记文本贴进开场白或世界书条目　③ 渲染时正则把标记替换为完整页面代码围栏，由酒馆助手渲染为 iframe。</div>
+    <div class="export-actions">
+      <button type="button" class="btn small" id="markerCopy">📋 复制标记</button>
+      <button type="button" class="btn small" id="rxCopyJson">📋 复制脚本 JSON</button>
+      <button type="button" class="btn ghost small" id="rxDownload">💾 下载正则脚本 .json</button>
+    </div>`;
+  const saveMarker=()=>{p.marker=$('#markerInput').value.trim()||'【开场页】';Project.save()};
+  $('#markerCopy',p2).onclick=()=>copyText($('#markerInput').value.trim()||'【开场页】');
+  $('#rxCopyJson',p2).onclick=()=>copyText(rxJson());
+  $('#rxDownload',p2).onclick=()=>{saveMarker();download(`regex-开场页-${p.name}.json`,rxJson())};
+  $('#markerInput',p2).addEventListener('change',()=>{saveMarker();renderViewer(true)});
+  ['#rxPlacement','#rxRunOnEdit','#rxMaxDepth'].forEach(s=>$(s,p2).addEventListener('change',()=>renderViewer(true)));
+  col.appendChild(p2);
 
-  /* ③ 返回开场页脚本：内置模板外置于 slots/back-home.json（插槽式，换文件重建即换，
-     契约见 slots/README.md），本区块只做规范化输出与下载，不再有样式配置 */
-  const bhx=document.createElement('div');bhx.className='card export-box';
+  /* ── ③ 返回开场页脚本 ── */
+  /* 内置模板外置于 slots/back-home.json（插槽式，换文件重建即换，契约见 slots/README.md），
+     本区块只做规范化输出与下载，不再有样式配置 */
   const bhScript=Gen.backHomeScript(p);
-  bhx.innerHTML=`<h3>③ 返回开场页脚本 <span class="hint">酒馆助手角色脚本：切到其它开场白后，第0楼末尾出现「返回开场页」按钮</span></h3>
-    <div style="font-size:12px;color:var(--txt2);margin:6px 0">当前模板：<strong>${esc(bhScript.name)}</strong>（模板文件 <code>slots/back-home.json</code>——替换该文件后重新构建即生效，契约见 <code>slots/README.md</code>）</div>
-    <div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">使用：酒馆 → 扩展 → 酒馆助手 → 角色脚本 → 导入本 JSON 并启用。之后把第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即回到开场页；开场页本身（第 0 张）不会出现按钮，点返回会顺带停掉开场白联动音轨。原理上按钮必须由独立角色脚本注入（swipe 切换会销毁楼层 iframe，开场页自己的脚本活不到那时候）。</div>
-    <div class="row2">
-      <div style="display:flex;align-items:flex-end;gap:8px">
-        <button type="button" class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
-        <button type="button" class="btn small" id="bhDownload">💾 下载角色脚本 .json</button>
-      </div>
-    </div>
-    <pre></pre>`;
+  const p3=document.createElement('div');p3.className='card export-box exp-panel';p3.dataset.fmt='bh';
+  p3.innerHTML=`<h3>③ 返回开场页 <span class="hint">酒馆助手角色脚本：切到其它开场白后，第 0 楼末尾出现「返回开场页」按钮</span></h3>
+    <div class="exp-note">当前模板：<strong>${esc(bhScript.name)}</strong>（模板文件 <code>slots/back-home.json</code>——替换该文件后重新构建即生效，契约见 <code>slots/README.md</code>）。</div>
+    <div class="exp-steps">使用：① 酒馆助手 → 角色脚本 → 导入本 JSON 并启用　② 第 0 楼开场白 swipe 到第 2 张及以后时，正文末尾自动出现返回按钮，点击即切回开场页并顺带停掉联动音轨；开场页本身（第 0 张）不会出现按钮。原理：swipe 切换会整体销毁楼层 iframe，返回按钮只能由不随楼层销毁的角色脚本注入。</div>
+    <div class="export-actions">
+      <button type="button" class="btn small" id="bhCopy">📋 复制脚本 JSON</button>
+      <button type="button" class="btn ghost small" id="bhDownload">💾 下载角色脚本 .json</button>
+    </div>`;
   const bhJson=()=>JSON.stringify(bhScript,null,2);
-  $('pre',bhx).innerHTML=hlDoc(bhJson());
-  $('#bhCopy',bhx).onclick=()=>copyText(bhJson());
-  $('#bhDownload',bhx).onclick=()=>download(`backhome-开场页-${p.name}.json`,bhJson());
-  col.appendChild(bhx);
+  $('#bhCopy',p3).onclick=()=>copyText(bhJson());
+  $('#bhDownload',p3).onclick=()=>download(`backhome-开场页-${p.name}.json`,bhJson());
+  col.appendChild(p3);
+
+  /* ── 共用产物查看器：显示当前格式的真实产物（① 围栏文档 / ② 正则 JSON / ③ 角色 JSON） ── */
+  let fmt='doc';
+  const SOURCES={
+    doc:{t:'① 开场白版 · 代码围栏文档',get:()=>fenced},
+    rx:{t:'② 正则脚本 JSON',get:rxPreview,full:()=>rxJson().length,abridged:true},
+    bh:{t:'③ 返回开场页 · 角色脚本 JSON',get:bhJson},
+  };
+  const viewer=document.createElement('div');viewer.className='exp-code';
+  viewer.innerHTML=`<div class="exp-code-bar"><span class="t">产物预览</span><span id="expCodeMeta"></span></div><pre></pre>`;
+  const pre=$('pre',viewer),meta=$('#expCodeMeta',viewer);
+  const renderViewer=swap=>{
+    const s=SOURCES[fmt],src=s.get();
+    pre.innerHTML=hlDoc(src);
+    const fullLen=(s.full?s.full():src.length).toLocaleString();
+    meta.textContent=`${s.t} · 完整 ${fullLen} 字符${s.abridged?' · 预览省略 replaceString':src.length>20000?' · 前 2 万':''}`;
+    if(swap){viewer.classList.remove('swap');void viewer.offsetWidth;viewer.classList.add('swap')}
+  };
+  col.appendChild(viewer);
+  seg.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-fmt]');
+    if(!b||b.dataset.fmt===fmt)return;
+    fmt=b.dataset.fmt;
+    $$('button',seg).forEach(x=>x.classList.toggle('active',x===b));
+    $$('.exp-panel',col).forEach(x=>x.classList.toggle('active',x.dataset.fmt===fmt));
+    renderViewer(true);
+  });
+  renderViewer(false);
+
+  /* ── 付印审读：导出自检 + 兼容审查合并逐条列（提示级避坑清单不阻断导出） ── */
+  const total=audit.problems.length+compat.items.length;
+  const lvRow=x=>`<div class="exp-audit-item"><span class="exp-lv ${x.level==='阻断'?'bad':'warn'}">${x.level}</span><span>${esc(x.msg)}</span></div>`;
+  const auditSec=document.createElement('details');auditSec.className='exp-audit';
+  if(blockers.length)auditSec.open=true;
+  auditSec.innerHTML=`<summary><span class="arr">▶</span>📋 付印审读 <span class="hint">导出自检 + 兼容审查，发卡前逐条核对</span>
+    <span class="exp-chip ${blockers.length?'err':'ok'}">${blockers.length?`✗ ${blockers.length} 项阻断`:'✓ 无阻断'}${total?` · ${total} 条提示`:''}</span></summary>
+    <div class="exp-audit-body">
+      ${audit.problems.length?`<h5>产物自检</h5>${audit.problems.map(lvRow).join('')}`:''}
+      ${compat.items.length?`<h5>兼容审查</h5>${compat.items.map(lvRow).join('')}`:''}
+      ${!total?'<div class="exp-audit-item"><span class="exp-lv ok">通过</span><span>未发现已知坑位，可以发卡。</span></div>':''}
+    </div>`;
+  col.appendChild(auditSec);
 }
