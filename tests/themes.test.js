@@ -30,8 +30,7 @@ describe('页面预设与材质纯函数',()=>{
     expect(purple.theme).toMatchObject({primary:'#7c6cf0',accent:'#e8c47c',textColor:'#f0f0f5',radius:12,titleAlign:'center',motion:'full',bg:{type:'gradient',color:'#161228',color2:'#261b42'}});
     expect(purple.theme.skin).toBe('nebula');
     expect(purple.theme.headingFont).toBeTruthy();
-    expect(purple.theme.fontName).toBe('');
-    expect(purple.caption).toBeTruthy();expect(purple.specimen).toBeTruthy();expect(purple.folio).toBeTruthy();
+    expect(purple.theme.fontName).toBe(''); /* caption/specimen/folio 由下方六套循环统一覆盖 */
   });
   it('六套预设名称保持不变，全部六套各有独立皮肤与标题字体',()=>{
     expect(THEME_PRESETS.map(t=>t.name)).toEqual(['紫夜幻金','荆棘王室','狐火缘日','蓝电义体','渊语回廊','档案机']);

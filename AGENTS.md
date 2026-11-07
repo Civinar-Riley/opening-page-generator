@@ -41,12 +41,14 @@
 | `src/js/defs.js` | 纯数据汇总出口（大体量数据拆在 `defs/blocks.js`·`defs/complib.js`·`defs/templates.js`，调用方一律从 defs.js import）：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
 | `src/js/themes.js` | **纯函数/数据**：`THEME_SKINS` 材质枚举与本机字体栈、`themeSkin` 兼容兜底、`themePresetPatch` 试穿/套用补丁、`themePresetMatches` 完整匹配、`themeTexture` 卡片/产物共用纹理；不按 presetRef 推断材质 |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
-| `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
+| `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `openingPageGen_v1_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
 
 | `src/js/ui/core.js` | UI 壳 + `UI.renderAll()` 总入口（各渲染页有独立 try/catch 隔离）+ renderProjectSelect + 预览四件套（mountPreview/fitPreviewHeight/refreshPreview/debouncedPreview）+ 页签切换/全局快捷键/启动；经 `Object.assign(UI,…)` 挂载页面方法（模块顶层不读 UI 值，规避循环 import TDZ） |
 | `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig：主题/宏/区块列表拖拽/全局搜索替换 UI 层） |
 | `src/js/ui/blockEditors.js` | renderBlockBody 各区块编辑表单 + 组件库插入/选择器弹窗 `openCompPicker` |
 | `src/js/ui/renderExport.js` / `renderAI.js` / `renderHelp.js` | 导出页 / AI 助手页 / 说明页渲染 |
+| `src/js/ui/renderNh.js` | 漫画导入页：服务探活 / 抓取 / 勾选筛选 / 应用到区块（`scripts/nh-lib.mjs` 直接 import 进 bundle） |
+| `src/js/ui/extBridge.js` | 扩展版桥接（写角色卡 / 酒馆当前连接 AI 生成）；桥不存在时功能休眠 |
 | `src/js/ui/shared.js` | 跨页辅助：bindListEditor / detectFonts |
 | `src/js/search.js` | **纯函数**全局搜索替换：collectSearchMatches / replaceAllInString / replaceAllInProject（UI 层仅调 API，逻辑可测） |
 | `src/js/fontdetect.js` | **纯函数**字体检测：COMMON_FONTS / BASE_FONTS / fontExists / detectAvailableFonts（ctx 由调用方注入，测试 mock） |
@@ -70,7 +72,7 @@ localStorage（openingPageGen_* 键）
 
 ## 硬约束（红线）
 
-1. **组件库 `COMP_LIB`**（`defs/complib.js`，55+ 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器/点击切换消息三个特例（IIFE 局部作用域 + `data-bound` 防重绑，交互一律 addEventListener 禁用内联 onclick）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（blockEditors）
+1. **组件库 `COMP_LIB`**（`defs/complib.js`，59 条带 cat 分类）：无 id 选择器（**例外**：`opg-` 前缀 id 供 CSS 交互组件如多标签页/求签，多次插入共享状态为已知取舍）、无全局选择器；`<script>` 仅音乐播放器/交互计数器/点击切换消息三个特例（IIFE 局部作用域 + `data-bound` 防重绑，交互一律 addEventListener 禁用内联 onclick）；类名一律 `opg-` 前缀隔离；假设深色生成底；430px 手机宽适配。组件插入走 `openCompPicker` 弹窗（blockEditors）
 2. **gen 产物自包含**：style+script 全内联；容器 `opg-{id}` 前缀隔离；同类区块多实例用 `display:contents` 作用域层（`.opg-{id}-bk{i}`）
 3. **宏双轨**：`gen/body.js` 的 `tx`（预览经 Macros.apply 替换）/`raw`（导出原样保留交酒馆解析）——新增区块渲染必须双轨支持，只写一边会让预览或导出失真
 4. **工具 UI 主题**：`tool.css` 的 `html[data-theme='x']` 块必须覆盖**全部令牌**（`:root` 的全部令牌，含 `--star-c`——星夜主题星点背景依赖）+ `#topbar/#tabs/#main` z-index 三件套（若用 body::before 纹理层）；`bronze` 是 `:root` 默认，不挂 data-theme 属性
