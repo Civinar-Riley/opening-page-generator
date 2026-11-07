@@ -368,6 +368,8 @@ export function renderConfig(){
   /* ---- 全局搜索替换 ---- */
   searchReplaceBtn.addEventListener('click',async()=>{
     const ov=document.createElement('div');
+    /* opg-ov：自绘弹层统一标记（core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」） */
+    ov.className='opg-ov';
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
     const box=document.createElement('div');
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(520px,92vw);max-height:80vh;overflow:auto';
@@ -458,6 +460,8 @@ export function renderConfig(){
       const getTarget=()=>{
         if(m.parent==='characters')return b.characters[m.subIdx];
         if(m.parent==='images')return b.images[m.subIdx];
+        if(m.parent==='pages')return b.pages[m.subIdx];
+        if(m.parent==='entries')return b.entries[m.subIdx];
         if(m.parent==='tracks')return b.tracks[m.subIdx];
         if(m.parent==='groups.items'){const[gi,ii]=String(m.subIdx).split('.');return b.groups[+gi].items[+ii]}
         if(m.parent==='groups')return b.groups[m.subIdx];

@@ -80,7 +80,7 @@ export function renderBlockBody(container,b,i){
         confirmMsg:'确定删除该角色？',
         createItem:()=>({name:'{{char}}',desc:'',tags:'',avatar:'',avatarMode:'manual'}),
         afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
-        afterAdd:()=>{Project.save();Project.saveSnapshot()},
+        afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
       });
       break;
@@ -115,7 +115,7 @@ export function renderBlockBody(container,b,i){
         confirmMsg:'删除该图片？',
         createItem:()=>({url:'',cap:''}),
         afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
-        afterAdd:()=>{Project.save();Project.saveSnapshot()},
+        afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
       });
       break;
@@ -265,7 +265,6 @@ export function renderBlockBody(container,b,i){
             <div><label>循环播放</label> <input type="checkbox" data-bchk="${i}.loop"${b.loop?' checked':''}></div>
           </div>
           <div><label>显示标题</label> <input type="checkbox" data-bchk="${i}.showTitle"${b.showTitle?' checked':''}></div>
-          <div><label>酒馆命令集成</label> <input type="checkbox" data-bchk="${i}.useTavernCmd"${b.useTavernCmd?' checked':''}></div>
           <div style="margin-top:8px"><label>曲目列表</label></div>`;
         b.tracks.forEach((t,ti)=>{
           h+=`<div style="display:grid;grid-template-columns:120px 1fr 30px;gap:6px;margin:4px 0;align-items:center">
@@ -473,7 +472,7 @@ export function renderBlockBody(container,b,i){
         confirmMsg:'删除该页？',
         createItem:()=>({url:'',cap:''}),
         afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
-        afterAdd:()=>{Project.save();Project.saveSnapshot()},
+        afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
       });
       break;
@@ -538,6 +537,8 @@ function insertComp(b,blockIdx,c){
 function openCompPicker(b,container,blockIdx){
   compPickerCtx={b,blockIdx};
   const ov=document.createElement('div');
+  /* opg-ov：自绘弹层统一标记（core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」） */
+  ov.className='opg-ov';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
   box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;width:min(720px,94vw);max-height:84vh;display:flex;flex-direction:column';
@@ -568,8 +569,10 @@ function openCompPicker(b,container,blockIdx){
     refresh();
   });
   g.addEventListener('click',e=>{
-    const ci=e.target.dataset.ci;
-    if(ci===undefined)return;
+    /* closest：组件名是 <b> 子元素，点中它时 e.target.dataset.ci 为 undefined */
+    const btn=e.target.closest('[data-ci]');
+    if(!btn)return;
+    const ci=btn.dataset.ci;
     insertComp(b,blockIdx,COMP_LIB[+ci]);
     insertedN++;
     badge.textContent='✓ 已插入 '+insertedN+' 个组件（继续点击可追加，✕ 完成关闭）';

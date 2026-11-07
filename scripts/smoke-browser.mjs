@@ -342,10 +342,14 @@ try {
     console.log('✓ 浏览器冒烟通过：零 console.error / pageerror / 请求失败');
   }
 } catch (e) {
-  /* 异常时也回放已完成项：否则只看到超时，无法定位是哪一步。 */
+  /* 异常时也回放已完成项与页面报错：只看到超时无从定位，中断前的报错恰是最强线索。 */
   if (checks.length) {
     console.log('浏览器冒烟已完成项（异常中断前）：');
     checks.forEach(c => console.log('  ' + (c.ok ? '· ' : '✖ ') + c.name));
+  }
+  if (errors.length) {
+    console.log('✗ 中断前页面报错：');
+    errors.forEach(x => console.log('  ' + x));
   }
   console.error('✗ 浏览器冒烟异常：' + (e && e.message || e));
   process.exitCode = 1;

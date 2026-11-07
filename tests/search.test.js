@@ -53,6 +53,38 @@ describe('collectSearchMatches 匹配收集',()=>{
     const m=collectSearchMatches([{type:'dice',count:30}],'30');
     expect(m).toHaveLength(0);
   });
+  it('v1.9+ 区块的标量文案字段可匹配（回归：eyebrow/leaveText/logo/hint/cover/cards/excludedTags 漏扫）',()=>{
+    const blocks=[
+      {type:'welcome',eyebrow:'STORY OPENING'},
+      {type:'gate',leaveText:'不，我未满18岁并离开',logo:'CHARACTER CARD'},
+      {type:'egg',hint:'✦ 诱饵'},
+      {type:'blurreveal',hint:'点击显示'},
+      {type:'comic',cover:'https://x/cover.png'},
+      {type:'gacha',cards:'SSR｜命运之刃｜传闻'},
+      {type:'greetings',excludedTags:'status,设定',entries:[{cover:'https://x/mycover.png',audio:'https://x/a.mp3'}]},
+    ];
+    const m=collectSearchMatches(blocks,'命运之刃');
+    expect(m).toHaveLength(1);
+    expect(m[0].field).toBe('cards');
+    expect(collectSearchMatches(blocks,'opening')).toHaveLength(1);
+    expect(collectSearchMatches(blocks,'未满18岁')).toHaveLength(1);
+    expect(collectSearchMatches(blocks,'character card')).toHaveLength(1);
+    expect(collectSearchMatches(blocks,'诱饵')).toHaveLength(1);
+    expect(collectSearchMatches(blocks,'点击显示')).toHaveLength(1);
+    expect(collectSearchMatches(blocks,'cover.png')).toHaveLength(2); /* comic 顶层 cover + greetings 项封面 */
+    const en=collectSearchMatches(blocks,'a.mp3');
+    expect(en).toHaveLength(1);
+    expect(en[0].parent).toBe('entries');
+    expect(en[0].subField).toBe('audio');
+    expect(collectSearchMatches(blocks,'设定')).toHaveLength(1); /* excludedTags */
+  });
+  it('开场白项（entries）子项匹配带定位信息',()=>{
+    const m=collectSearchMatches([{type:'greetings',entries:[{cover:'https://x/g1.png',audio:''},{cover:'',audio:''}]}],'g1.png');
+    expect(m).toHaveLength(1);
+    expect(m[0].parent).toBe('entries');
+    expect(m[0].subIdx).toBe(0);
+    expect(m[0].path).toContain('开场白项 1');
+  });
 });
 
 describe('replaceAllInString 字面替换',()=>{
@@ -82,5 +114,19 @@ describe('replaceAllInProject 工程级替换',()=>{
     const p={blocks:[{type:'welcome',title:'你好'}]};
     expect(replaceAllInProject(p,'不存在','X')).toBe(0);
     expect(p.blocks[0].title).toBe('你好');
+  });
+  it('替换覆盖新字段与开场白项（与 collectSearchMatches 同一份字段全集）',()=>{
+    const p={blocks:[
+      {type:'gate',leaveText:'离开这里',logo:''},
+      {type:'comic',cover:'https://old/cd.png',pages:[{url:'https://old/1.png',cap:''}]},
+      {type:'gacha',cards:'SSR｜命运之刃'},
+      {type:'greetings',entries:[{cover:'https://old/g1.png',audio:''}],excludedTags:'old,设定'},
+    ]};
+    const count=replaceAllInProject(p,'old','new');
+    expect(count).toBe(4);
+    expect(p.blocks[1].cover).toBe('https://new/cd.png');
+    expect(p.blocks[1].pages[0].url).toBe('https://new/1.png');
+    expect(p.blocks[3].entries[0].cover).toBe('https://new/g1.png');
+    expect(p.blocks[3].excludedTags).toBe('new,设定');
   });
 });

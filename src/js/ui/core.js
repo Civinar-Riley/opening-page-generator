@@ -236,17 +236,19 @@ document.addEventListener('input',e=>{const t=e.target;if(t&&(t.tagName==='INPUT
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   try{
-    if(hasBridge()&&!document.querySelector('.opg-modal-root.show')&&!document.querySelector('#opgwc-card')){
+    /* .opg-ov：组件库选择器/搜索替换/新建工程/写卡等自绘弹层的统一标记 */
+    if(hasBridge()&&!document.querySelector('.opg-modal-root.show,.opg-ov,#opgwc-card')){
       window.parent.postMessage({type:'opg-ext-close'},'*');
     }
   }catch(_){/* 跨域 parent 等异常静默 */}
 });
 
 /* ---- 全局键盘快捷键（key 统一小写比较：CapsLock 开启时 'S'→'s' 仍命中，且不会触发浏览器保存对话框）。
-       模态框打开期间全部跳过：confirmModal 确认型不接管焦点，模态期间按 Ctrl+Z 会静默改工程数据，
-       让「await 模态确认 → 写数据」的路径（如漫画导入应用区块）写入错位目标 ---- */
+       模态框/自绘弹层（.opg-ov）打开期间全部跳过：confirmModal 确认型不接管焦点，模态期间按 Ctrl+Z
+       会静默改工程数据，让「await 模态确认 → 写数据」的路径（如漫画导入应用区块）写入错位目标；
+       自绘弹层（组件库选择器/搜索替换等）同样不接管焦点，放行 Ctrl+Z 会让弹层闭包写进已回退的旧数据 ---- */
 document.addEventListener('keydown',e=>{
-  const modalOpen=!!document.querySelector('.opg-modal-root.show');
+  const modalOpen=!!document.querySelector('.opg-modal-root.show,.opg-ov');
   const tag=document.activeElement?.tagName;
   const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
   if(modalOpen)return;

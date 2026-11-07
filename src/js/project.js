@@ -296,6 +296,7 @@ const Project={
 
   newProject(){
     const ov=document.createElement('div');
+    ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
     const box=document.createElement('div');
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(480px,92vw);max-height:80vh;overflow:auto';

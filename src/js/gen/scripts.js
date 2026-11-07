@@ -215,16 +215,24 @@ export function parseExcludedTags(str){
     return [...new Set(String(str??'').split(/[，,、\s]+/).map(x=>x.trim().replace(/^<\/?|\/?>$/g,'')).filter(x=>/^[\w\u4e00-\u9fa5-]{1,40}$/.test(x)))].slice(0,40);
 }
 
-  /** 运行时脚本：酒馆助手 API，全量 typeof 检查 + 降级 */
+  /** 运行时脚本：酒馆助手 API，全量 typeof 检查 + 降级。
+   *  多实例：每个启用中的开场白区块一份独立配置（点击行为/封面音轨/卡片风格/人名开关），
+   *  按 body 渲染顺序对应 data-gi 序号；标题库取首个实例、排除标签取并集（列表内容同源）。
+   *  无启用实例时不注入——停用区块不应留下按钮注册与 3 秒轮询 */
 export function script(p,px){
-    const greet=p.blocks.find(b=>b.type==='greetings');
-    const action=greet?.clickAction||'go';
-    const titleWb=greet?.titleWb||'',titleEntry=greet?.titleEntry||'开场白标题库';
-    const btnName=(greet&&greet.buttonText)?greet.buttonText:'快速切换开局';
-    const tags=parseExcludedTags(greet?.excludedTags);
-    const meta=(Array.isArray(greet?.entries)?greet.entries:[]).map(e=>({cover:String(e&&e.cover||''),audio:String(e&&e.audio||'')}));
-    const showNames=greet?greet.showNames!==false:true;
-    const wall=greet?.cardStyle==='wall';
+    const greets=(p.blocks||[]).filter(b=>b&&b.enabled&&b.type==='greetings');
+    if(!greets.length)return '';
+    const cfg=greets.map(g=>({
+      act:g.clickAction||'go',
+      wall:g.cardStyle==='wall',
+      names:g.showNames!==false,
+      meta:(Array.isArray(g.entries)?g.entries:[]).map(e=>({cover:String(e&&e.cover||''),audio:String(e&&e.audio||'')})),
+    }));
+    const titleWb=greets[0]?.titleWb||'',titleEntry=greets[0]?.titleEntry||'开场白标题库';
+    const btnGreet=greets.find(g=>(g.clickAction||'go')==='button')||greets[0];
+    const btnName=(btnGreet&&btnGreet.buttonText)?btnGreet.buttonText:'快速切换开局';
+    const btnGi=greets.indexOf(btnGreet);
+    const tags=parseExcludedTags(greets.map(g=>g&&g.excludedTags).join(','));
     return `<script>
 /* 运行时脚本：酒馆助手（TavernHelper）API，无 API 环境自动降级为占位数据 */
 (function(){
@@ -284,12 +292,12 @@ export function script(p,px){
      busy 串行化：连点两个选项会让两次切换交错 await，先点的重读看到后写的
      swipe_id，产生假「消息页未切换」警报 ---------- */
   var _goBusy=false;
-  function goGreeting(i){
+  function goGreeting(i,gi){
     if(_goBusy)return;
     _goBusy=true;
-    _goGreeting(i).finally(function(){_goBusy=false});
+    _goGreeting(i,gi).finally(function(){_goBusy=false});
   }
-  async function _goGreeting(i){
+  async function _goGreeting(i,gi){
     if(hasFn('setChatMessages')){
       try{
         var d=await getSwipes();
@@ -306,7 +314,7 @@ export function script(p,px){
         var v=await getChatMsg0();
         if(!v||typeof v.swipe_id!=='number'){loadGreetings();return}
         if(v.swipe_id!==target){note('消息页未切换，请重试');return}
-        playGreetAudio(i);
+        playGreetAudio(i,gi);
         loadGreetings();return;
       }catch(e){console.warn('[开场页] setChatMessages 切换失败',e);note('切换开场白失败：'+((e&&e.message)||e))}
     }
@@ -318,8 +326,8 @@ export function script(p,px){
      未配置或未命中时自动提取——开场白首行作标题、后续文字作描述，
      无需在开场白文本里添加任何注释标记（避免被预设美化破坏显示） */
   var TITLE_WB=${jss(titleWb||'')},TITLE_ENTRY=${jss(titleEntry||'')};
-  /* 封面墙/联动音轨/排除标签/人名开关（按开场白序号对应，见 gen 层 script()） */
-  var TAGS=${jss(tags)},META=${jss(meta)},NAMES=${jss(showNames)},WALL=${jss(wall)};
+  /* 排除标签（全实例并集）+ 各实例配置 + 按钮模式所属实例序号（见 gen 层 script()） */
+  var TAGS=${jss(tags)},CFG=${jss(cfg)},BTN_GI=${btnGi};
   /* 剥除作者配置的排除标签：整块元素连内容删掉；自闭合/孤立开、孤立闭标签单独删
      （标签名已经 gen 侧白名单校验，无需再转义正则元字符） */
   function stripTags(text){
@@ -368,8 +376,9 @@ export function script(p,px){
     gAudio=null;
   }
   var gAudio=null;
-  function playGreetAudio(i){
-    var url=(META[i]&&META[i].audio)||'';
+  function playGreetAudio(i,gi){
+    var meta=(CFG[gi||0]||CFG[0]).meta;
+    var url=(meta[i]&&meta[i].audio)||'';
     if(!url){stopGreetAudio();return}
     try{
       var doc=hostDoc()||document;
@@ -427,41 +436,44 @@ export function script(p,px){
   var lastSig=null;
   function swipeSig(d){return JSON.stringify([d.cur,d.list])}
   function renderList(d){
-    var listEl=root.querySelector('[data-opg="glist"]');
-    if(!listEl)return;
-    listEl.innerHTML='';
-    d.list.forEach(function(msg,i){
-      var td=(titleMap&&titleMap[i])?titleMap[i]:extractTitleDesc(msg);
-      var btn=document.createElement('button');
-      btn.type='button';btn.className=PX+'-gitem'+(WALL?' '+PX+'-gwallitem':'')+(i===d.cur?' '+PX+'-gcur':'');
-      btn.setAttribute('data-opg','g');btn.setAttribute('data-i',i);
-      var main=document.createElement('span');main.className=PX+'-gmain';
-      var t1=document.createElement('span');t1.className=PX+'-gtitle';t1.textContent=td.title;
-      main.appendChild(t1);
-      if(td.desc){var t2=document.createElement('span');t2.className=PX+'-gdesc';t2.textContent=td.desc;main.appendChild(t2)}
-      var names=NAMES?extractNames(msg):[];
-      if(names.length){var n3=document.createElement('span');n3.className=PX+'-gnames';n3.textContent=names.join(' · ');main.appendChild(n3)}
-      if(WALL){
-        /* 封面墙条目：渐变回落层垫底，img 加载失败隐藏后自然露出（与占位渲染同构） */
-        var wrap=document.createElement('span');wrap.className=PX+'-gcoverwrap';
-        var ph=document.createElement('span');ph.className=PX+'-gcoverph';
-        var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||String(i);
-        ph.appendChild(pn);wrap.appendChild(ph);
-        var cv=(META[i]&&META[i].cover)||'';
-        if(cv){
-          var img=document.createElement('img');img.className=PX+'-gcover';
-          img.setAttribute('loading','lazy');img.setAttribute('alt','');img.src=cv;
-          img.onerror=function(){this.style.display='none'};
-          wrap.appendChild(img);
+    /* 多实例：同步全部开场白列表，各实例按 data-gi 取自己的风格/封面/人名配置 */
+    Array.prototype.forEach.call(root.querySelectorAll('[data-opg="glist"]'),function(listEl){
+      var cfg=CFG[+listEl.getAttribute('data-gi')||0]||CFG[0];
+      var WALL=cfg.wall,NAMES=cfg.names,META=cfg.meta;
+      listEl.innerHTML='';
+      d.list.forEach(function(msg,i){
+        var td=(titleMap&&titleMap[i])?titleMap[i]:extractTitleDesc(msg);
+        var btn=document.createElement('button');
+        btn.type='button';btn.className=PX+'-gitem'+(WALL?' '+PX+'-gwallitem':'')+(i===d.cur?' '+PX+'-gcur':'');
+        btn.setAttribute('data-opg','g');btn.setAttribute('data-i',i);
+        var main=document.createElement('span');main.className=PX+'-gmain';
+        var t1=document.createElement('span');t1.className=PX+'-gtitle';t1.textContent=td.title;
+        main.appendChild(t1);
+        if(td.desc){var t2=document.createElement('span');t2.className=PX+'-gdesc';t2.textContent=td.desc;main.appendChild(t2)}
+        var names=NAMES?extractNames(msg):[];
+        if(names.length){var n3=document.createElement('span');n3.className=PX+'-gnames';n3.textContent=names.join(' · ');main.appendChild(n3)}
+        if(WALL){
+          /* 封面墙条目：渐变回落层垫底，img 加载失败隐藏后自然露出（与占位渲染同构） */
+          var wrap=document.createElement('span');wrap.className=PX+'-gcoverwrap';
+          var ph=document.createElement('span');ph.className=PX+'-gcoverph';
+          var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||String(i);
+          ph.appendChild(pn);wrap.appendChild(ph);
+          var cv=(META[i]&&META[i].cover)||'';
+          if(cv){
+            var img=document.createElement('img');img.className=PX+'-gcover';
+            img.setAttribute('loading','lazy');img.setAttribute('alt','');img.src=cv;
+            img.onerror=function(){this.style.display='none'};
+            wrap.appendChild(img);
+          }
+          var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||String(i);
+          wrap.appendChild(n1);btn.appendChild(wrap);
+        }else{
+          var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||String(i);
+          btn.appendChild(n0);
         }
-        var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||String(i);
-        wrap.appendChild(n1);btn.appendChild(wrap);
-      }else{
-        var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||String(i);
-        btn.appendChild(n0);
-      }
-      btn.appendChild(main);
-      listEl.appendChild(btn);
+        btn.appendChild(main);
+        listEl.appendChild(btn);
+      });
     });
     lastSig=swipeSig(d);
   }
@@ -490,9 +502,8 @@ export function script(p,px){
   })();
   setInterval(syncList,3000);
 
-  /* ---------- 点击开场白选项 ---------- */
+  /* ---------- 点击开场白选项（多实例：按所属实例的 data-gi 取点击行为） ---------- */
   var selIdx=-1;
-  var ACT=${jss(action)};
   var _lastSwipes=null;
   async function getGreetingText(i){
     if(!_lastSwipes)_lastSwipes=await getSwipes();
@@ -501,10 +512,12 @@ export function script(p,px){
   root.addEventListener('click',async function(ev){
     var item=ev.target.closest('[data-opg="g"]');
     if(item){
+      var gEl=item.closest('[data-gi]'),gi=gEl?(+gEl.getAttribute('data-gi')||0):0;
+      var cfg=CFG[gi]||CFG[0];
       var i=parseInt(item.getAttribute('data-i'),10);
       _lastSwipes=await getSwipes();
-      if(ACT==='go'){await goGreeting(i)}
-      else if(ACT==='insert'){
+      if(cfg.act==='go'){await goGreeting(i,gi)}
+      else if(cfg.act==='insert'){
         var msg=await getGreetingText(i);
         if(msg&&hasFn('triggerSlash')){try{await triggerSlash('/setinput '+msg)}catch(e){note('填入输入框失败')}}
         else if(!hasFn('triggerSlash')){note('未检测到酒馆助手 API，无法填入')}
@@ -528,10 +541,10 @@ export function script(p,px){
   loadTitleMap().then(loadGreetings);
 
   /* ---------- 按钮模式：注册酒馆脚本按钮 + 输入序号跳转 ----------
-     把切换能力注册成酒馆助手按钮栏的脚本按钮，点击后弹输入序号（0 起，与列表徽标一致），
-     范围校验后走与页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
+     任一实例配置为 button 即注册一次（按钮名取该实例 buttonText），点击后弹输入序号
+     （0 起，与列表徽标一致），范围校验后走与页内点选同一条 goGreeting 映射路径（卡↔swipe 一致）。
      页内列表照常渲染：无 API/注册失败环境降级为占位列表，功能静默跳过 */
-  if(ACT==='button'){
+  if(CFG.some(function(c){return c.act==='button'})){
     var BTN=${jss(btnName)};
     var hasBtnApi=hasFn('appendInexistentScriptButtons')&&hasFn('getButtonEvent');
     var hasPopup=(function(){try{return typeof window.SillyTavern==='object'&&!!window.SillyTavern&&!!window.SillyTavern.POPUP_TYPE&&typeof window.SillyTavern.callGenericPopup==='function'}catch(e){return false}})();
@@ -546,10 +559,11 @@ export function script(p,px){
               var d=await getSwipes();
               if(!d||!d.list||!d.list.length){note('未找到任何开场白');return}
               var n=parseInt(String(await window.SillyTavern.callGenericPopup('请输入要选择的开局号（从 0 开始，共 '+d.list.length+' 个）',window.SillyTavern.POPUP_TYPE.INPUT),10));
-              if(!isFinite(n)||n<0||n>d.list.length){note('未填入有效开局号');return}
+              if(!isFinite(n)||n<0||n>=d.list.length){note('未填入有效开局号');return}
               /* 序号（0 起，与列表徽标一致）= 卡开场白索引：与页内点选同一条 goGreeting 路径，
-                 由 goGreeting 内部完成卡↔swipe 映射（此处传 swipe 序号会双重映射） */
-              await goGreeting(n);
+                 由 goGreeting 内部完成卡↔swipe 映射（此处传 swipe 序号会双重映射）；
+                 音轨取按钮所属实例（BTN_GI）的配置 */
+              await goGreeting(n,BTN_GI);
             }catch(e){console.warn('[开场页] 按钮切换失败',e);note('按钮切换失败：'+((e&&e.message)||e))}
           });
         }

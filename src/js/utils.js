@@ -9,10 +9,14 @@ const uid=()=>Date.now().toString(36)+(_uidSeq++).toString(36)+Math.random().toS
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 function toast(msg,dur=1800){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),dur)}
 function copyText(txt){
-  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(()=>toast('已复制到剪贴板'));return}
-  const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
-  try{document.execCommand('copy');toast('已复制到剪贴板')}catch(e){toast('复制失败，请手动选择复制')}
-  ta.remove();
+  const fallback=()=>{
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');toast('已复制到剪贴板')}catch(e){toast('复制失败，请手动选择复制')}
+    ta.remove();
+  };
+  /* writeText 被拒（文档失焦/权限策略）时回落 execCommand，别让 Promise 静默失败无任何提示 */
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(txt).then(()=>toast('已复制到剪贴板')).catch(fallback);return}
+  fallback();
 }
 function download(name,content){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'application/octet-stream'}));a.download=name;a.click();
@@ -57,6 +61,9 @@ function _ensureModal(){
 }
 function _showModal({title='',msg='',input=false,defaultVal=''}){
   _ensureModal();
+  /* 同为 max z-index 的自绘弹层（搜索替换/写卡弹窗）先入 DOM 时会把确认框盖在底下：
+     每次弹出重挂 body 末尾，靠 DOM 顺序确保模态置顶 */
+  document.body.appendChild(_modalRoot);
   return new Promise(resolve=>{
     const r=_modalRoot;
     r.querySelector('.opg-modal-title').textContent=title;

@@ -241,8 +241,9 @@ export function renderNh(){
       /* await 期间可能发生：切工程（Project.cur 变）/ Ctrl+Z 撤销（blocks 整组替换、idx 错位）。
          旧判据 Project.cur!==p2 对撤销无效（_restore 不换工程对象），必须比对 blocks 引用 */
       if(Project.cur!==p2||p2.blocks!==blocksRef){toast('⚠️ 工程结构已变化（可能被撤销/重做），请重新选择目标区块');return}
-      Project.saveSnapshot();
+      /* 快照在写入之后拍（撤销栈存「改动后状态」，先拍会与栈顶相同被去重吞掉，写入态永久不可达） */
       blk.pages=pages.map(pg=>({url:pgToUrl(pg),cap:''}));
+      Project.saveSnapshot();
       UI.renderConfig();UI.refreshPreview();Project.save();
       toast(`已写入 ${pages.length} 页到区块 #${idx+1}`);
     };

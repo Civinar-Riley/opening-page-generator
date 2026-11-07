@@ -386,10 +386,10 @@ describe('Gen.build greetings 按钮模式（序号跳转）',()=>{
     expect(html).toContain('未填入有效开局号');
     expect(html).toContain('从 0 开始');
   });
-  it('注册段被 ACT 运行时门控（非 button 模式不执行注入，代码仍随产物输出）',()=>{
+  it('注册段被 CFG 运行时门控（非 button 模式不执行注入，代码仍随产物输出）',()=>{
     const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',placeholderList:'a'}]),{isPreview:false});
-    /* 模板常量在两种模式都输出，靠运行时 ACT 门控——断言门控存在且按钮名不来自本例的 buttonText */
-    expect(html).toContain("if(ACT==='button')");
+    /* 模板常量在两种模式都输出，靠运行时 CFG 门控——断言门控存在且按钮名不来自本例的 buttonText */
+    expect(html).toContain("c.act==='button'");
     expect(html).toContain('var BTN="开始"');
     expect(html).not.toContain('var BTN="跳转开局"');
   });
@@ -476,28 +476,28 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
     expect(html).toContain('text=stripTags(text)');
     expect(html).toContain("new RegExp('<'+tag+'(\\\\s[^<>]*)?>[\\\\s\\\\S]*?<\\\\/'+tag+'\\\\s*>','gi')");
   });
-  it('人名提取：运行时含 extractNames 与 gnames 渲染分支，showNames 开关注入 NAMES',()=>{
+  it('人名提取：运行时含 extractNames 与 gnames 渲染分支，showNames 开关注入 CFG.names',()=>{
     const on=Gen.build(proj([{...gBase}]),{isPreview:false});
     expect(on).toContain('function extractNames');
     expect(on).toContain("PX+'-gnames'");
-    expect(on).toContain('NAMES=true');
+    expect(on).toContain('"names":true');
     const off=Gen.build(proj([{...gBase,showNames:false}]),{isPreview:false});
-    expect(off).toContain('NAMES=false');
+    expect(off).toContain('"names":false');
   });
   it('切换校验：setChatMessages 后重读第 0 楼，不符弹「消息页未切换」；按钮模式序号直传卡索引（修复双重映射）',()=>{
     const html=Gen.build(proj([gBase]),{isPreview:false});
     expect(html).toContain('消息页未切换，请重试');
-    expect(html).toContain('await goGreeting(n)');
+    expect(html).toContain('await goGreeting(n,BTN_GI)');
     expect(html).not.toContain('d.map?d.map[n-1]');
   });
-  it('联动音轨：META 注入 + 宿主文档挂载标记 + 穿透与降级结构',()=>{
+  it('联动音轨：CFG.meta 注入 + 宿主文档挂载标记 + 穿透与降级结构',()=>{
     const b={...gBase,entries:[{cover:'',audio:'https://x/a.mp3'},{cover:'',audio:''}]};
     const html=Gen.build(proj([b]),{isPreview:false});
-    expect(html).toContain('META=[{"cover":"","audio":"https://x/a.mp3"},{"cover":"","audio":""}]');
+    expect(html).toContain('"meta":[{"cover":"","audio":"https://x/a.mp3"},{"cover":"","audio":""}]');
     expect(html).toContain('data-opg-greet-audio');
     expect(html).toContain('function hostDoc()');
     expect(html).toContain('w.parent.document');
-    expect(html).toContain('playGreetAudio(i)');
+    expect(html).toContain('playGreetAudio(i,gi)');
     expect(html).toContain('stopGreetAudio()');
   });
   it('行为验证：stripTags 剥除 / extractNames 三层启发式 / 楼内降级音频建立与停止',async()=>{
@@ -1290,5 +1290,62 @@ describe('Gen 生成/导出行为回归',()=>{
     expect(b.audio.loop).toBe(false);
     b.emit('ended');
     expect(b.audio.src).toBe('b.mp3');expect(b.audio.playCount).toBe(1);
+  });
+});
+
+describe('Gen.build 回归修复批次（停用注入/多实例/宏双轨/序号边界/主题色信任面）',()=>{
+  it('changelog 行内容走宏双轨：预览替换宏、导出保留原始宏（回归：行内容漏 tx 预览恒显字面宏）',()=>{
+    const p=proj([{type:'changelog',enabled:true,showTitle:false,lines:'v1.0|2025-01-01|感谢 {{user}} 的支持'}]);
+    p.macros=[{k:'user',v:'旅人'}];
+    expect(Gen.build(p,{isPreview:true})).toContain('感谢 旅人 的支持');
+    expect(Gen.build(p,{isPreview:false})).toContain('感谢 {{user}} 的支持');
+  });
+  it('greetings 全部停用（或无该区块）时不注入运行时脚本：停用不应留下按钮注册与 3 秒轮询',()=>{
+    const off=Gen.build(proj([{type:'greetings',enabled:false,clickAction:'button',buttonText:'跳转',placeholderList:'a'}]),{isPreview:false});
+    expect(off).not.toContain('appendInexistentScriptButtons');
+    expect(off).not.toContain('setInterval(syncList,3000)');
+    const none=Gen.build(proj([{type:'welcome',enabled:true,title:'x',subtitle:''}]),{isPreview:false});
+    expect(none).not.toContain('setInterval(syncList,3000)');
+    const on=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'go',placeholderList:'a'}]),{isPreview:false});
+    expect(on).toContain('setInterval(syncList,3000)');
+  });
+  it('greetings 多实例：各实例 data-gi 独立序号，CFG 按实例注入独立配置（点击行为/封面音轨/卡片风格）',()=>{
+    const html=Gen.build(proj([
+      {type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',entries:[],placeholderList:'a\nb'},
+      {type:'greetings',enabled:true,clickAction:'button',cardStyle:'wall',buttonText:'跳转',titleWb:'',titleEntry:'',entries:[{cover:'https://x/c.png',audio:''}],placeholderList:'c'},
+    ]),{isPreview:false});
+    expect(html).toContain('data-opg="glist" data-gi="0"');
+    expect(html).toContain('data-opg="glist" data-gi="1"');
+    expect(html).toContain('"act":"go"');
+    expect(html).toContain('"act":"button"');
+    expect(html).toContain('"wall":false');
+    expect(html).toContain('"wall":true');
+    expect(html).toContain('"meta":[{"cover":"https://x/c.png","audio":""}]');
+  });
+  it('greetings 多实例运行时：renderList 同步全部 glist，点击按所属实例取配置',()=>{
+    const html=Gen.build(proj([
+      {type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',placeholderList:'a'},
+      {type:'greetings',enabled:true,clickAction:'insert',cardStyle:'list',placeholderList:'b'},
+    ]),{isPreview:false});
+    expect(html).toContain("querySelectorAll('[data-opg=\"glist\"]')");
+    expect(html).toContain("closest('[data-gi]')");
+    expect(html).toContain('var cfg=CFG[gi]||CFG[0]');
+    expect(html).toContain("cfg.act==='go'");
+    expect(html).toContain("cfg.act==='insert'");
+  });
+  it('按钮模式序号校验有效域 0..length-1（回归：输入等于开场白数时放行致 swipe_id undefined）',()=>{
+    const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'button',cardStyle:'card',buttonText:'跳转',titleWb:'',titleEntry:'',placeholderList:'a'}]),{isPreview:false});
+    expect(html).toContain('n>=d.list.length');
+    expect(html).not.toContain('n>d.list.length');
+  });
+  it('主题三色与 fontName 同信任面：分享工程 JSON 的恶意色值无法逃逸 <style>',()=>{
+    const p=proj([{type:'welcome',enabled:true,title:'x',subtitle:''}]);
+    p.theme.accent='red</style><img src=x onerror=alert(1)>';
+    p.theme.primary='a<>b';
+    p.theme.textColor='c</style>d';
+    const doc=Gen.buildFullDoc(p);
+    expect(doc).not.toContain('</style><img');
+    expect(doc).toContain('--opg-accent:red');
+    expect(doc).toContain('--opg-primary:ab');
   });
 });

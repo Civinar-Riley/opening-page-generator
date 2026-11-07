@@ -1,5 +1,6 @@
-/* 全局搜索替换：纯函数（可测），UI 层只负责弹窗/DOM/渲染 */
-export const TEXT_FIELDS=['title','subtitle','text','html','lines','desc','source','label','expr','placeholderList','buttonText','titleEntry','titleWb','name','cap','url','nodes','target','doneText','patternText'];
+/* 全局搜索替换：纯函数（可测），UI 层只负责弹窗/DOM/渲染。
+   标量字段全集须与 blockEditors 可编辑字段对齐（eyebrow/leaveText/logo/hint/cover/cards/excludedTags 此前漏扫） */
+export const TEXT_FIELDS=['title','subtitle','eyebrow','text','html','lines','desc','source','label','expr','placeholderList','buttonText','titleEntry','titleWb','excludedTags','name','cap','url','cover','cards','nodes','target','doneText','patternText','logo','hint','leaveText'];
 
 /* 收集全部匹配：遍历区块及其子项，返回 {blockIdx,path,field,subIdx,subField,parent?}[] */
 export function collectSearchMatches(blocks,kw){
@@ -33,6 +34,12 @@ export function collectSearchMatches(blocks,kw){
       ['name','url'].forEach(k=>{
         if(typeof tr[k]==='string'&&tr[k].toLowerCase().includes(lkw))
           matches.push({blockIdx:bi,path:`区块 #${bi+1} → 曲目 ${ti+1}`,field:k,subIdx:ti,subField:k,parent:'tracks'});
+      });
+    });
+    if(Array.isArray(b.entries))b.entries.forEach((en,ei)=>{
+      ['cover','audio'].forEach(k=>{
+        if(typeof en[k]==='string'&&en[k].toLowerCase().includes(lkw))
+          matches.push({blockIdx:bi,path:`区块 #${bi+1} → 开场白项 ${ei+1}`,field:k,subIdx:ei,subField:k,parent:'entries'});
       });
     });
     if(Array.isArray(b.groups))b.groups.forEach((grp,gi)=>{
@@ -79,6 +86,9 @@ export function replaceAllInProject(project,kw,repl){
     });
     if(Array.isArray(b.tracks))b.tracks.forEach(tr=>{
       ['name','url'].forEach(k=>{if(typeof tr[k]==='string')tr[k]=doReplace(tr[k])});
+    });
+    if(Array.isArray(b.entries))b.entries.forEach(en=>{
+      ['cover','audio'].forEach(k=>{if(typeof en[k]==='string')en[k]=doReplace(en[k])});
     });
     if(Array.isArray(b.groups))b.groups.forEach(grp=>{
       if(typeof grp.name==='string')grp.name=doReplace(grp.name);

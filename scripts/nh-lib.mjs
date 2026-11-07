@@ -87,7 +87,8 @@ export function extractGalleryId(input){
 
 /** 页码表达式 '1-20,25' → 去重升序页码数组（a-b 支持 a>b 交换，越界钳制 1..max）；无有效内容返回 null */
 export function parsePageExpr(str,max=Infinity){
-  const s=String(str??'').trim();
+  /* 范围两侧空格先归一：拆分器按空白切段，'1 - 20' 会被拆成 '1'/'-'/'20' 只剩两个端点 */
+  const s=String(str??'').trim().replace(/\s*([-~～])\s*/g,'$1');
   if(!s)return null;
   const out=new Set();
   for(const part of s.split(/[,，、\s]+/)){
@@ -101,16 +102,19 @@ export function parsePageExpr(str,max=Infinity){
   return out.size?[...out].sort((x,y)=>x-y):null;
 }
 
-/** CLI 页码过滤：pages 表达式优先；否则 1..total 全量再去掉末尾 skipLast 页（专治末尾广告页）；返回页码数组 */
-export function applyPageFilter(total,{skipLast=0,pages=null}={}){
-  const n=Math.max(0,Math.floor(+total||0));
-  const expr=parsePageExpr(pages,n);
-  if(expr)return expr;
+/** CLI 页码选取（纯函数）：全本/去尾按「位置」选（专治末尾广告页），--pages 按「真实页码」匹配——
+    HTML 解析 rescue 的页码缺口场景（如 1,2,4）位置≠页码，与工具页页码语义一致。
+    pages 表达式解析不出返回 null（调用方报错，不得静默回落全本）；返回 g.pages 的子集数组 */
+export function pickGalleryPages(g,{skipLast=0,pages=null}={}){
+  const pagesArr=Array.isArray(g&&g.pages)?g.pages:[];
+  if(pages!=null&&String(pages).trim()!==''){
+    const realMax=pagesArr.length?pagesArr[pagesArr.length-1].page:0;
+    const set=parsePageExpr(pages,realMax);
+    if(!set)return null;
+    return pagesArr.filter(pg=>set.includes(pg.page));
+  }
   const skip=Math.max(0,Math.floor(+skipLast||0));
-  const keep=n-skip;
-  const out=[];
-  for(let i=1;i<=Math.max(0,keep);i++)out.push(i);
-  return out;
+  return pagesArr.slice(0,Math.max(0,pagesArr.length-skip));
 }
 
 /** 代理地址解析（纯函数）：只接受 http(s)://host:port 形态（本机代理的常见写法），

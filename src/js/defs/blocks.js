@@ -55,7 +55,7 @@ const BLOCK_DEFS={
     nodes:'序章 · 启程|主角离开家乡，踏上旅途|done\n第一章 · 迷雾森林|在森林深处遭遇首次战斗|current\n第二章 · 王都见闻|尚未解锁的章节|lock'})},
   divider:{name:'分隔装饰线',icon:'➖',create:()=>({style:'diamond',text:''})},
   freehtml:{name:'自由 HTML 区',icon:'🧩',create:()=>({html:''})},
-  bgm:{name:'音频/BGM 播放区',icon:'🎵',create:()=>({tracks:[{name:'示例曲目',url:''}],volume:50,loop:true,showTitle:true,title:'背景音乐',useTavernCmd:false})},
+  bgm:{name:'音频/BGM 播放区',icon:'🎵',create:()=>({tracks:[{name:'示例曲目',url:''}],volume:50,loop:true,showTitle:true,title:'背景音乐'})},
   fx:{name:'粒子动效区',icon:'💫',create:()=>({effect:'meteor',count:30,speed:1,opacity:0.8})},
   qa:{name:'问答折叠区',icon:'❓',create:()=>({title:'常见问题',showTitle:true,
     groups:[{name:'📖 基础设定',items:[{q:'这个世界的基本规则是什么？',a:'这里写世界观的基础规则说明……'},{q:'故事发生在什么时代？',a:'时代背景说明……'}]},{name:'🎭 角色相关',items:[{q:'主角的特殊能力是什么？',a:'能力设定说明……'}]}]})},
