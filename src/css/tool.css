@@ -805,6 +805,15 @@ label{display:block;color:var(--txt2);font-size:11.5px;margin:10px 0 4px;letter-
 }
 .help-page ol,.help-page ul{padding-left:24px;margin:6px 0}
 .help-page li{margin:4px 0;color:var(--txt2)}
+/* 说明页区块折叠条目：原生 details 零 JS，summary 为条目头 */
+.help-page details{border:1px solid var(--line);border-radius:var(--radius-sm);margin:6px 0;background:var(--panel)}
+.help-page details[open]{border-color:var(--acc)}
+.help-page summary{cursor:pointer;list-style:none;padding:8px 14px;font-weight:600;color:var(--txt);user-select:none;display:flex;align-items:center;gap:8px}
+.help-page summary::-webkit-details-marker{display:none}
+.help-page summary::before{content:'▸';flex:none;color:var(--acc);font-size:11px;transition:transform .15s}
+.help-page details[open]>summary::before{transform:rotate(90deg)}
+.help-page summary:hover{color:var(--acc)}
+.help-page details>div{padding:2px 14px 10px}
 .author-mark{
   position:fixed;
   right:24px;
