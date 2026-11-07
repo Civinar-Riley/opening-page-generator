@@ -9,7 +9,6 @@
     "postbuild": "node scripts/smoke-static.mjs",
     "watch": "node build.js --watch",
     "test": "vitest run",
-    "test:watch": "vitest",
     "smoke": "node scripts/smoke-static.mjs && node scripts/smoke-browser.mjs",
     "lint": "node lint.js",
     "nh": "node scripts/nh-import.mjs",

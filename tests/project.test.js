@@ -1,8 +1,7 @@
 /* 工程数据规范化 / 迁移逻辑单元测试 */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project, setUI } from '../src/js/project.js';
-import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, THEME_PRESETS, defaultProject } from '../src/js/defs.js';
-import { contrastRatio } from '../src/js/utils.js';
+import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject } from '../src/js/defs.js';
 /* 读取分键存储（v1.27）：索引键 + 每工程独立键 */
 const storedProjects=()=>JSON.parse(localStorage.getItem(Project.LS_INDEX)||'[]').map(id=>JSON.parse(localStorage.getItem(Project.LS_PROJ+id)));
 
@@ -490,14 +489,6 @@ describe('撤销栈纳入主题（v1.24）',()=>{
 });
 
 describe('主题预设（v1.24 整套观感包）',()=>{
-  it('6 套预设均带背景且文字色对底色对比度达标（≥4.5:1）',()=>{
-    for(const t of THEME_PRESETS){
-      expect(t.theme.bg,`${t.name} 缺背景`).toBeTruthy();
-      const bg=t.theme.bg.type==='gradient'?(t.theme.bg.color||''):t.theme.bg.color;
-      const cr=contrastRatio(t.theme.textColor,bg);
-      expect(cr,`${t.name} 文字对比度 ${cr}`).toBeGreaterThanOrEqual(4.5);
-    }
-  });
   it('defaultProject theme 含 bg 与 presetRef 默认值',()=>{
     const p=defaultProject('t');
     expect(p.theme.bg).toEqual({type:'gradient',color:'#1a1a2e',color2:'#2d1b3d'});

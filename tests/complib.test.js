@@ -48,7 +48,6 @@ describe('random_nr 不重复随机',()=>{
   });
   it('{{random_nr::}} 宏可被 apply 识别',()=>{
     const out=Macros.apply('你好 {{random_nr::甲::乙::丙}}',[{k:'char',v:'x'}]);
-    console.log('random_nr out:',JSON.stringify(out));
     expect(['你好 甲','你好 乙','你好 丙']).toContain(out);
   });
 });

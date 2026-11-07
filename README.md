@@ -193,6 +193,7 @@ opening-page-generator/
 ├── scripts/                      # 辅助脚本
 │   ├── nh-import.mjs             # nhentai 导入（页面服务 / CLI / CONNECT 隧道代理）
 │   ├── nh-install.mjs            # 注册 / 移除 opg-nh:// 本地协议
+│   ├── opg-nh.bat                # 协议注册双击批处理（进助手小包，检出 CRLF）
 │   ├── nh-lib.mjs                # 抓取与解析公共库
 │   ├── smoke-static.mjs          # 构建后静态冒烟
 │   ├── smoke-browser.mjs         # 无头浏览器冒烟（playwright）

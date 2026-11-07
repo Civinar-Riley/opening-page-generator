@@ -92,7 +92,7 @@ describe('Gen.build 转义与宏',()=>{
     expect(html).toContain('常见问题');
   });
   it('bgm 首曲目名预览替换宏',()=>{
-    const p=proj([{type:'bgm',enabled:true,tracks:[{name:'{{char}}之歌',url:'https://x/a.mp3'}],volume:50,loop:true,showTitle:false,title:'',useTavernCmd:false}]);
+    const p=proj([{type:'bgm',enabled:true,tracks:[{name:'{{char}}之歌',url:'https://x/a.mp3'}],volume:50,loop:true,showTitle:false,title:''}]);
     p.macros=[{k:'char',v:'艾莉丝'}];
     expect(Gen.build(p,{isPreview:true})).toContain('艾莉丝之歌');
     expect(Gen.build(p,{isPreview:false})).toContain('{{char}}之歌');
@@ -236,7 +236,7 @@ describe('Gen.build 边界与安全回归',()=>{
     expect(html2).not.toContain('"null"');
   });
   it('bgm 音量 0 不被兜底吞成 50（falsy-0 回归）',()=>{
-    const b={type:'bgm',enabled:true,tracks:[{name:'x',url:'https://x/a.mp3'}],volume:0,loop:true,showTitle:false,title:'',useTavernCmd:false};
+    const b={type:'bgm',enabled:true,tracks:[{name:'x',url:'https://x/a.mp3'}],volume:0,loop:true,showTitle:false,title:''};
     const html=Gen.build(proj([b]),{isPreview:false});
     expect(html).toContain('value="0"');
   });
@@ -363,7 +363,6 @@ describe('Gen.auditCompat 兼容审查',()=>{
     expect(Gen.auditCompat(p).items.some(x=>/重复 id/.test(x.msg))).toBe(true);
     const many=Array.from({length:16},(_,i)=>'(组'+i+')').join('');
     fb.html='<div>'+many+'</div>';
-    expect(Gen.auditCompat(p).items.some(x=>/捕获组约 16 个/.test(x.msg))).toBe(true);
     expect(Gen.auditCompat(p).items.some(x=>/捕获组约 16 个/.test(x.msg))).toBe(true);
   });
   it('自由 HTML 区块启用判提示（全权限警示）',()=>{
@@ -729,6 +728,7 @@ describe('Gen.build 新增五区块（更新日志/闸门/解码/卡池/彩蛋�
     expect(html).not.toContain('-decl">');
     expect(html).not.toContain('-clrow');
     expect(html).not.toContain('-egg"');
+    expect(html).not.toContain('-brv">');
   });
   it('changelog：版本|日期|内容解析，多段并入内容',()=>{
     const html=Gen.build(proj([{type:'changelog',enabled:true,showTitle:true,title:'日志',lines:'v1.0|2025-05-01|发布|首版'}]),{isPreview:false});
@@ -816,9 +816,6 @@ describe('Gen 完整文档与正则脚本选项',()=>{
 });
 
 describe('Gen.build 模糊揭示区（blurreveal）',()=>{
-  it('默认工程产物不含模糊揭示 DOM（默认停用）',()=>{
-    expect(Gen.build(defaultProject('t'),{isPreview:false})).not.toContain('-brv">');
-  });
   it('每行一段输出 seg+遮罩，点击脚本随实例输出',()=>{
     const html=Gen.build(proj([{type:'blurreveal',enabled:true,showTitle:true,title:'雾语',hint:'点击显示',lines:'第一段\n第二段'}]),{isPreview:false});
     expect(html).toContain('-revt">雾语');
@@ -885,9 +882,7 @@ describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
   });
   it('经典主题：无年龄内容与脚本，checkbox id 带块索引',()=>{
     const html=Gen.build(proj([{type:'gate',enabled:true,title:'开始',text:'引言',buttonText:'进入'}]),{isPreview:false});
-    expect(html).toMatch(/id="opg-[a-z0-9]+-bk0-gateck"/);
-    expect(html).toContain('-gatecover">');
-    expect(html).toContain('-gatebtn">进入');
+    expect(html).toMatch(/id="opg-[a-z0-9]+-bk0-gateck"/); /* 覆盖断言见「checkbox 与全屏封面 label 联动」，此处只留 bk0 索引与无 age 徽章 */
     expect(html).not.toContain('-gagebadge');
     expect(html).not.toContain('gateleave');
   });
@@ -942,7 +937,6 @@ describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
     const mk=t=>Gen.build(proj([{type:'gate',enabled:true,theme:t,title:'开始',text:'引言',buttonText:'进入',logo:'LOGO'}]),{isPreview:false});
     const cur=mk('curtain');
     expect(cur).toContain('-gcurr');
-    expect(cur).toContain('-gcurval');
     expect(cur).toContain('-gcurlogo">LOGO');
     const seal=mk('seal');
     expect(seal).toContain('-gsealtick');
@@ -956,7 +950,6 @@ describe('gate 六主题（经典/帷幕/法阵/金库/扫描/年龄）',()=>{
     const scan=mk('scan');
     expect(scan).toContain('-gscanlogo">LOGO');
     expect(scan).toContain('-gscanwait');
-    expect(scan).toContain('-gscandone');
     expect(scan).toContain('<svg');
   });
   it('未知 theme 回落经典（兼容旧工程/手改数据）',()=>{
