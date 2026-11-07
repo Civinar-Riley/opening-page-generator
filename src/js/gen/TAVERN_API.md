@@ -143,4 +143,4 @@
 
 - 官方文档（接口说明与示例）：https://n0vi028.github.io/JS-Slash-Runner-Doc/
 - 修改 `gen/scripts.js` / `gen/body.js` / `gen/index.js`（backHomeScript）后：核对本文档契约 → `npm test` → `npm run build` → 在真实酒馆环境冒烟一次（列表渲染/切换/选项填入/BGM 接续；backHomeScript 另测导入角色脚本→swipe 出现按钮→点击返回）
-- 版本基线：酒馆助手 ≥ 4.6.0（SillyTavern ≥ 1.12.13）解锁全部能力；BGM 音频 API ≥ 4.3.5；其余守卫式 API 无硬性版本要求
+- 版本基线：酒馆助手 ≥ 4.6.0（SillyTavern ≥ 1.12.13）解锁全部能力；BGM 音频 API ≥ 4.3.5；其余守卫式 API 无硬性版本要求。2026-11-08 已对酒馆助手 4.11.3 / 酒馆 1.19.0 全量核对，本表所列接口均无破坏性变更（上游差异详见 `reference/notes/上游对照-2026-11-08.md`）

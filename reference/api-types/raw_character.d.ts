@@ -10,20 +10,14 @@ declare class RawCharacter {
    * @param options 查找选项
    * @returns 找到的角色卡数据，找不到为null
    */
-  static find({
-    name,
-    allowAvatar,
-  }?: {
-    name: LiteralUnion<'current', string>;
-    allowAvatar?: boolean;
-  }): SillyTavern.v1CharData;
+  static find({ name }?: { name: TypeFest.LiteralUnion<'current', string> }): SillyTavern.v1CharData;
 
   /**
    * 根据名称查找角色卡数据在characters数组中的索引（类似this_chid）
    * @param name 角色名称
    * @returns 角色卡数据在characters数组中的索引，未找到返回-1
    */
-  static findCharacterIndex(name: string): any;
+  static findIndex(name: string): any;
 
   /**
    * 从服务器获取每个聊天文件的聊天内容，并将其编译成字典。
@@ -102,7 +96,7 @@ declare class RawCharacter {
  * @param allowAvatar 是否允许通过头像ID查找
  * @returns 角色卡数据
  */
-declare function getCharData(name: LiteralUnion<'current', string>): SillyTavern.v1CharData | null;
+declare function getCharData(name: TypeFest.LiteralUnion<'current', string>): SillyTavern.v1CharData | null;
 
 /**
  * 获取角色头像路径
@@ -110,7 +104,7 @@ declare function getCharData(name: LiteralUnion<'current', string>): SillyTavern
  * @param allowAvatar 是否允许通过头像ID查找
  * @returns 角色头像路径
  */
-declare function getCharAvatarPath(name: LiteralUnion<'current', string>): string | null;
+declare function getCharAvatarPath(name: TypeFest.LiteralUnion<'current', string>): string | null;
 
 /**
  * 获取角色聊天历史摘要
@@ -119,7 +113,7 @@ declare function getCharAvatarPath(name: LiteralUnion<'current', string>): strin
  * @returns 聊天历史摘要数组
  */
 declare function getChatHistoryBrief(
-  name: LiteralUnion<'current', string>,
+  name: TypeFest.LiteralUnion<'current', string>,
   allowAvatar?: boolean,
 ): Promise<any[] | null>;
 

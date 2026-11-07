@@ -1,7 +1,15 @@
 /**
+ * 获取代理预设名称列表
+ *
+ * @returns 代理预设名称列表
+ */
+declare function getProxyPresetNames(): string[];
+
+/**
  * 使用酒馆当前启用的预设, 让 AI 生成一段文本.
  *
- * 该函数在执行过程中将会发送以下事件:
+ * 该函数在执行过程中将会依次发送以下事件:
+ * - `iframe_events.GENERATION_REQUESTED`: 请求开始，监听它可以了解某个生成的配置情况，并且能修改生成配置
  * - `iframe_events.GENERATION_STARTED`: 生成开始
  * - 若启用流式传输, `iframe_events.STREAM_TOKEN_RECEIVED_FULLY`: 监听它可以得到流式传输的当前完整文本 ("这是", "这是一条", "这是一条流式传输")
  * - 若启用流式传输, `iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY`: 监听它可以得到流式传输的当前增量文本 ("这是", "一条", "流式传输")
@@ -15,7 +23,7 @@
  *   - `overrides?:Overrides`: 覆盖选项. 若设置, 则 `overrides` 中给出的字段将会覆盖对应的提示词. 如 `overrides.char_description = '覆盖的角色描述';` 将会覆盖角色描述
  *   - `injects?:Omit<InjectionPrompt, 'id'>[]`: 要额外注入的提示词
  *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
- * @returns 生成的最终文本
+ * @returns 默认返回原始字符串, 设置 `should_return_reasoning` 或 `tools` 时可能返回详情对象; 可以用 `typeof result === 'string'` 来判断
  *
  * @example
  * // 请求生成
@@ -87,13 +95,73 @@
  * // 然后进行生成
  * const result = await generate({ user_input: '你好', should_stream: true });
  * console.info('收到最终回复: ', result);
+ *
+ * @example
+ * // 使用 tool use / function calling
+ * const result = await generate({
+ *   user_input: '今天北京天气怎么样？',
+ *   tools: [{
+ *     type: 'function',
+ *     function: {
+ *       name: 'get_weather',
+ *       description: '获取指定城市的天气',
+ *       parameters: {
+ *         type: 'object',
+ *         properties: {
+ *           city: { type: 'string', description: '城市名称' }
+ *         },
+ *         required: ['city']
+ *       }
+ *     }
+ *   }],
+ *   tool_choice: 'auto'
+ * });
+ *
+ * if (typeof result !== 'string' && result.tool_calls) {
+ *   for (const call of result.tool_calls) {
+ *     console.info(`模型调用了工具: ${call.function.name}(${call.function.arguments})`);
+ *   }
+ * } else {
+ *   console.info('收到文本回复: ', result);
+ * }
+ *
+ * @example
+ * // 使用 json_schema 强制结构化输出
+ * const result = await generate({
+ *   user_input: '描述场景',
+ *   json_schema: {
+ *     name: 'scene_output',
+ *     value: {
+ *       type: 'object',
+ *       properties: {
+ *         narrative: { type: 'string' },
+ *         mood: { type: 'string', enum: ['happy', 'sad', 'tense'] }
+ *       },
+ *       required: ['narrative', 'mood']
+ *     }
+ *   }
+ * });
+ * const parsed = JSON.parse(result);
+ * console.info(parsed.narrative, parsed.mood);
+ *
+ * @example
+ * // 获取模型的思考过程 (reasoning)
+ * const result = await generate({ user_input: '你好', should_return_reasoning: true });
+ * if (typeof result !== 'string' && result.reasoning) {
+ *   console.info('思考过程: ', result.reasoning);
+ * }
  */
-declare function generate(config: GenerateConfig): Promise<string>;
+declare function generate(config: GenerateConfig & { should_return_reasoning: true }): Promise<GenerateDetailedResult>;
+declare function generate(
+  config: GenerateConfig & { should_return_reasoning?: false; tools?: [] | undefined },
+): Promise<string>;
+declare function generate(config: GenerateConfig): Promise<string | GenerateDetailedResult>;
 
 /**
  * 不使用酒馆当前启用的预设, 让 AI 生成一段文本.
  *
- * 该函数在执行过程中将会发送以下事件:
+ * 该函数在执行过程中将会依次发送以下事件:
+ * - `iframe_events.GENERATION_REQUESTED`: 请求开始，监听它可以了解某个生成的配置情况，并且能修改生成配置
  * - `iframe_events.GENERATION_STARTED`: 生成开始
  * - 若启用流式传输, `iframe_events.STREAM_TOKEN_RECEIVED_FULLY`: 监听它可以得到流式传输的当前完整文本 ("这是", "这是一条", "这是一条流式传输")
  * - 若启用流式传输, `iframe_events.STREAM_TOKEN_RECEIVED_INCREMENTALLY`: 监听它可以得到流式传输的当前增量文本 ("这是", "一条", "流式传输")
@@ -108,7 +176,7 @@ declare function generate(config: GenerateConfig): Promise<string>;
  *   - `injects?:Omit<InjectionPrompt, 'id'>[]`: 要额外注入的提示词
  *   - `max_chat_history?:'all'|number`: 最多使用多少条聊天历史
  *   - `ordered_prompts?:(BuiltinPrompt|RolePrompt)[]`: 一个提示词数组, 数组元素将会按顺序发给 AI, 因而相当于自定义预设
- * @returns 生成的最终文本
+ * @returns 默认返回原始字符串, 设置 `should_return_reasoning` 或 `tools` 时可能返回详情对象; 可以用 `typeof result === 'string'` 来判断
  *
  * @example
  * // 自定义内置提示词顺序, 未在 ordered_prompts 中给出的将不会被使用
@@ -141,7 +209,13 @@ declare function generate(config: GenerateConfig): Promise<string>;
  * })
  * console.info('收到回复: ', result);
  */
-declare function generateRaw(config: GenerateRawConfig): Promise<string>;
+declare function generateRaw(
+  config: GenerateRawConfig & { should_return_reasoning: true },
+): Promise<GenerateDetailedResult>;
+declare function generateRaw(
+  config: GenerateRawConfig & { should_return_reasoning?: false; tools?: [] | undefined },
+): Promise<string>;
+declare function generateRaw(config: GenerateRawConfig): Promise<string | GenerateDetailedResult>;
 
 /**
  * 获取模型列表
@@ -168,6 +242,9 @@ declare function stopGenerationById(generation_id: string): boolean;
 declare function stopAllGeneration(): boolean;
 
 type GenerateConfig = {
+  /** 要使用的预设名称, 默认为当前加载的预设 `'in_use'`; 若设置, 则会用所选预设的提示词及参数, 但不会使用所选预设的正则、酒馆助手脚本 */
+  preset_name?: 'in_use' | string;
+
   /**
    * 请求生成的唯一标识符, 不设置则默认生成一个随机标识符.
    *
@@ -198,6 +275,9 @@ type GenerateConfig = {
    */
   should_stream?: boolean;
 
+  /** 是否在返回值中包含 AI 的思考过程 (reasoning), 不影响 AI 是否进行推理; 默认为 false */
+  should_return_reasoning?: boolean;
+
   /**
    * 是否静默生成; 默认为 `false`.
    * - `false`: 酒馆页面的发送按钮将会变为停止按钮, 点击停止按钮会中断所有非静默生成请求
@@ -223,24 +303,58 @@ type GenerateConfig = {
 
   /** 自定义API配置 */
   custom_api?: CustomApiConfig;
-};
+
+  /**
+   * 工具选择策略:
+   * - `'auto'`: 模型自行决定是否调用工具（默认）
+   * - `'required'`: 模型必须调用工具
+   * - `'none'`: 模型不调用工具
+   * - `{ type: 'function', function: { name: string } }`: 强制调用指定工具
+   */
+  tool_choice?: ToolChoice;
+} & (
+  | {
+      /**
+       * 工具定义列表 (OpenAI 格式)
+       * 传入后, 模型可能返回 tool_calls 而非纯文本, 此时函数将返回 `GenerateDetailedResult` 对象
+       *
+       * 与 json_schema 互斥, 不要同时传入
+       */
+      tools?: ToolDefinition[];
+      json_schema?: never;
+    }
+  | {
+      tools?: never;
+      /**
+       * JSON Schema 定义，强制模型输出符合指定 schema 的 JSON
+       * 返回值为 JSON 字符串 (需自行 JSON.parse)
+       *
+       * ST 服务端会根据 provider 自动转换格式：
+       * - OpenAI/DeepSeek/Mistral 等 → response_format.json_schema
+       * - Claude → 转为 tool + forced tool_choice
+       *
+       * 与 tools 互斥, 不要同时传入
+       */
+      json_schema?: JsonSchema;
+    }
+);
 
 type GenerateRawConfig = GenerateConfig & {
   /**
    * 一个提示词数组, 数组元素将会按顺序发给 AI, 因而相当于自定义预设. 该数组允许存放两种类型:
-   * - `BuiltinPrompt`: 内置提示词. 由于不使用预设, 如果需要 "角色描述" 等提示词, 你需要自己指定要用哪些并给出顺序
-   *                      如果不想自己指定, 可通过 `builtin_prompt_default_order` 得到酒馆默认预设所使用的顺序 (但对于这种情况, 也许你更应该用 `generate`).
+   * - `PlaceholderPrompt`: 内置提示词. 由于不使用预设, 如果需要 "角色描述" 等提示词, 你需要自己指定要用哪些并给出顺序
+   *                        如果不想自己指定, 可通过 `placeholder_prompt_default_order` 得到酒馆默认预设所使用的顺序 (但对于这种情况, 也许你更应该用 `generate`).
    * - `RolePrompt`: 要额外给定的提示词.
    */
-  ordered_prompts?: (BuiltinPrompt | RolePrompt)[];
+  ordered_prompts?: (PlaceholderPrompt | RolePrompt)[];
 };
 
 /**
  * 预设为内置提示词设置的默认顺序
  */
-declare const builtin_prompt_default_order: BuiltinPrompt[];
+declare const placeholder_prompt_default_order: PlaceholderPrompt[];
 
-type BuiltinPrompt =
+type PlaceholderPrompt =
   | 'world_info_before'
   | 'persona_description'
   | 'char_description'
@@ -314,4 +428,120 @@ type CustomApiConfig = {
   presence_penalty?: 'same_as_preset' | 'unset' | number;
   top_p?: 'same_as_preset' | 'unset' | number;
   top_k?: 'same_as_preset' | 'unset' | number;
+
+  /** 仅 `source === 'custom'` 时有效, 在请求体中额外覆盖参数; 如 `{ max_tokens: 1024 }` */
+  custom_include_body?: Record<string, any>;
+  /** 仅 `source === 'custom'` 时有效, 在请求体中排除参数, 由于酒馆后端限制仅能排除根参数; 如 `['max_tokens']` */
+  custom_exclude_body?: string[];
+  /** 仅 `source === 'custom'` 时有效, 在请求头中额外覆盖参数; 如 `{ Content-Type: 'application/json' }` */
+  custom_include_headers?: Record<string, any>;
 };
+
+/**
+ * JSON Schema 定义，用于强制模型输出符合指定 schema 的 JSON
+ */
+type JsonSchema = {
+  /** Schema 名称 */
+  name: string;
+  /** Schema 描述 */
+  description?: string;
+  /** JSON Schema 定义 */
+  value: Record<string, any>;
+  /** 是否严格模式（默认 true） */
+  strict?: boolean;
+};
+
+/**
+ * Tool function 定义
+ */
+type ToolFunction = {
+  /** 工具函数名称 */
+  name: string;
+  /** 工具函数描述 */
+  description?: string;
+  /** JSON Schema 格式的参数定义 */
+  parameters?: Record<string, any>;
+};
+
+/**
+ * Tool 定义 (OpenAI 格式)
+ */
+type ToolDefinition = {
+  type: 'function';
+  function: ToolFunction;
+};
+
+/**
+ * Tool choice 选项
+ */
+type ToolChoice = 'auto' | 'required' | 'none' | 'any' | { type: 'function'; function: { name: string } };
+
+/**
+ * 当 `should_return_reasoning` 为 true 或存在 tool_calls 时, generate/generateRaw 的返回值, 包含正文和思考过程、工具调用结果等元数据
+ *
+ * @example
+ * const result = await generateRaw({ user_input: '你好', should_return_reasoning: true });
+ *
+ * // 获取 AI 的回复正文
+ * console.log(typeof result === 'string' ? result : result.content);
+ *
+ * // 获取 AI 的思考过程 (reasoning)
+ * if (typeof result !== 'string' && result.reasoning) {
+ *   console.log(result.reasoning);
+ * }
+ */
+type GenerateDetailedResult = {
+  content: string;
+  reasoning?: string;
+  /**
+   * 顶层 reasoning 签名 (不是绑定到具体 tool_call 的那一份)
+   *
+   * 主要出现在「模型只返回文本、没有 tool_calls」的场景:
+   *   - Gemini 会把签名挂在最后一个 text part 上 (流式终帧里可能是空字符串 text + 签名)
+   *   - OpenRouter 通过 reasoning_details 暴露非 tool 绑定的 encrypted 段
+   *   - Claude 通过 thinking 块的 signature 字段提供
+   *
+   * 多轮请求时, 你可能需要将这个签名回传给下一轮请求, 以满足模型调用要求
+   */
+  reasoning_signature?: string;
+  tool_calls?: GenerateToolCall[];
+};
+
+/**
+ * 单条 tool call
+ */
+type GenerateToolCall = {
+  id: string;
+  type: 'function';
+  function: {
+    /** 工具函数名称 */
+    name: string;
+    /** JSON 字符串格式的参数 */
+    arguments: string;
+  };
+  /**
+   * 加密的 reasoning/thought 签名
+   *
+   * 一些 AI 要求多轮 tool call 时下必须把签名原样回传给下一轮请求以维持推理上下文, 例如 Gemini 在[官方 thought-signatures 文档](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/thinking/thought-signatures)里要求
+   */
+  thought_signature?: string;
+};
+
+//----------------------------------------------------------------------------------------------------------------------
+/**
+ * 预设为内置提示词设置的默认顺序
+ * @deprecated 请使用 `placeholder_prompt_default_order`
+ */
+declare const builtin_prompt_default_order: PlaceholderPrompt[];
+
+/** @deprecated 请使用 `PlaceholderPrompt` */
+type BuiltinPrompt =
+  | 'world_info_before'
+  | 'persona_description'
+  | 'char_description'
+  | 'char_personality'
+  | 'scenario'
+  | 'world_info_after'
+  | 'dialogue_examples'
+  | 'chat_history'
+  | 'user_input';
