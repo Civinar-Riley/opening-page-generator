@@ -505,6 +505,21 @@ export function script(p,px){
   /* ---------- 点击开场白选项（多实例：按所属实例的 data-gi 取点击行为） ---------- */
   var selIdx=-1;
   var _lastSwipes=null;
+  /* STScript 动态参数逃逸：整体包引号并转义管道与双引号。酒馆解析器（默认宽松转义）里
+     反斜杠+管道、反斜杠+引号还原为字面符号且不触发命令分链/引号闭合；宏 {{...}} 内的管道
+     解析器本就保护（isInsideMacroBraces），逃逸反而会把反斜杠塞进宏参数，故按大括号深度跳过 */
+  function slashArg(s){
+    var v=String(s),out='',dep=0,i,c;
+    for(i=0;i<v.length;i++){
+      c=v.charAt(i);
+      if(c==='{'&&v.charAt(i+1)==='{')dep++;
+      if(c==='}'&&v.charAt(i+1)==='}')dep=Math.max(0,dep-1);
+      if(c==='|'&&dep===0)out+='\\\\|';
+      else if(c==='"')out+='\\\\"';
+      else out+=c;
+    }
+    return '"'+out+'"';
+  }
   async function getGreetingText(i){
     if(!_lastSwipes)_lastSwipes=await getSwipes();
     return _lastSwipes?(_lastSwipes.list[i]||''):'';
@@ -516,12 +531,13 @@ export function script(p,px){
       var cfg=CFG[gi]||CFG[0];
       var i=parseInt(item.getAttribute('data-i'),10);
       _lastSwipes=await getSwipes();
-      if(cfg.act==='go'){await goGreeting(i,gi)}
+      /* button 模式页内点选同样切换（契约：按钮仅是快捷方式，页内列表照常可点） */
+      if(cfg.act==='go'||cfg.act==='button'){await goGreeting(i,gi)}
       else if(cfg.act==='insert'){
         var msg=await getGreetingText(i);
-        if(msg&&hasFn('triggerSlash')){try{await triggerSlash('/setinput '+msg)}catch(e){note('填入输入框失败')}}
+        if(msg&&hasFn('triggerSlash')){try{await triggerSlash('/setinput '+slashArg(msg))}catch(e){note('填入输入框失败')}}
         else if(!hasFn('triggerSlash')){note('未检测到酒馆助手 API，无法填入')}
-      }else{ /* send 模式：先选中再点按钮 */
+      }else if(cfg.act==='send'){ /* send 模式：先选中再点按钮 */
         selIdx=i;
         root.querySelectorAll('[data-opg="g"]').forEach(function(b){b.style.outline=''});
         item.style.outline='2px solid currentColor';
@@ -531,7 +547,7 @@ export function script(p,px){
     var send=ev.target.closest('[data-opg="gsend"]');
     if(send){
       var msg2=await getGreetingText(selIdx);
-      if(msg2&&hasFn('triggerSlash')){try{await triggerSlash('/send '+msg2)}catch(e){note('发送失败')}}
+      if(msg2&&hasFn('triggerSlash')){try{await triggerSlash('/send '+slashArg(msg2))}catch(e){note('发送失败')}}
       else if(selIdx<0){note('请先选择一个开场白')}
       else if(!hasFn('triggerSlash')){note('未检测到酒馆助手 API，无法发送')}
       return;

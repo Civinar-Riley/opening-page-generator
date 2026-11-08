@@ -550,7 +550,7 @@ function openCompPicker(b,container,blockIdx){
   const ov=document.createElement('div');
   /* opg-ov：自绘弹层统一标记（core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」） */
   ov.className='opg-ov';
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
   box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;width:min(720px,94vw);max-height:84vh;display:flex;flex-direction:column';
   const grid=(kw,cat)=>{
@@ -608,7 +608,7 @@ function openTitlebookWriter(b){
   const defWb=b.titleWb||('开场页标题库-'+((Project.cur&&Project.cur.name)||''));
   const ov=document.createElement('div');
   ov.className='opg-ov'; /* 自绘弹层统一标记（PITFALLS 26）：Ctrl+Z/Esc 守卫识别 */
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
   box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(460px,92vw);max-height:80vh;overflow:auto';
   box.innerHTML=`<div style="font-weight:700;margin-bottom:8px">📤 标题库写入世界书</div>

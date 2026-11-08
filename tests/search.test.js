@@ -130,3 +130,16 @@ describe('replaceAllInProject 工程级替换',()=>{
     expect(p.blocks[3].excludedTags).toBe('new,设定');
   });
 });
+/* v1.30.1 回归：titleBookDraft 是可编辑用户内容字段，纳入搜索与替换 */
+describe('titleBookDraft 纳入搜索替换',()=>{
+  it('collectSearchMatches 命中标题库草稿',()=>{
+    const m=collectSearchMatches([{type:'greetings',titleBookDraft:'壹｜星陨之夜｜流星坠落时'}],'星陨');
+    expect(m).toHaveLength(1);
+    expect(m[0].field).toBe('titleBookDraft');
+  });
+  it('replaceAllInProject 覆盖标题库草稿',()=>{
+    const p={blocks:[{type:'greetings',titleBookDraft:'壹｜星陨之夜｜流星坠落时'}]};
+    expect(replaceAllInProject(p,'星陨','月沉')).toBe(1);
+    expect(p.blocks[0].titleBookDraft).toBe('壹｜月沉之夜｜流星坠落时');
+  });
+});

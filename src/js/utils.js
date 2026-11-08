@@ -70,7 +70,13 @@ function _showModal({title='',msg='',input=false,defaultVal=''}){
     r.querySelector('.opg-modal-msg').textContent=msg;
     const inp=r.querySelector('.opg-modal-input');
     if(input){inp.style.display='';inp.value=defaultVal;setTimeout(()=>inp.focus(),50)}
-    else{inp.style.display='none'}
+    else{
+      inp.style.display='none';
+      /* 焦点必须移入模态：背景触发按钮仍持焦时，Enter/Space 会复激活它——确认框叠在
+         同一回调栈上，删区块/删工程等「一次确认两次执行」连删两条（焦点交给取消键，
+         破坏性确认的 Enter 默认安全侧） */
+      setTimeout(()=>r.querySelector('.opg-modal-cancel').focus(),50);
+    }
     r.classList.add('show');
     function close(val){
       r.classList.remove('show');

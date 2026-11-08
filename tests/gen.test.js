@@ -114,11 +114,12 @@ describe('Gen.build 转义与宏',()=>{
       expect(html).not.toContain('<b>x</b>');
     }
   });
-  it('随机事件「全部显示」预览行转义、导出保留宏与原文',()=>{
+  it('随机事件「全部显示」预览与导出同轨转义，导出保留宏',()=>{
     const b={type:'randomevent',enabled:true,showTitle:false,pickMode:'line',lines:'<i>危</i>\n正常行'};
     expect(Gen.build(proj([b]),{isPreview:true})).toContain('&lt;i&gt;危&lt;/i&gt;');
     const exp=Gen.build(proj([{...b,lines:'<i>危</i>\n{{getvar::k}}'}]),{isPreview:false});
-    expect(exp).toContain('<i>危</i>');
+    expect(exp).toContain('&lt;i&gt;危&lt;/i&gt;');
+    expect(exp).not.toContain('<i>危</i>');
     expect(exp).toContain('{{getvar::k}}');
   });
   it('profile 头像 URL 预览替换宏、导出保留宏',()=>{
@@ -1375,6 +1376,19 @@ describe('Gen.build 回归修复批次（停用注入/多实例/宏双轨/序号
     const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'button',cardStyle:'card',buttonText:'跳转',titleWb:'',titleEntry:'',placeholderList:'a'}]),{isPreview:false});
     expect(html).toContain('n>=d.list.length');
     expect(html).not.toContain('n>d.list.length');
+  });
+  it('button 模式页内点选同样切换（契约：按钮仅快捷方式，页内列表照常可点）',()=>{
+    const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'button',cardStyle:'card',buttonText:'跳转',titleWb:'',titleEntry:'',placeholderList:'a'}]),{isPreview:false});
+    expect(html).toContain("cfg.act==='go'||cfg.act==='button'");
+    expect(html).toContain("else if(cfg.act==='send')");
+  });
+  it('开场白填入/发送：STScript 动态参数经 slashArg 包引号转义（防 | 分链截断）',()=>{
+    const html=Gen.build(proj([{type:'greetings',enabled:true,clickAction:'insert',cardStyle:'list',placeholderList:'a'}]),{isPreview:false});
+    expect(html).toContain("triggerSlash('/setinput '+slashArg(msg))");
+    expect(html).toContain("triggerSlash('/send '+slashArg(msg2))");
+    /* 宏 {{...}} 内的管道不逃逸（解析器本就保护），宏外的 | 与 " 双写转义 */
+    expect(html).toContain("if(c==='|'&&dep===0)out+='\\\\|'");
+    expect(html).toContain("else if(c==='\"')out+='\\\\\"'");
   });
   it('主题三色与 fontName 同信任面：分享工程 JSON 的恶意色值无法逃逸 <style>',()=>{
     const p=proj([{type:'welcome',enabled:true,title:'x',subtitle:''}]);

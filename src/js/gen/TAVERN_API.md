@@ -51,6 +51,7 @@
 
 ### 4. triggerSlash —— 执行酒馆斜杠命令
 - 用途：开场白「填入输入框」模式（`/setinput 文本`）、「直接发送」模式（`/send 文本`）
+- 动态文本参数防截断：文本先经运行时 `slashArg()` 包引号并转义 `|`/`"`（`\\|`、`\\"` 在酒馆解析器宽松转义下还原为字面符号）——裸拼时文本里第一个 `|` 会被当作命令分链，其后内容静默丢弃；宏 `{{...}}` 内的管道解析器本就保护，`slashArg` 按大括号深度跳过不逃逸（逃逸会把反斜杠塞进宏参数）
 - 签名：`triggerSlash(cmd)` → `Promise`
 - 守卫与降级：`hasFn('triggerSlash')`；try/catch → `note('填入输入框失败')`；缺失时 `note('未检测到酒馆助手 API，无法填入')`
 - 使用处：`gen/scripts.js` 开场白 insert/send 分支；`gen/body.js` 年龄验证闸门「离开」（`/closechat` 关闭当前聊天退回主页，SillyTavern 内置命令）
@@ -68,13 +69,13 @@
 - 使用处：`gen/scripts.js` IIFE 事件注册段；`gen/body.js` 年龄验证闸门 CHAT_CHANGED 重显
 
 ### 7. appendInexistentScriptButtons + getButtonEvent —— 注册酒馆脚本按钮（开场白序号跳转）
-- 用途：开场白「按钮模式」（clickAction='button'）下向酒馆助手按钮栏注册脚本按钮，点击后输入序号（1 开始）快速跳转；页内列表照常渲染（点选切换不受影响），按钮仅作快捷方式
+- 用途：开场白「按钮模式」（clickAction='button'）下向酒馆助手按钮栏注册脚本按钮，点击后输入序号（0 起，与页内中文数字徽标一致）快速跳转；页内列表照常渲染（点选切换不受影响），按钮仅作快捷方式
 - 签名：`appendInexistentScriptButtons([{name,visible}])`（去重注册）；`getButtonEvent(name)` → 按钮点击事件名，配 `eventOn` 监听
 - 守卫与降级：`hasFn('appendInexistentScriptButtons') && hasFn('getButtonEvent')` 双守卫；try/catch；任一缺失 → **静默跳过注册**（页内列表仍可点选，功能不受影响）
 - 使用处：`gen/scripts.js` `script()` button 模式注册段
 
 ### 8. SillyTavern.callGenericPopup —— 弹出输入（酒馆原生导出，接口优先级第 2 层）
-- 用途：按钮模式点击按钮后的序号输入弹窗（1 开始，与页内列表序号一致）。酒馆助手封装接口无对应输入能力，按「接口优先级」取第 2 层（酒馆原生导出）
+- 用途：按钮模式点击按钮后的序号输入弹窗（0 起，与页内中文数字徽标一致）。酒馆助手封装接口无对应输入能力，按「接口优先级」取第 2 层（酒馆原生导出）
 - 签名：`SillyTavern.callGenericPopup(文案, SillyTavern.POPUP_TYPE.INPUT)` → `Promise<输入值|false>`（取消返回 false）
 - 守卫与降级：`typeof window.SillyTavern==='object' && SillyTavern.POPUP_TYPE && typeof callGenericPopup==='function'` 整体守卫；try/catch；缺失时 `note('未检测到弹出输入，请直接点击页内列表选项')`；输入非有效序号 → `note('未填入有效开局号')`
 - 使用处：`gen/scripts.js` `script()` button 模式点击处理

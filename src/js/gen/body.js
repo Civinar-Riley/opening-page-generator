@@ -184,10 +184,11 @@ export function body(p,px,blocks,isPreview){
             if(b.pickMode==='one'){
               /* 导出：整组包成 {{random::…}}，酒馆每次渲染随机一条；
                   预览：宏引擎不支持嵌套，直接随机选一行模拟效果（结果缓存防闪变）。
-                  行内 :: 与 }} 都会破坏 {{random}} 宏语法，导出前替换为兼容字符 */
+                  行文本与预览同轨走 esc（esc 不动大括号，宏原样保留交酒馆解析），
+                  行内 :: 与 }} 都会破坏 {{random}} 宏语法，转义后替换为兼容字符 */
               inner=isPreview
                 ?esc(tx(Macros.cached('one:'+linesKey,()=>rawLines[Math.floor(Math.random()*rawLines.length)]||'')))
-                :'{{random::'+rawLines.map(l=>l.replace(/::/g,'⦂').replace(/\}\}/g,'⎬⎬')).join('::')+'}}';
+                :'{{random::'+rawLines.map(l=>esc(l).replace(/::/g,'⦂').replace(/\}\}/g,'⎬⎬')).join('::')+'}}';
               out+=`  <div class="${px}-rbox"><div class="${px}-rline">${inner}</div></div>\n`;
             }else if(b.pickMode==='shuffle'){
               /* shuffle：预览时随机打乱顺序；导出为固定顺序（酒馆宏无法整组乱序，UI 已注明） */
@@ -195,11 +196,11 @@ export function body(p,px,blocks,isPreview){
                 ?Macros.cached('shuffle:'+linesKey,()=>[...rawLines].sort(()=>Math.random()-0.5))
                 :rawLines;
               const rows=tx(shuffled.join('\n'))
-                .split('\n').map(l=>`    <div class="${px}-rline">${isPreview?esc(l):l}</div>`).join('\n');
+                .split('\n').map(l=>`    <div class="${px}-rline">${esc(l)}</div>`).join('\n');
               out+=`  <div class="${px}-rbox">\n${rows}\n  </div>\n`;
             }else{
               const rows=tx(rawLines.join('\n'))
-                .split('\n').map(l=>`    <div class="${px}-rline">${isPreview?esc(l):l}</div>`).join('\n');
+                .split('\n').map(l=>`    <div class="${px}-rline">${esc(l)}</div>`).join('\n');
               out+=`  <div class="${px}-rbox">\n${rows}\n  </div>\n`;
             }
           }

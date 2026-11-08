@@ -314,7 +314,7 @@ const Project={
   newProject(){
     const ov=document.createElement('div');
     ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
     const box=document.createElement('div');
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(480px,92vw);max-height:80vh;overflow:auto';
     let rows=`<div style="font-weight:700;margin-bottom:10px">📄 新建工程</div>
@@ -408,6 +408,12 @@ const Project={
         projects:this.list.map(x=>this.exportData(x))},null,2));
     toast('已备份 '+this.list.length+' 个工程（不含 API Key）');
   },
+  /** 顶栏「导出工程」：导出当前工程单文件（同样剔 Key），「导入工程」可直接还原 */
+  exportProject(){
+    download(`opening-page-generator-工程-${this.cur.name||'未命名'}-${new Date().toISOString().slice(0,10)}.json`,
+      JSON.stringify(this.exportData(),null,2));
+    toast('已导出当前工程（不含 API Key）');
+  },
   importProject(input){
     const f=input.files[0];if(!f)return;
     const r=new FileReader();
@@ -445,7 +451,7 @@ const Project={
   openCardImport(){
     const ov=document.createElement('div');
     ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
     const box=document.createElement('div');
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(520px,92vw);max-height:84vh;overflow:auto';
     ov.appendChild(box);document.body.appendChild(ov);
@@ -507,7 +513,7 @@ const Project={
   openDocImport(){
     const ov=document.createElement('div');
     ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
     const box=document.createElement('div');
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(560px,92vw);max-height:84vh;overflow:auto';
     ov.appendChild(box);document.body.appendChild(ov);

@@ -88,8 +88,11 @@ const SALVAGE={
     const lines=[],covers=[];
     [...s.matchAll(new RegExp(`class="${px}-gitem[^"]*"[^>]*>([\\s\\S]*?)</button>`,'g'))].forEach(m=>{
       const g=t=>{const x=m[1].match(new RegExp(`class="${px}-g${t}">([^<]*)<`));return x?unesc(x[1]):''};
-      const line=[g('title'),g('desc'),g('names')].filter(Boolean).join('｜');
-      if(line)lines.push(line);
+      /* 段数按渲染事实还原：names 恒为末段（描述为空时补空中段），desc 次之——filter 掉空段
+         会把「乙线｜｜乙的人物」静默改写成「乙线｜乙的人物」（人物名错位成描述）。
+         全空行也占位（渲染为空选项），保证 lines 与 covers 逐 gitem 下标对齐 */
+      const t=g('title'),d=g('desc'),n=g('names');
+      lines.push(n?[t,d,n].join('｜'):(d?[t,d].join('｜'):t)||'｜｜');
       const cv=m[1].match(new RegExp(`class="${px}-gcover" src="([^"]*)"`));
       covers.push({cover:cv?unesc(cv[1]):''});
     });

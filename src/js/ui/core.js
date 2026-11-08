@@ -218,6 +218,8 @@ $$('#tabs .tab').forEach(t=>t.addEventListener('click',()=>{
   UI.refreshPreview();
   /* 导出页产物随主题/区块实时变化，页签切入时重渲染，防止复制到过期内容 */
   if(t.dataset.page==='pageExport'){try{UI.renderExport()}catch(e){toast('导出页渲染失败：'+e.message)}}
+  /* 漫画页目标下拉按区块下标取值：配置页增删/复制/排序区块后不重刷，应用会写进错误的 comic 区块 */
+  if(t.dataset.page==='pageNh'){try{UI.renderNh()}catch(e){toast('漫画导入页刷新失败：'+e.message)}}
 }));
 
 Project.load();

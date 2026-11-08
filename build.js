@@ -117,7 +117,8 @@ async function build() {
 
 build().catch(e => {
   console.error('构建失败:', e && e.message || e);
-  process.exit(1);
+  /* watch 模式下不退出：源码修复后由 fs.watch 触发 rebuild 自愈（rebuild 自身有 try/catch） */
+  if (!process.argv.includes('--watch')) process.exit(1);
 });
 
 if (process.argv.includes('--watch')) {

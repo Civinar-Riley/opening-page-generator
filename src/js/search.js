@@ -1,6 +1,6 @@
 /* 全局搜索替换：纯函数（可测），UI 层只负责弹窗/DOM/渲染。
    标量字段全集须与 blockEditors 可编辑字段对齐（eyebrow/leaveText/logo/hint/cover/cards/excludedTags 此前漏扫） */
-export const TEXT_FIELDS=['title','subtitle','eyebrow','text','html','lines','desc','source','label','expr','placeholderList','buttonText','titleEntry','titleWb','excludedTags','name','cap','url','cover','cards','nodes','target','doneText','patternText','logo','hint','leaveText'];
+export const TEXT_FIELDS=['title','subtitle','eyebrow','text','html','lines','desc','source','label','expr','placeholderList','buttonText','titleEntry','titleBookDraft','titleWb','excludedTags','name','cap','url','cover','cards','nodes','target','doneText','patternText','logo','hint','leaveText'];
 
 /* 收集全部匹配：遍历区块及其子项，返回 {blockIdx,path,field,subIdx,subField,parent?}[] */
 export function collectSearchMatches(blocks,kw){

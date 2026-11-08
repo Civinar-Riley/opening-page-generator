@@ -100,12 +100,12 @@
 ## 六、工具界面 DOM / CSS
 
 25. **同级 z-index 弹层按 DOM 顺序绘制**：统一模态（`.opg-modal-root`，2147483647）与自绘
-    fixed 弹层（搜索替换/写卡同为 2147483647）叠放时，后 append 的盖住先 append 的——
+    fixed 弹层（同为 2147483647，v1.30.1 起全部统一——此前组件库选择器/标题库写入/导入弹层
+    停在 100，被主题纹理层 2147483646 压住）叠放时，后 append 的盖住先 append 的——
     `_modalRoot` 首次确认后常驻 body，会话内第二个才打开的自绘弹层会把确认框盖在底下
     （不可见不可点，看似按钮失灵，v1.27.1 修复）。现在 `_showModal` 每次弹出重挂 body 末尾。
-    **不能反过来调低自绘弹层的 z-index**：tool.css 主题纹理层 `body::before` 用
-    z-index 2147483646（pointer-events:none 但绘制在上），弹层降到 100 以下纹理会浮在弹层上
-    （组件库选择器 z-index:100 就带着这层纹理，属已知观感）。
+    **不能调低自绘弹层的 z-index**：tool.css 主题纹理层（星点/扫描线）用
+    z-index 2147483646（pointer-events:none 但绘制在上），降到 100 以下纹理会浮在弹层上。
 26. **新增自绘弹层必须挂 `.opg-ov` 类**：core.js 的 Ctrl+Z/Ctrl+Y 与扩展环境 Esc 守卫只认
     `.opg-modal-root.show` 与 `.opg-ov`；漏挂的弹层打开时按 Ctrl+Z 照样 undo，renderAll 重建
     数据后弹层闭包把输入写进已回退的旧对象——用户看到「插入成功」，重渲染后内容消失

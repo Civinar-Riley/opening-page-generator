@@ -129,6 +129,20 @@ describe('docImport 导出反向解析',()=>{
     expect(it.draft.lines).toBe('行甲\n行乙\n行丙');
   });
 
+  it('greetings salvage 保留空段与全空占位，行与封面按下标对齐',()=>{
+    const p=defaultProject('空段');
+    p.blocks.forEach(b=>{b.enabled=b.type==='greetings'});
+    Object.assign(p.blocks.find(b=>b.type==='greetings'),{
+      cardStyle:'wall',placeholderList:'乙线｜｜乙的人物\n｜',
+      entries:[{cover:'https://example.com/g1.png'},{cover:'https://example.com/g2.png'}]});
+    const parsed=parseExportDoc(Gen.buildFullDoc(p));
+    const item=parsed.items.find(i=>i.type==='greetings');
+    /* 空描述段保留（filter 掉会静默改写成「乙线｜乙的人物」，人物名错位成描述）；
+       全空行以「｜｜」占位（原「｜」与「｜｜」渲染等价不可分辨），两行两封面下标对齐 */
+    expect(item.draft.placeholderList).toBe('乙线｜｜乙的人物\n｜｜');
+    expect(item.draft.entries).toEqual([{cover:'https://example.com/g1.png'},{cover:'https://example.com/g2.png'}]);
+  });
+
   it('decor 空壳与停用区块不进解析结果',()=>{
     const p=defaultProject('最小工程');
     p.blocks.forEach(b=>{b.enabled=b.type==='welcome'});

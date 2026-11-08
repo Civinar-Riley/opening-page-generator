@@ -283,7 +283,7 @@ export function renderAI(){
           p.blocks.push(fb);
         }
         fb.html=code;fb.enabled=true;
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('已写入自由 HTML 区');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已写入自由 HTML 区');
       }else if(tKey==='greeting'){
         /* 运行时开场白以角色卡为准：这里只把 AI 文本以「标题｜描述」追加进占位列表供预览与认领 */
         const line=Gen.greetSnapshotLines([r]);
@@ -292,19 +292,19 @@ export function renderAI(){
         if(!g){g={type:'greetings',enabled:true,...BLOCK_DEFS.greetings.create()};p.blocks.push(g)}
         g.enabled=true;
         g.placeholderList=(g.placeholderList?g.placeholderList+'\n':'')+line;
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进开场白占位列表（正文生效需写进角色卡 alternate_greetings）');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进开场白占位列表（正文生效需写进角色卡 alternate_greetings）');
       }else if(tKey==='profile'){
         const pr=p.blocks.find(b=>b.type==='profile');
         if(!pr){toast('角色简介区块不存在');return}
         pr.enabled=true;
         pr.characters=[...(Array.isArray(pr.characters)?pr.characters:[]),{name:'{{char}}',desc:r.trim(),tags:'',avatar:'',avatarMode:'manual'}];
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进角色简介区');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进角色简介区');
       }else if(tKey==='timeline'){
         let tl=p.blocks.find(b=>b.type==='timeline');
         if(!tl){tl={type:'timeline',enabled:true,...BLOCK_DEFS.timeline.create()};p.blocks.push(tl)}
         tl.enabled=true;
         tl.nodes=(tl.nodes?tl.nodes+'\n':'')+r.trim();
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进时间线区块');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进时间线区块');
       }else if(tKey==='qa'){
         /* AI 输出行格式：分组|问题|答案（答案里允许再出现 |，归入答案） */
         const map=new Map();
@@ -317,7 +317,7 @@ export function renderAI(){
         if(!qa){qa={type:'qa',enabled:true,...BLOCK_DEFS.qa.create()};p.blocks.push(qa)}
         qa.enabled=true;
         qa.groups=[...(Array.isArray(qa.groups)?qa.groups:[]),...[...map].map(([name,items])=>({name,items}))];
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加 '+[...map].reduce((n,[,it])=>n+it.length,0)+' 条问答');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加 '+[...map].reduce((n,[,it])=>n+it.length,0)+' 条问答');
       }
       renderDrafts();
     }finally{this.disabled=false;this.textContent=oldTxt}
@@ -338,7 +338,7 @@ export function renderAI(){
         if(j.textColor)p.theme.textColor=j.textColor;
         /* radius=0 是合法值，不能用 || 短路吞掉 */
         if(j.radius!==undefined)p.theme.radius=Number.isFinite(+j.radius)?Math.min(30,Math.max(0,+j.radius)):12;
-        UI.renderConfig();UI.refreshPreview();Project.save();toast('主题已回填');
+        Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('主题已回填');
       }catch(e){toast('AI 输出解析失败：'+(e&&e.message||e))}
     }finally{this.disabled=false;this.textContent=oldTxt}
   };
