@@ -161,6 +161,38 @@ export function body(p,px,blocks,isPreview){
           if(b.clickAction==='send'){
             out+=`  <button type="button" class="${px}-gsend" data-opg="gsend" data-gi="${gi}">${esc(tx(b.buttonText||'开始'))}</button>\n`;
           }
+          /* 预览态开场白小工具（仅首个实例注入一份，页面级委托覆盖全部实例）：
+             搜索框过滤让预览即时可用（导出态不注入——scripts.js 运行时全权接管，避免双监听；
+             过滤规则与 applyFilter 同步）；👁 在预览读不到角色卡全文，点击给诚实提示而非无响应 */
+          if(isPreview&&gi===0)out+=`  <script>
+(function(){
+  document.addEventListener('input',function(ev){
+    var s=ev.target;
+    if(!s||!s.getAttribute||s.getAttribute('data-opg')!=='gsearch')return;
+    var list=document.querySelector('[data-opg="glist"][data-gi="'+s.getAttribute('data-gi')+'"]');
+    if(!list)return;
+    var kw=String(s.value||'').trim().toLowerCase();
+    var bs=list.querySelectorAll('[data-opg="g"]');
+    for(var i=0;i<bs.length;i++){
+      var b=bs[i];
+      b.style.display=(!kw||String(b.textContent).toLowerCase().indexOf(kw)>=0)?'':'none';
+    }
+  });
+  document.addEventListener('click',function(ev){
+    var t=ev.target;
+    if(!t||!t.closest||!t.closest('[data-opg="gp"]'))return;
+    var ov=document.createElement('div');
+    ov.setAttribute('data-opg','gpnote');
+    ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(6,7,14,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+    var box=document.createElement('div');
+    box.style.cssText='background:rgba(18,19,28,.97);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:16px 20px;color:#e8e6e0;font-size:13px;line-height:1.8;max-width:340px;text-align:center';
+    box.textContent='👁 全文预览在酒馆内可用——预览环境读不到角色卡的开场白全文。点任意处关闭';
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    ov.addEventListener('click',function(){if(ov.parentNode)ov.parentNode.removeChild(ov)});
+  });
+})();
+  <\/script>\n`;
           break;
         }
         case 'divider':{

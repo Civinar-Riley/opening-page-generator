@@ -424,14 +424,14 @@ export function renderConfig(){
       posEl.textContent=`${curIdx+1} / ${n}`;
       prevBtn.disabled=curIdx<=0;
       nextBtn.disabled=curIdx>=n-1;
-      /* 定位当前匹配项：展开对应区块并滚动到可视位置 */
+      /* 定位当前匹配项：展开对应区块并滚动到可视位置。
+         导航/输入关键词不再全量重建区块列表（重建曾让逐条定位与逐字输入都卡在整页 DOM 重建上）：
+         弹窗打开期间 .opg-ov 遮罩挡住结构操作、Ctrl+Z 被 modalOpen 守卫拦下，blockIdx 不会漂移；
+         数据真正变更的替换路径（replaceCurrent/replaceAll）自行 renderBlocks 后再进这里 */
       const m=matches[curIdx];
       if(m.blockIdx>=0){
-        renderBlocks();
-        /* add 须在 renderBlocks 之后：其内部会先 clear expandedSet 再按 DOM 重读，提前 add 会被清掉 */
         expandedSet.add(m.blockIdx);
-        const blockEls=blockList.querySelectorAll('.block');
-        const target=blockEls[m.blockIdx];
+        const target=blockList.querySelectorAll('.block')[m.blockIdx];
         if(target){
           target.classList.remove('collapsed');
           target.scrollIntoView({behavior:'smooth',block:'center'});

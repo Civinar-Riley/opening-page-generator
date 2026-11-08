@@ -526,9 +526,10 @@ describe('Gen.build greetings 搜索框/全文预览入口/aria-current（v1.32�
   });
   it('每个列表项带 👁 全文预览热区（data-opg=gp），card 与 wall 两种风格都有',()=>{
     const card=Gen.build(proj([g6]),{isPreview:true});
-    expect(card.match(/data-opg="gp"/g)).toHaveLength(6);
+    /* 按 -gprev 热区锚定计数：预览态小工具脚本里也引用 data-opg="gp" 字面量，不能按属性裸数 */
+    expect(card.match(/-gprev" data-opg="gp"/g)).toHaveLength(6);
     const wall=Gen.build(proj([{...g6,cardStyle:'wall'}]),{isPreview:true});
-    expect(wall.match(/data-opg="gp"/g)).toHaveLength(6);
+    expect(wall.match(/-gprev" data-opg="gp"/g)).toHaveLength(6);
     expect(wall).toContain('aria-label="预览第 0 条开场白全文"');
   });
   it('运行时：搜索过滤按实例 data-gi 定位并在 renderList 后重放；aria-current 标当前条；gp 热区先于选项本体判断',()=>{
@@ -539,6 +540,14 @@ describe('Gen.build greetings 搜索框/全文预览入口/aria-current（v1.32�
     expect(html).toContain("ev.target.closest('[data-opg=\"gp\"]')");
     expect(html).toContain('function openPreview(');
     expect(html).toContain("ov.setAttribute('role','dialog')");
+  });
+  it('预览态注入开场白小工具（搜索过滤 + 👁 诚实提示），导出态不注入（运行时接管避免双监听）',()=>{
+    const pv=Gen.build(proj([g6]),{isPreview:true});
+    expect(pv).toContain("s.getAttribute('data-opg')!=='gsearch'");
+    expect(pv).toContain('全文预览在酒馆内可用');
+    const exp=Gen.build(proj([g6]),{isPreview:false});
+    expect(exp).not.toContain("s.getAttribute('data-opg')!=='gsearch'");
+    expect(exp).not.toContain('全文预览在酒馆内可用');
   });
 });
 
