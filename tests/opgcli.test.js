@@ -79,6 +79,18 @@ describe('opg-gen CLI',()=>{
     expect(io3.outBuf.trim()).toBe('v'+VERSION);
   });
 
+  it('起步命令组合 --fenced/--regex 直接输出构建产物（不静默忽略）',()=>{
+    const io=stubIO();
+    expect(main(['--new','--fenced'],io)).toBe(0);
+    expect(io.outBuf.startsWith('```')).toBe(true);
+    expect(io.outBuf).toContain('<body>');
+    const io2=stubIO();
+    expect(main(['--template','0','--regex'],io2)).toBe(0);
+    const rx=JSON.parse(io2.outBuf);
+    expect(rx.findRegex).toContain('/');
+    expect(rx.replaceString).toContain('<body>');
+  });
+
   it('main 错误路径：坏文件/坏 JSON/未知参数/参数冲突 → 退出码 1 + stderr',()=>{
     const io=stubIO();
     expect(main(['no-such-file.json'],io)).toBe(1);

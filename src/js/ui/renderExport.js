@@ -39,8 +39,9 @@ export function renderExport(){
 
   /* ── 统计行 + 一键备份（v1.29）：只读当前工程实时算数；备份走 Project.exportAll（逐工程剔 Key） ── */
   const enN=p.blocks.filter(b=>b.enabled).length;
-  const greetB=p.blocks.find(b=>b.enabled&&b.type==='greetings');
-  const greetN=greetB&&Array.isArray(greetB.entries)?greetB.entries.length:0;
+  /* 开场白条目数来自 placeholderList（运行时列表的数据源）；entries 只是封面/音轨绑定配置，数它默认恒为 0 */
+  const greetN=p.blocks.reduce((n,b)=>n+(b&&b.enabled&&b.type==='greetings'&&typeof b.placeholderList==='string'
+    ?b.placeholderList.split('\n').filter(s=>s.trim()).length:0),0);
   let imgN=0;
   p.blocks.forEach(b=>{
     if(!b||!b.enabled)return;

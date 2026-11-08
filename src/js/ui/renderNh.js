@@ -203,7 +203,10 @@ export function renderNh(){
     $('#nhNone',col).onclick=()=>setChecked(()=>false);
     $('#nhInv',col).onclick=()=>setChecked((pg,el)=>!el.checked);
     $('#nhRangeBtn',col).onclick=()=>{
-      const set=parsePageExpr($('#nhRange',col).value,st.total);
+      /* 上限是可选的最大真实页码而非结果条数：HTML 解析 rescue 的页码缺口场景（如 1,2,4）
+         里 total=3 但 P4 是合法卡片，按 total 钳制会把真实页码选不中 */
+      const max=st.nums?Math.max(...st.nums):st.total;
+      const set=parsePageExpr($('#nhRange',col).value,max);
       if(!set){toast('页码表达式没解析出有效页（示例：1-20,25）');return}
       setChecked(pg=>set.includes(pg));
     };

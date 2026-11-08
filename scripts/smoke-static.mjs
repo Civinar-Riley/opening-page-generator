@@ -16,7 +16,8 @@ if (!fs.existsSync(PATH)) {
   process.exit(1);
 }
 const html = fs.readFileSync(PATH, 'utf8');
-const kb = html.length / 1024;
+/* 按 UTF-8 字节计（build.js 同一口径）：中文占 3 字节，按字符数会低估体积、漏检截断 */
+const kb = Buffer.byteLength(html, 'utf8') / 1024;
 
 check('体积 > 100KB（防构建截断）', kb > 100, `当前 ${kb.toFixed(1)} KB`);
 

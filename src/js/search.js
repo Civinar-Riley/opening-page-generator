@@ -37,7 +37,8 @@ export function collectSearchMatches(blocks,kw){
       });
     });
     if(Array.isArray(b.entries))b.entries.forEach((en,ei)=>{
-      ['cover','audio'].forEach(k=>{
+      /* title（封面/音轨的绑定标题，v1.32）也要扫——漏扫会让全局替换漏掉绑定关系 */
+      ['title','cover','audio'].forEach(k=>{
         if(typeof en[k]==='string'&&en[k].toLowerCase().includes(lkw))
           matches.push({blockIdx:bi,path:`区块 #${bi+1} → 开场白项 ${ei+1}`,field:k,subIdx:ei,subField:k,parent:'entries'});
       });
@@ -88,7 +89,7 @@ export function replaceAllInProject(project,kw,repl){
       ['name','url'].forEach(k=>{if(typeof tr[k]==='string')tr[k]=doReplace(tr[k])});
     });
     if(Array.isArray(b.entries))b.entries.forEach(en=>{
-      ['cover','audio'].forEach(k=>{if(typeof en[k]==='string')en[k]=doReplace(en[k])});
+      ['title','cover','audio'].forEach(k=>{if(typeof en[k]==='string')en[k]=doReplace(en[k])});
     });
     if(Array.isArray(b.groups))b.groups.forEach(grp=>{
       if(typeof grp.name==='string')grp.name=doReplace(grp.name);

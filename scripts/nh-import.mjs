@@ -160,11 +160,11 @@ const USAGE=`nhentai 画廊导入（v${VERSION}）
   npm run nh -- 123456 --pages 1-20 --proxy http://127.0.0.1:7890   走本机 Clash 代理`;
 
 async function cli(argv){
-  let input='',skipLast=0,pages=null,proxy=null;
+  let input='',skipLast=0,pages=null,proxy=null,slSeen=false,pgSeen=false;
   for(let i=0;i<argv.length;i++){
     const a=argv[i];
-    if(a==='--skip-last')skipLast=argv[++i];
-    else if(a==='--pages')pages=argv[++i];
+    if(a==='--skip-last'){slSeen=true;skipLast=argv[++i]}
+    else if(a==='--pages'){pgSeen=true;pages=argv[++i]}
     else if(a==='--proxy'){
       proxy=parseProxyUrl(argv[++i]);
       if(!proxy){console.error('✗ --proxy 格式不对（要 http://host:port，如 http://127.0.0.1:7890）');process.exitCode=1;return}
@@ -173,6 +173,9 @@ async function cli(argv){
     else input=a;
   }
   if(!input){console.log(USAGE);process.exitCode=1;return}
+  /* 缺值/吃掉下个旗标不静默降级为全本导出（nh-lib 契约：解析不出必须报错） */
+  if(slSeen&&(skipLast===undefined||!Number.isFinite(+skipLast))){console.error('✗ --skip-last 需要一个数字（如 --skip-last 3）');process.exitCode=1;return}
+  if(pgSeen&&(pages===undefined||String(pages).startsWith('--'))){console.error('✗ --pages 需要一个页码表达式（如 --pages 1-20,25）');process.exitCode=1;return}
   const g=await fetchGallery(input,{proxy});
   const sel=pickGalleryPages(g,{skipLast,pages});
   if(sel===null){console.error('✗ 页码表达式没解析出有效页（示例：1-20,25）');process.exitCode=1;return}
@@ -203,10 +206,12 @@ export async function serve(){
     }
     const head={'Content-Type':'application/json; charset=utf-8','Access-Control-Allow-Origin':'*','Access-Control-Allow-Private-Network':'true','Cache-Control':'no-store'};
     const send=(code,obj)=>{res.writeHead(code,head);res.end(JSON.stringify(obj))};
-    const u=new URL(req.url,`http://${HOST}`);
     try{
+      /* new URL 必须在 try 内：畸形请求目标（如 GET //x:99999/）解析抛错——
+         在 try 外会成 uncaughtException 直接杀死服务进程 */
+      const u=new URL(req.url,`http://${HOST}`);
       if(u.pathname==='/api/status')return send(200,{ok:true,version:VERSION});
-      if(u.pathname==='/api/shutdown'){ /* 停止按钮：仅本机可达（服务只绑 127.0.0.1），退出服务进程 */
+      if(u.pathname==='/api/shutdown'){ /* 停止按钮：退出服务进程。注意「只绑 127.0.0.1」挡不住浏览器里任意网页发跨页请求（CSRF 可静默停服），影响限于需重开服务 */
         send(200,{ok:true,bye:true});
         setTimeout(()=>process.exit(0),100);
         return;
@@ -225,7 +230,10 @@ export async function serve(){
         return send(200,{ok:true,id:g.id,mediaId:g.mediaId,total:g.total,source:g.source,urls,thumbs,pageNumbers});
       }
       send(404,{ok:false,error:'not found'});
-    }catch(e){send(200,{ok:false,error:e.message})}
+    }catch(e){
+      /* 畸形 URL/解析期异常：回 400 让请求方看到原因，服务继续活着 */
+      try{send(400,{ok:false,error:'bad request：'+e.message})}catch(_){res.end()}
+    }
   });
   server.on('error',e=>{
     if(e.code==='EADDRINUSE')console.error(`端口 ${port} 被占用——服务可能已在运行；否则用 NH_PORT=其他端口 换端口启动。`);

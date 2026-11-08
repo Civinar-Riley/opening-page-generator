@@ -143,3 +143,18 @@ describe('titleBookDraft 纳入搜索替换',()=>{
     expect(p.blocks[0].titleBookDraft).toBe('壹｜月沉之夜｜流星坠落时');
   });
 });
+/* v1.32 回归：entries[].title（封面/音轨绑定标题）是可编辑用户内容，纳入搜索与替换 */
+describe('开场白项绑定标题（entries.title）纳入搜索替换',()=>{
+  it('collectSearchMatches 命中绑定标题并带定位',()=>{
+    const m=collectSearchMatches([{type:'greetings',entries:[{title:'雨夜邂逅',cover:'',audio:''}]}],'雨夜');
+    expect(m).toHaveLength(1);
+    expect(m[0].parent).toBe('entries');
+    expect(m[0].subField).toBe('title');
+    expect(m[0].path).toContain('开场白项 1');
+  });
+  it('replaceAllInProject 覆盖绑定标题',()=>{
+    const p={blocks:[{type:'greetings',entries:[{title:'雨夜邂逅',cover:'https://old/c.png',audio:''}]}]};
+    expect(replaceAllInProject(p,'雨夜','雪夜')).toBe(1);
+    expect(p.blocks[0].entries[0].title).toBe('雪夜邂逅');
+  });
+});

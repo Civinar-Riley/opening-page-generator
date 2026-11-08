@@ -153,6 +153,9 @@ export function renderAI(){
         let list=Array.isArray(j?.data)?j.data.map(m=>m.id||m.name||m):(Array.isArray(j)?j:[]);
         list=[...new Set(list.filter(x=>typeof x==='string'))].sort();
         if(!list.length)throw new Error('响应中没有模型');
+        /* 90 秒 await 期间切工程：p 已不是当前工程，写进去的结果不会被 save 序列化（已在
+           _written 缓存里），刷新即丢——与 aiGenHtml/aiGenStyle 同款守卫，直接丢弃 */
+        if(Project.cur!==p){toast('⚠️ 已切换工程，模型列表未应用');return}
         p.ai.models=list;
         if(!list.includes(p.ai.model))p.ai.model=list[0];
         renderModelSel();Project.save();
@@ -275,6 +278,7 @@ export function renderAI(){
       /* 生成期间切工程/撤销会重建整个页面：闭包里的 p 已不是当前工程，静默写入会造成跨工程污染 */
       if(Project.cur!==p){toast('⚠️ 已切换工程，本次生成结果已丢弃');return}
       saveDraft(tKey,r);
+      renderDrafts(); /* 草稿已落库就刷新列表——下面的解析失败早退分支不再漏刷 */
       if(tKey==='freehtml'){
         let code=r.trim().replace(/^```(html)?\s*/i,'').replace(/```\s*$/,'');
         let fb=p.blocks.find(b=>b.type==='freehtml');
@@ -319,7 +323,6 @@ export function renderAI(){
         qa.groups=[...(Array.isArray(qa.groups)?qa.groups:[]),...[...map].map(([name,items])=>({name,items}))];
         Project.saveSnapshot();UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加 '+[...map].reduce((n,[,it])=>n+it.length,0)+' 条问答');
       }
-      renderDrafts();
     }finally{this.disabled=false;this.textContent=oldTxt}
   };
   $('#aiGenStyle',col).onclick=async function(){

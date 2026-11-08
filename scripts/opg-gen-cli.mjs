@@ -118,7 +118,8 @@ export function main(argv=[],io={}){
     if(opts.fresh||opts.tpl!==null){
       if(opts.pos.length)throw new Error('起步命令（--new / --template）输出工程 JSON，不接收工程文件');
       const p=opts.tpl!==null?templateProject(opts.tpl,opts.name):newProjectJson(opts.name);
-      emit(p,JSON.stringify(p,null,2),opts,io);
+      /* 组合 --fenced/--regex 时直接按构建选项输出（此前静默忽略，用户拿不到预期产物） */
+      emit(p,(opts.fenced||opts.regex)?buildOut(p,opts):JSON.stringify(p,null,2),opts,io);
       return 0;
     }
     if(!opts.pos.length)throw new Error('缺少工程 JSON 文件（或用 --new / --template 起步）\n\n'+usage());

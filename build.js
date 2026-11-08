@@ -115,12 +115,6 @@ async function build() {
   }
 }
 
-build().catch(e => {
-  console.error('构建失败:', e && e.message || e);
-  /* watch 模式下不退出：源码修复后由 fs.watch 触发 rebuild 自愈（rebuild 自身有 try/catch） */
-  if (!process.argv.includes('--watch')) process.exit(1);
-});
-
 if (process.argv.includes('--watch')) {
   let t;
   let building = false, dirty = false;
@@ -141,4 +135,11 @@ if (process.argv.includes('--watch')) {
   /* 助手小包正文也在构建期内嵌：改了 scripts/ 下的四件套必须重建，否则内嵌字节过期 */
   fs.watch('scripts', (ev, f) => { if (f && HELPER_WATCH.test(f)) rebuild(); });
   console.log('正在监视 src/ 与 scripts/ 变更，改动会自动重新构建…');
+  /* 首建也走 rebuild 的 building 防护：首建进行中的源码变更不再并发第二个 build */
+  rebuild();
+} else {
+  build().catch(e => {
+    console.error('构建失败:', e && e.message || e);
+    process.exit(1);
+  });
 }

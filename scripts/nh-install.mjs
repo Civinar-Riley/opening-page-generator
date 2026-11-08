@@ -9,8 +9,13 @@ const ROOT=dirname(dirname(fileURLToPath(import.meta.url)));
 const BAT=join(ROOT,'scripts','opg-nh.bat');
 const KEY='HKCU\\Software\\Classes\\opg-nh';
 const CMD=`"${BAT}" "%1"`;
-const mode=process.argv[2]||'install';
+const mode=process.argv[2];
 const isUninstall=mode==='uninstall'||mode==='-u';
+/* 未知子参数（如 uninstal 拼写错）报错退出——按安装处理会与用户意图相反且无提示 */
+if(mode!==undefined&&!isUninstall){
+  console.error('未知参数：'+mode+'（用法：node scripts/nh-install.mjs [uninstall|-u]，不带参数为安装）');
+  process.exit(1);
+}
 
 function reg(args,label){
   const r=spawnSync('reg',args,{encoding:'utf8'});
