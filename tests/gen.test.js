@@ -86,6 +86,25 @@ describe('Gen.backHomeScript 返回开场页角色脚本（模板插槽 v1.22.0�
     expect(()=>new Function(c)).not.toThrow();
   });
 });
+describe('Gen.collectImageUrls 图片收集',()=>{
+  it('收集启用区块的图库/漫画（封面+页）/头像/背景图/自由 HTML img，同 URL 去重',()=>{
+    const p=proj([
+      {type:'gallery',enabled:true,images:[{url:'https://a/1.jpg',cap:''},{url:'',cap:''}]},
+      {type:'comic',enabled:true,cover:'https://c/cover.jpg',pages:[{url:'https://c/p1.jpg'}]},
+      {type:'profile',enabled:true,characters:[{name:'a',avatar:'https://a/1.jpg'},{name:'b',avatar:''}]},
+      {type:'freehtml',enabled:true,html:'<img src="https://f/x.png"><img src="/relative.png">'},
+    ]);
+    p.theme={...p.theme,bg:{type:'image',image:'https://bg/x.jpg'}};
+    const urls=Gen.collectImageUrls(p).map(x=>x.url);
+    expect(urls).toEqual(['https://a/1.jpg','https://c/cover.jpg','https://c/p1.jpg','https://bg/x.jpg','https://f/x.png']);
+  });
+  it('停用区块不收集；at 定位含区块序号',()=>{
+    const p=proj([{type:'gallery',enabled:false,images:[{url:'https://off/1.jpg',cap:''}]}]);
+    expect(Gen.collectImageUrls(p)).toEqual([]);
+    const p2=proj([{type:'comic',enabled:true,cover:'https://c/x.jpg',pages:[]}]);
+    expect(Gen.collectImageUrls(p2)[0].at).toContain('#1');
+  });
+});
 describe('Gen.build 转义与宏',()=>{
   it('divider 自定义文字被转义（预览与导出）',()=>{
     const b={type:'divider',enabled:true,style:'plain',text:'<b>x</b>'};

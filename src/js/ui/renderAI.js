@@ -2,11 +2,23 @@
 import { $, esc, toast } from '../utils.js';
 import { BLOCK_DEFS } from '../defs.js';
 import { Project } from '../project.js';
+import { Gen } from '../gen/index.js';
 import { UI } from './core.js';
 import { resolveAiChannel, tavernGenerate } from './extBridge.js';
 
 /* 会话 Key 按工程隔离，只存内存；工程释放后随 WeakMap 回收，不带入其他工程的接口。 */
 const _sessionKeys=new WeakMap();
+
+/* 生成草稿（v1.30）：本机最近 5 份，跨工程共用；独立 localStorage 键，不进工程 schema */
+const DRAFT_KEY='openingPageGen_v1_aiDrafts';
+const loadDrafts=()=>{
+  try{const a=JSON.parse(localStorage.getItem(DRAFT_KEY)||'[]');return Array.isArray(a)?a.slice(0,5):[]}
+  catch(e){return []}
+};
+const saveDraft=(mode,text)=>{
+  try{const list=loadDrafts();list.unshift({ts:Date.now(),mode,text});localStorage.setItem(DRAFT_KEY,JSON.stringify(list.slice(0,5)))}
+  catch(e){/* 草稿是锦上添花，写失败静默 */}
+};
 
 export function renderAI(){
   const p=Project.cur,col=$('#aiCol');
@@ -14,6 +26,31 @@ export function renderAI(){
      否则一律自定义接口模式（独立版无桥，界面与旧版一致） */
   const tavernOK=resolveAiChannel('')==='tavern';
   const channel=resolveAiChannel(p.ai.channel);
+
+  const SYS_HTML=`你是酒馆(SillyTavern)角色卡内嵌HTML组件工程师。只输出一段HTML/CSS代码，规则：
+1. 输出一个最外层<div>，内部可含<style>，所有class必须以 "opg-ai-" 前缀命名；
+2. 禁止使用全局选择器(如 *、body、html)、禁止 id 选择器、禁止 <script> 脚本与外部资源依赖，禁止内联事件属性(onclick等)；
+3. 适配暗色背景：文字用近白色避免深底深字；主体不脱离文档流，不用 vh/vw 撑高度，不产生横向滚动；
+4. 可点击元素用真实 <button type="button">/<label> 并给 hover/focus 反馈；字号不小于 12px，点击区域足够大（触屏可用）；
+5. 引用的图片/音频 URL 必须是真实可用的 https:// 链接，背景必须同时有纯色或渐变兜底；不用系统外的花哨字体，给系统字体回退；
+6. 内容可能为空时写出空态提示文案；装饰不得遮挡正文；
+7. 不留未完成占位、省略号或假占位符；输出前自查：标签全部闭合、class 前缀正确、无遗漏占位；只输出代码本身，不要解释，不要markdown代码块包裹。`;
+
+  const SYS_STYLE=`你是UI配色设计师。根据用户描述输出一行JSON，字段：primary(主色hex)、accent(强调色hex)、textColor(文字色hex，必须接近白色保证深色底可读)、radius(圆角0-30数字)。只输出JSON，不要其他内容。`;
+
+  const SYS_GREET=`你是酒馆角色卡开场白写手。根据用户描述写一条开场白正文（first_mes 风格）：以第二人称「你」称呼用户，代入角色口吻（用户描述里可含角色与世界观信息）；300-600 字，小说化叙事，结尾留出玩家行动空间。引用的图片/音频 URL 必须用户描述里真实给出，没有就不要编造链接。只输出正文本身，不要标题、不要解释、不要 Markdown 包裹。`;
+  const SYS_PROFILE=`你是酒馆角色卡设定师。根据用户描述写一段角色简介：80-200 字，第三人称，涵盖身份、性格与外观亮点，供角色简介区向玩家展示；只输出简介文本，不要解释与 Markdown。`;
+  const SYS_TIMELINE=`你是剧情进度编排器。根据用户描述输出时间线节点：每行一条，格式为 标题|描述|状态（状态仅限 done/current/lock，其中 current 至多一个）。5-8 行，按剧情顺序排列；只输出这些行，不要解释与 Markdown。`;
+  const SYS_QA=`你是世界观问答编写器。根据用户描述输出问答组：每行一条，格式为 分组名|问题|答案（答案 30-80 字）。至少 4 行，可跨多个分组；只输出这些行，不要解释与 Markdown。`;
+
+  /* 生成目标注册表：提示词 + 文案 + 写入分支（写入逻辑见 aiGenHtml 处理器的分支） */
+  const TARGETS={
+    freehtml:{sys:SYS_HTML,short:'自由HTML',label:'描述你想要的内容（如：一个带角色好感度进度条的展示栏）',btn:'✨ 生成（写入自由 HTML 区）',hint:'生成后自动填入「自由 HTML 区」并启用该区块'},
+    greeting:{sys:SYS_GREET,short:'开场白',label:'描述这条开场白的情境（角色、氛围、与用户的初次相遇…）',btn:'✨ 生成（追加进开场白列表）',hint:'生成后以「标题｜描述」追加进开场白占位列表；正文要成为可选开场白，还需写进角色卡的 alternate_greetings（导出①写入角色卡或手动贴）'},
+    profile:{sys:SYS_PROFILE,short:'角色简介',label:'描述这个角色（身份、性格、外观亮点…）',btn:'✨ 生成（追加进角色简介区）',hint:'生成后作为新角色条目追加进角色简介区并启用'},
+    timeline:{sys:SYS_TIMELINE,short:'时间线',label:'描述剧情阶段或进度节点（顺序、当前进度…）',btn:'✨ 生成（追加进时间线区块）',hint:'生成后按行追加进时间线区块的节点列表并启用'},
+    qa:{sys:SYS_QA,short:'问答组',label:'描述要覆盖的问答主题（世界观 / 角色设定 / 玩法…）',btn:'✨ 生成（追加进问答折叠区）',hint:'生成后按「分组|问题|答案」解析并追加进问答折叠区的分组'},
+  };
   col.innerHTML=`
     <div class="card">
       <h3>🤖 AI 助手（可选）${channel==='tavern'?'<span class="hint">酒馆当前连接 · 静默生成，不打扰游玩</span>':'<span class="hint">OpenAI 兼容接口 · 仅本工具内使用，不写入导出代码</span>'}</h3>
@@ -34,12 +71,19 @@ export function renderAI(){
       </div>`}
     </div>
     <div class="card">
-      <h3>① 生成自由 HTML 区内容</h3>
-      <div><label>描述你想要的内容（如：一个带角色好感度进度条的展示栏）</label>
+      <h3>① 生成内容 <span class="hint">选目标，生成后自动写入对应区块</span></h3>
+      <div><label>生成目标</label><select id="aiTarget">
+        <option value="freehtml">自由 HTML 区（可视化组件）</option>
+        <option value="greeting">开场白正文（追加进开场白列表）</option>
+        <option value="profile">角色简介（追加进角色简介区）</option>
+        <option value="timeline">时间线节点（追加进时间线区块）</option>
+        <option value="qa">问答组（追加进问答折叠区）</option>
+      </select></div>
+      <div><label id="aiPromptLabel">描述你想要的内容（如：一个带角色好感度进度条的展示栏）</label>
       <textarea id="aiPrompt" style="min-height:70px" placeholder="例：生成一个音乐播放器样式的框，显示角色「正在收听」的歌曲名，带闪烁的音符装饰"></textarea></div>
       <div style="margin-top:10px;display:flex;gap:8px">
         <button type="button" class="btn" id="aiGenHtml">✨ 生成（写入自由 HTML 区）</button>
-        <span style="align-self:center;font-size:12px;color:var(--txt2)">提示：生成后自动填入「自由 HTML 区」并启用该区块</span>
+        <span id="aiTargetHint" style="align-self:center;font-size:12px;color:var(--txt2)">生成后自动填入「自由 HTML 区」并启用该区块</span>
       </div>
     </div>
     <div class="card">
@@ -51,6 +95,7 @@ export function renderAI(){
     <div class="card">
       <h3>输出 <span id="aiStatus" class="status-dot"></span></h3>
       <div id="aiOut">（等待调用）</div>
+      <div style="margin-top:10px"><label>🕘 最近草稿（本机最近 5 份，可恢复到输出区）</label><div id="aiDrafts"></div></div>
     </div>`;
 
   if(channel==='custom'){
@@ -124,18 +169,47 @@ export function renderAI(){
     p.ai.channel=this.value;Project.save();UI.renderAI();
   }));
 
+  /* 生成目标切换：换提示词文案与按钮（TARGETS 注册表驱动）。防御式读写——
+     ai.test 的最小 DOM mock 只认旧元素，新元素缺位时静默跳过 */
+  const syncTarget=()=>{
+    const t=TARGETS[($('#aiTarget',col)||{}).value]||TARGETS.freehtml;
+    const lb=$('#aiPromptLabel',col),btn=$('#aiGenHtml',col),hint=$('#aiTargetHint',col);
+    if(lb)lb.textContent=t.label;
+    if(btn)btn.textContent=t.btn;
+    if(hint)hint.textContent=t.hint;
+  };
+  const tSel=$('#aiTarget',col);
+  if(tSel)tSel.addEventListener('change',syncTarget);
+  syncTarget();
+
+  /* 最近草稿（本机 5 份）：恢复=回填输出区并切回对应目标；丢弃=直接移除 */
+  const dEl=$('#aiDrafts',col);
+  const renderDrafts=()=>{
+    if(!dEl)return;
+    const list=loadDrafts();
+    dEl.innerHTML=list.length?list.map((d,i)=>`<div style="display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:5px 8px;margin:4px 0;font-size:12px">
+      <span style="color:var(--accent)">${esc((TARGETS[d.mode]||{short:d.mode}).short)}</span>
+      <span style="color:var(--txt2)">${new Date(d.ts).toLocaleString()}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2)">${esc(d.text.slice(0,60))}</span>
+      <button type="button" class="btn ghost small" data-draft-res="${i}">恢复</button>
+      <button type="button" class="btn ghost small" data-draft-del="${i}">丢弃</button>
+    </div>`).join(''):'<div style="font-size:12px;color:var(--txt2)">（暂无草稿）</div>';
+  };
+  renderDrafts();
+  if(dEl)dEl.addEventListener('click',e=>{
+    const res=e.target.dataset.draftRes,del=e.target.dataset.draftDel;
+    if(res===undefined&&del===undefined)return;
+    const list=loadDrafts();
+    if(del!==undefined){list.splice(+del,1);try{localStorage.setItem(DRAFT_KEY,JSON.stringify(list))}catch(_){/* */}renderDrafts();return}
+    const d=list[+res];if(!d)return;
+    if(TARGETS[d.mode])$('#aiTarget',col).value=d.mode;
+    syncTarget();
+    const out=$('#aiOut',col);
+    if(out)out.textContent=d.text;
+    toast('草稿已回填输出区');
+  });
+
   /* 系统提示词（吸收前端规范：安全渲染/布局边界/可访问性/输出前自查） */
-  const SYS_HTML=`你是酒馆(SillyTavern)角色卡内嵌HTML组件工程师。只输出一段HTML/CSS代码，规则：
-1. 输出一个最外层<div>，内部可含<style>，所有class必须以 "opg-ai-" 前缀命名；
-2. 禁止使用全局选择器(如 *、body、html)、禁止 id 选择器、禁止 <script> 脚本与外部资源依赖，禁止内联事件属性(onclick等)；
-3. 适配暗色背景：文字用近白色避免深底深字；主体不脱离文档流，不用 vh/vw 撑高度，不产生横向滚动；
-4. 可点击元素用真实 <button type="button">/<label> 并给 hover/focus 反馈；字号不小于 12px，点击区域足够大（触屏可用）；
-5. 引用的图片/音频 URL 必须是真实可用的 https:// 链接，背景必须同时有纯色或渐变兜底；不用系统外的花哨字体，给系统字体回退；
-6. 内容可能为空时写出空态提示文案；装饰不得遮挡正文；
-7. 不留未完成占位、省略号或假占位符；输出前自查：标签全部闭合、class 前缀正确、无遗漏占位；只输出代码本身，不要解释，不要markdown代码块包裹。`;
-
-  const SYS_STYLE=`你是UI配色设计师。根据用户描述输出一行JSON，字段：primary(主色hex)、accent(强调色hex)、textColor(文字色hex，必须接近白色保证深色底可读)、radius(圆角0-30数字)。只输出JSON，不要其他内容。`;
-
   async function call(apiSys,user){
     const out=$('#aiOut'),dot=$('#aiStatus');
     /* 连接分流：酒馆模式走桥（TavernHelper generateRaw，非流式）；自定义模式走流式 fetch */
@@ -192,20 +266,60 @@ export function renderAI(){
 
   $('#aiGenHtml',col).onclick=async function(){
     if(this.disabled)return;
+    const tKey=$('#aiTarget',col).value;
+    const tDef=TARGETS[tKey]||TARGETS.freehtml;
     const q=$('#aiPrompt',col).value.trim();if(!q){toast('请先描述想要的内容');return}
     this.disabled=true;const oldTxt=this.textContent;this.textContent='⏳ 生成中…';
     try{
-      const r=await call(SYS_HTML,q);if(!r)return;
+      const r=await call(tDef.sys,q);if(!r)return;
       /* 生成期间切工程/撤销会重建整个页面：闭包里的 p 已不是当前工程，静默写入会造成跨工程污染 */
       if(Project.cur!==p){toast('⚠️ 已切换工程，本次生成结果已丢弃');return}
-      let code=r.trim().replace(/^```(html)?\s*/i,'').replace(/```\s*$/,'');
-      let fb=p.blocks.find(b=>b.type==='freehtml');
-      if(!fb){/* 自由 HTML 区块被删除过：自动重建，避免写入时崩溃 */
-        fb={type:'freehtml',enabled:true,...BLOCK_DEFS.freehtml.create()};
-        p.blocks.push(fb);
+      saveDraft(tKey,r);
+      if(tKey==='freehtml'){
+        let code=r.trim().replace(/^```(html)?\s*/i,'').replace(/```\s*$/,'');
+        let fb=p.blocks.find(b=>b.type==='freehtml');
+        if(!fb){/* 自由 HTML 区块被删除过：自动重建，避免写入时崩溃 */
+          fb={type:'freehtml',enabled:true,...BLOCK_DEFS.freehtml.create()};
+          p.blocks.push(fb);
+        }
+        fb.html=code;fb.enabled=true;
+        UI.renderConfig();UI.refreshPreview();Project.save();toast('已写入自由 HTML 区');
+      }else if(tKey==='greeting'){
+        /* 运行时开场白以角色卡为准：这里只把 AI 文本以「标题｜描述」追加进占位列表供预览与认领 */
+        const line=Gen.greetSnapshotLines([r]);
+        if(!line){toast('生成内容为空');return}
+        let g=p.blocks.find(b=>b.type==='greetings');
+        if(!g){g={type:'greetings',enabled:true,...BLOCK_DEFS.greetings.create()};p.blocks.push(g)}
+        g.enabled=true;
+        g.placeholderList=(g.placeholderList?g.placeholderList+'\n':'')+line;
+        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进开场白占位列表（正文生效需写进角色卡 alternate_greetings）');
+      }else if(tKey==='profile'){
+        const pr=p.blocks.find(b=>b.type==='profile');
+        if(!pr){toast('角色简介区块不存在');return}
+        pr.enabled=true;
+        pr.characters=[...(Array.isArray(pr.characters)?pr.characters:[]),{name:'{{char}}',desc:r.trim(),tags:'',avatar:'',avatarMode:'manual'}];
+        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进角色简介区');
+      }else if(tKey==='timeline'){
+        let tl=p.blocks.find(b=>b.type==='timeline');
+        if(!tl){tl={type:'timeline',enabled:true,...BLOCK_DEFS.timeline.create()};p.blocks.push(tl)}
+        tl.enabled=true;
+        tl.nodes=(tl.nodes?tl.nodes+'\n':'')+r.trim();
+        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加进时间线区块');
+      }else if(tKey==='qa'){
+        /* AI 输出行格式：分组|问题|答案（答案里允许再出现 |，归入答案） */
+        const map=new Map();
+        r.trim().split('\n').forEach(l=>{
+          const ps=l.split('|');
+          if(ps.length>=3){const g=ps[0].trim(),q2=ps[1].trim(),a=ps.slice(2).join('|').trim();if(g&&q2){if(!map.has(g))map.set(g,[]);map.get(g).push({q:q2,a})}}
+        });
+        if(!map.size){toast('⚠️ AI 输出未解析出问答行（需要 分组|问题|答案 格式），已存草稿');return}
+        let qa=p.blocks.find(b=>b.type==='qa');
+        if(!qa){qa={type:'qa',enabled:true,...BLOCK_DEFS.qa.create()};p.blocks.push(qa)}
+        qa.enabled=true;
+        qa.groups=[...(Array.isArray(qa.groups)?qa.groups:[]),...[...map].map(([name,items])=>({name,items}))];
+        UI.renderConfig();UI.refreshPreview();Project.save();toast('已追加 '+[...map].reduce((n,[,it])=>n+it.length,0)+' 条问答');
       }
-      fb.html=code;fb.enabled=true;
-      UI.renderConfig();UI.refreshPreview();Project.save();toast('已写入自由 HTML 区');
+      renderDrafts();
     }finally{this.disabled=false;this.textContent=oldTxt}
   };
   $('#aiGenStyle',col).onclick=async function(){

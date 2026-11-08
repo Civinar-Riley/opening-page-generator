@@ -42,7 +42,9 @@ const BLOCK_DEFS={
     characters:[{name:'{{char}}',desc:'这里显示角色简介，可添加多个角色。',tags:'女主角,神秘,温柔',avatar:'',avatarMode:'manual'}]})},
   disclaimer:{name:'免责声明区',icon:'⚠️',create:()=>({text:'本角色卡内容纯属虚构，由 AI 生成，仅供娱乐。',style:'collapse'})},
   greetings:{name:'开场白选择区',icon:'💌',create:()=>({cardStyle:'card',clickAction:'go',buttonText:'开始',titleWb:'',titleEntry:'开场白标题库',showTitle:false,title:'开场选择',showNames:true,excludedTags:'',entries:[],
-    placeholderList:'宁静的清晨｜晨光洒进房间，新的一天开始了\n雨夜的邂逅｜一场大雨，命运的相遇\n命运的转折｜故事迎来了关键的抉择时刻'})},
+    placeholderList:'宁静的清晨｜晨光洒进房间，新的一天开始了\n雨夜的邂逅｜一场大雨，命运的相遇\n命运的转折｜故事迎来了关键的抉择时刻',
+    /* 标题库草稿（v1.30 角色卡导入产物）：每行 序号|标题|描述，复制粘进酒馆世界书条目；空=无草稿 */
+    titleBookDraft:''})},
   quote:{name:'开场引言',icon:'📜',create:()=>({text:'每一个选择，都是另一段人生的开始。',source:''})},
   gallery:{name:'图片展示区',icon:'🖼️',create:()=>({images:[{url:'',cap:''}],cols:'3'})},
   author:{name:'作者的话',icon:'🖋️',create:()=>({text:'感谢游玩本卡片！\n制作：xxx ｜ 建议配合 xxx 预设使用。',style:'collapse'})},

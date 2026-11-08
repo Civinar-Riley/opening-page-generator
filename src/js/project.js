@@ -1,6 +1,7 @@
 /* 工程管理：存储 / 迁移 / 模板 */
 import { esc, toast, uid, download, confirmModal, promptModal } from './utils.js';
 import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject, SCHEMA_VERSION } from './defs.js';
+import { parseCardFile, buildPlan, applyImportPlan, toV2Card } from './cardImport.js';
 
 /**
  * 工程对象（localStorage 持久化单元，id 同时作为生成组件的容器前缀）
@@ -317,7 +318,8 @@ const Project={
     box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(480px,92vw);max-height:80vh;overflow:auto';
     let rows=`<div style="font-weight:700;margin-bottom:10px">📄 新建工程</div>
       <button type="button" class="btn ghost small" data-new="blank" style="width:100%;text-align:left;margin:4px 0">空白工程（默认区块布局）</button>
-      <button type="button" class="btn ghost small" data-new="sample" style="width:100%;text-align:left;margin:4px 0">示例工程</button>`;
+      <button type="button" class="btn ghost small" data-new="sample" style="width:100%;text-align:left;margin:4px 0">示例工程</button>
+      <button type="button" class="btn ghost small" data-new="cardimport" style="width:100%;text-align:left;margin:4px 0">📥 从角色卡导入（PNG / JSON / CHARX → 反向生成工程）</button>`;
     if(BUILTIN_TEMPLATES.length)rows+=`<div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">官方模板（一键套用完整布局）</div>`+
       BUILTIN_TEMPLATES.map((t,i)=>`<button type="button" class="btn ghost small" data-new="bt:${i}" style="width:100%;text-align:left;margin:4px 0">⭐ ${esc(t.name)}</button>`).join('');
     if(this.templates.length)rows+=`<div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">我的模板（点击以模板创建，✕ 删除模板）</div>`;
@@ -339,6 +341,7 @@ const Project={
         this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();toast('已创建工程');
         return;
       }
+      if(nv==='cardimport'){ov.remove();this.openCardImport();return}
       /* 官方模板：bt:索引 */
       if(String(nv).startsWith('bt:')){
         const t=BUILTIN_TEMPLATES[+String(nv).slice(3)];
@@ -433,6 +436,68 @@ const Project={
     /* 读取失败（文件不可读/拖入目录等）不提示会让文件选择器「卡死」——同文件重选不触发 change */
     r.onerror=()=>{toast('读取文件失败：文件不可读');input.value=''};
     r.readAsText(f);
+  },
+  /* 角色卡导入（v1.30）：选文件 → 本地解析 → 勾选映射计划 → 应用为新建工程。
+     有酒馆环境（window.createOrReplaceCharacter 可用）时可勾选同时直建角色卡（待真机验证项） */
+  openCardImport(){
+    const ov=document.createElement('div');
+    ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(520px,92vw);max-height:84vh;overflow:auto';
+    ov.appendChild(box);document.body.appendChild(ov);
+    const close=()=>ov.remove();
+    const home=()=>{
+      box.innerHTML=`<div style="font-weight:700;margin-bottom:10px">📥 从角色卡导入</div>
+        <input type="file" id="ciFile" accept=".png,.json,.charx,image/png,application/json" style="width:100%;font-size:12px">
+        <div style="font-size:12px;color:var(--txt2);margin:8px 0">支持酒馆角色卡 PNG（tEXt chara / ccv3）/ JSON / CHARX，V1 / V2 / V3 自动识别；解析纯本地进行。</div>
+        <div id="ciMsg" style="font-size:12px;min-height:16px"></div>
+        <div style="text-align:right;margin-top:10px"><button type="button" class="btn ghost small" data-close>取消</button></div>`;
+    };
+    home();
+    ov.addEventListener('click',e=>{
+      if(e.target===ov||e.target.dataset.close!==undefined)close();
+    });
+    const plan=card=>{
+      const plan=buildPlan(card);
+      const inTavern=typeof window.createOrReplaceCharacter==='function';
+      box.innerHTML=`<div style="font-weight:700;margin-bottom:4px">📥 导入「${esc(card.name||'导入工程')}」</div>
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">勾选要导入的内容，确认后生成新工程：</div>
+        ${plan.items.map(it=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border:1px solid var(--line);border-radius:8px;margin:5px 0;cursor:pointer">
+          <input type="checkbox" data-pid="${it.id}" checked style="margin-top:3px">
+          <span style="flex:1"><strong style="font-size:13px">${esc(it.label)}</strong><br><span style="font-size:12px;color:var(--txt2)">${esc(it.detail)}</span></span>
+        </label>`).join('')}
+        ${card.warnings.length?`<div style="font-size:12px;color:var(--txt2);margin:6px 0">⚠️ ${esc(card.warnings.join('；'))}</div>`:''}
+        ${inTavern?`<label class="inline-check" style="margin:6px 0"><input type="checkbox" id="ciTavern">同时把这张卡创建进酒馆（createOrReplaceCharacter）</label>`:''}
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button type="button" class="btn ghost small" data-back>← 重选文件</button>
+          <button type="button" class="btn small" data-confirm>✓ 生成工程</button>
+        </div>`;
+      box.querySelector('[data-back]').onclick=home;
+      box.querySelector('[data-confirm]').onclick=()=>{
+        const ids=[...box.querySelectorAll('input[data-pid]:checked')].map(x=>x.dataset.pid);
+        const name=(plan.name||'导入工程')+'（导入）';
+        const p=defaultProject(name);
+        this.normalize(p);
+        const sum=applyImportPlan(p,card,ids);
+        this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();
+        close();toast(sum);
+        if(box.querySelector('#ciTavern')&&box.querySelector('#ciTavern').checked){
+          /* Promise 兼容 + try/catch（TAVERN_API 运行环境规则 3/4）；覆盖同名卡由酒馆原生语义决定 */
+          Promise.resolve(window.createOrReplaceCharacter(card.name||name,toV2Card(card).data))
+            .then(()=>toast('已创建酒馆角色卡：'+(card.name||name)))
+            .catch(err=>toast('⚠️ 酒馆建卡失败：'+(err&&err.message||err)));
+        }
+      };
+    };
+    box.addEventListener('change',async e=>{
+      if(e.target.id!=='ciFile')return;
+      const f=e.target.files[0];if(!f)return;
+      const msg=box.querySelector('#ciMsg');
+      msg.style.color='var(--txt2)';msg.textContent='⏳ 解析中…';
+      try{const card=await parseCardFile(f);msg.textContent='';plan(card)}
+      catch(err){msg.style.color='var(--err)';msg.textContent='❌ '+(err&&err.message||err)}
+    });
   },
 };
 

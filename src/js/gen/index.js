@@ -1,5 +1,6 @@
 /* 生成引擎入口：组装 CSS / HTML / 脚本，产出可嵌入酒馆的组件代码 */
 import { uid } from '../utils.js';
+import { BLOCK_DEFS } from '../defs.js';
 import { css } from './css.js';
 import { body } from './body.js';
 import { script, lightbox, comicReader, bgmScript, parseExcludedTags } from './scripts.js';
@@ -85,11 +86,13 @@ const Gen={
     return `<div id="${px}" class="${px}-root">\n<style>\n${cssStr}\n</style>\n${html}\n${js}\n</div>`;
   },
 
-  /** 完整 HTML 文档（用于正则 replaceString：``` 包裹，由酒馆助手渲染为 iframe） */
+  /** 完整 HTML 文档（用于正则 replaceString：``` 包裹，由酒馆助手渲染为 iframe）。
+   *  data-opg-ver：导出格式版本锚（v1.30 引入，当前 1）——反向解析据此识别本工具导出的页面，
+   *  旧导出无此标记，解析器按「尽力识别 + 自由 HTML 兜底」处理 */
   buildFullDoc(p){
     const comp=this.build(p,{isPreview:false});
     return `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-opg-ver="1">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -139,6 +142,34 @@ ${comp}
       let desc=ls.slice(1).join(' ');if(desc.length>=48)desc=desc.slice(0,48)+'…';
       return sepSan(title)+(desc?'｜'+sepSan(desc):'');
     }).filter(Boolean).join('\n');
+  },
+
+  /** 收集工程里的全部图片 URL（纯函数，v1.30 图片连通性检查用）：
+   *  图库/漫画（封面+页）/角色简介头像/主题背景图/自由 HTML 里的 <img src>。
+   *  @returns {{url:string,at:string}[]} at 为人读定位（toast/列表展示用） */
+  collectImageUrls(p){
+    const out=[];
+    (p.blocks||[]).forEach((b,i)=>{
+      if(!b||!b.enabled)return;
+      const tag=`区块 #${i+1}（${(BLOCK_DEFS[b.type]||{name:b.type}).name}）`;
+      if(b.type==='gallery'&&Array.isArray(b.images))b.images.forEach(x=>{if(x&&x.url)out.push({url:x.url,at:tag})});
+      if(b.type==='comic'){
+        if(b.cover)out.push({url:b.cover,at:tag+' 封面'});
+        if(Array.isArray(b.pages))b.pages.forEach((x,pi)=>{if(x&&x.url)out.push({url:x.url,at:tag+` 第 ${pi+1} 页`})});
+      }
+      if(b.type==='profile'&&Array.isArray(b.characters))b.characters.forEach((c,ci)=>{if(c&&c.avatar)out.push({url:c.avatar,at:tag+` 第 ${ci+1} 位角色头像`})});
+    });
+    if(p.theme&&p.theme.bg&&p.theme.bg.type==='image'&&p.theme.bg.image)out.push({url:p.theme.bg.image,at:'主题背景图'});
+    (p.blocks||[]).forEach((b,i)=>{
+      if(!b||!b.enabled||b.type!=='freehtml')return;
+      const tag=`区块 #${i+1}（自由 HTML）`;
+      [...String(b.html||'').matchAll(/<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)].forEach(m=>{
+        if(/^https?:\/\//i.test(m[1]))out.push({url:m[1],at:tag});
+      });
+    });
+    /* 同 URL 去重（多区块共用一张图只探测一次），保留首个定位 */
+    const seen=new Set();
+    return out.filter(x=>!seen.has(x.url)&&seen.add(x.url));
   },
 
   /** 可直接导入酒馆的正则脚本 JSON（字段结构与 ST 正则扩展一致）

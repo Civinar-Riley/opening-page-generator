@@ -231,6 +231,33 @@ export function renderExport(){
       ${audit.problems.length?`<h5>产物自检</h5>${audit.problems.map(lvRow).join('')}`:''}
       ${compat.items.length?`<h5>兼容审查</h5>${compat.items.map(lvRow).join('')}`:''}
       ${!total?'<div class="exp-audit-item"><span class="exp-lv ok">通过</span><span>未发现已知坑位，可以发卡。</span></div>':''}
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn ghost small" id="probeImg">🖼 检测图片链接可用性</button>
+        <span class="hint">浏览器 Image 加载探测，与酒馆内渲染同策略；不发送对话请求</span>
+      </div>
+      <div id="probeOut" style="font-size:12px;margin-top:6px;line-height:1.8"></div>
     </div>`;
   col.appendChild(auditSec);
+
+  /* 图片连通性探测（v1.30）：Image() onload/onerror——跨域无需 CORS 也能知道加载成败（不读像素），
+     8 秒超时单独标注（慢图床≠失效）；失败为提示级，不进阻断 */
+  const probeOne=url=>new Promise(res=>{
+    const img=new Image();let done=false;
+    const t=setTimeout(()=>{if(!done){done=true;res('timeout')}},8000);
+    img.onload=()=>{if(!done){done=true;clearTimeout(t);res(true)}};
+    img.onerror=()=>{if(!done){done=true;clearTimeout(t);res(false)}};
+    img.src=url;
+  });
+  $('#probeImg',auditSec).onclick=async function(){
+    const urls=Gen.collectImageUrls(p);
+    const out=$('#probeOut',auditSec);
+    if(!urls.length){out.innerHTML='<span style="color:var(--txt2)">工程里没有图片链接可测。</span>';return}
+    this.disabled=true;const oldTxt=this.textContent;this.textContent='⏳ 探测中…';
+    const results=await Promise.all(urls.map(async x=>({...x,ok:await probeOne(x.url)})));
+    const bad=results.filter(r=>r.ok!==true);
+    out.innerHTML=(results.length-bad.length?`<div style="color:var(--txt2)">✓ 可加载 ${results.length-bad.length}/${results.length} 张</div>`:'')
+      +(bad.length?bad.map(r=>`<div style="color:var(--err)">✗ ${esc(r.at)}：<span style="word-break:break-all">${esc(r.url)}</span>${r.ok===false?'（加载失败）':'（超时，可能只是慢）'}</div>`).join(''):'<div style="color:var(--txt2)">全部图片可加载。</div>')
+      +'<div style="color:var(--txt2);font-size:11px">注：图床防盗链可能在真实环境仍失败，此处结果为参考。</div>';
+    this.disabled=false;this.textContent=oldTxt;
+  };
 }

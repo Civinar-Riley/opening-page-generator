@@ -1,5 +1,5 @@
 /* 区块编辑器：renderBlockBody（25 种区块的编辑表单 + 事件）+ 组件库插入/选择器弹窗（自 renderConfig.js 拆出） */
-import { esc, toast, confirmModal } from '../utils.js';
+import { esc, toast, confirmModal, copyText } from '../utils.js';
 import { COMP_LIB, BLOCK_PRESETS, applyBlockPreset, syncGateThemeCopy } from '../defs.js';
 import { Project } from '../project.js';
 import { UI } from './core.js';
@@ -148,6 +148,10 @@ export function renderBlockBody(container,b,i){
         </div>
         <div style="font-size:11px;color:var(--txt2);margin:4px 0">标题库条目内容每行格式：<code>序号|标题|描述</code>，序号从 0 开始（与列表徽标一致，0 即第 1 个开场白；旧的从 1 开始写法会自动识别兼容）。</div>
         ${bind('excludedTags','排除标签（逗号/顿号分隔，自动提取标题、描述、人名前剥除，如 status,设定）')}
+        ${b.titleBookDraft?`<div style="border:1px dashed var(--accent);border-radius:8px;padding:8px;margin:6px 0">
+          <div style="font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>📚 标题库草稿（${b.titleBookDraft.split('\n').length} 条，来自角色卡导入）——粘进世界书条目「${esc(b.titleEntry||'开场白标题库')}」${b.titleWb?`（世界书 ${esc(b.titleWb)}）`:''}</span><button type="button" class="btn ghost small" data-bkcopy="1">📋 复制</button>${typeof window.createWorldbook==='function'?'<button type="button" class="btn ghost small" data-bkwb="1">📤 写入世界书</button>':'<span>（世界书直写需在酒馆内打开工具）</span>'}</div>
+          <pre style="font-size:11px;max-height:120px;overflow:auto;margin:6px 0 0;white-space:pre-wrap">${esc(b.titleBookDraft)}</pre>
+        </div>`:''}
         <div><label>选项风格</label><select data-bkey="${i}.cardStyle">
           <option value="card"${b.cardStyle==='card'?' selected':''}>卡片式（底色块 + 边框 + 悬浮位移）</option>
           <option value="list"${b.cardStyle==='list'?' selected':''}>列表式（左侧竖线 + 紧凑行）</option>
@@ -182,6 +186,10 @@ export function renderBlockBody(container,b,i){
         afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
       });
+      const bkcopy=container.querySelector('[data-bkcopy]');
+      if(bkcopy)bkcopy.addEventListener('click',()=>{copyText(b.titleBookDraft);toast('标题库草稿已复制，粘进酒馆世界书条目即可')});
+      const bkwb=container.querySelector('[data-bkwb]');
+      if(bkwb)bkwb.addEventListener('click',()=>openTitlebookWriter(b));
       break;
     }
     case 'clockbar':
@@ -586,4 +594,55 @@ function openCompPicker(b,container,blockIdx){
   box.querySelector('[data-close]').addEventListener('click',()=>ov.remove());
   ov.addEventListener('click',e=>{if(e.target===ov)ov.remove()});
   setTimeout(()=>{kw.focus();box.tabIndex=-1;box.focus({preventScroll:true})},50);
+}
+
+/* 标题库草稿 → 酒馆世界书（v1.30，需酒馆环境；真机验证待办）：整份草稿写入一个专用条目
+   （content 每行「序号|标题|描述」，与运行时 loadTitleMap 对齐）；已存在同名条目先删后建，
+   不动书内其它条目。世界书不存在则自动创建。position 默认 before_character_definition，
+   可选 outlet（酒馆新插入位，4.8.1+ 兼容）。API 全走 window.* 守卫 + Promise 兼容。 */
+function openTitlebookWriter(b){
+  const APIS=['createWorldbook','getWorldbookNames','deleteWorldbookEntries','createWorldbookEntries'];
+  if(!APIS.every(n=>typeof window[n]==='function')){toast('未检测到酒馆助手世界书 API——请在酒馆内打开本工具');return}
+  const lines=(b.titleBookDraft||'').split('\n').filter(Boolean).length;
+  if(!lines){toast('标题库草稿为空');return}
+  const defWb=b.titleWb||('开场页标题库-'+((Project.cur&&Project.cur.name)||''));
+  const ov=document.createElement('div');
+  ov.className='opg-ov'; /* 自绘弹层统一标记（PITFALLS 26）：Ctrl+Z/Esc 守卫识别 */
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+  const box=document.createElement('div');
+  box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(460px,92vw);max-height:80vh;overflow:auto';
+  box.innerHTML=`<div style="font-weight:700;margin-bottom:8px">📤 标题库写入世界书</div>
+    <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">将 ${lines} 条草稿写入一个专用条目（整条 content，运行时按行解析「序号|标题|描述」）。已存在同名条目会先删除再创建，不影响书内其它条目。</div>
+    <div><label>世界书名（不存在将自动创建）</label><input id="twbName" value="${esc(defWb)}"></div>
+    <div><label>条目名 (comment/name)</label><input id="twbEntry" value="${esc(b.titleEntry||'开场白标题库')}"></div>
+    <label class="inline-check" style="margin:8px 0"><input type="checkbox" id="twbOutlet">插入到锚点 (Outlet)——仅新版酒馆支持，默认插入角色定义之前</label>
+    <div id="twbMsg" style="font-size:12px;min-height:16px"></div>
+    <div style="text-align:right;margin-top:10px"><button type="button" class="btn ghost small" data-close>取消</button> <button type="button" class="btn small" data-go>📤 写入</button></div>`;
+  ov.appendChild(box);document.body.appendChild(ov);
+  ov.addEventListener('click',e=>{if(e.target===ov||e.target.dataset.close!==undefined)ov.remove()});
+  box.querySelector('[data-go]').onclick=async()=>{
+    const wb=box.querySelector('#twbName').value.trim()||defWb;
+    const entryName=box.querySelector('#twbEntry').value.trim()||'开场白标题库';
+    const outlet=box.querySelector('#twbOutlet').checked;
+    const msg=box.querySelector('#twbMsg');
+    msg.style.color='var(--txt2)';msg.textContent='⏳ 写入中…';
+    const entry={name:entryName,content:b.titleBookDraft,enabled:true,position:{type:outlet?'outlet':'before_character_definition'}};
+    try{
+      const names=await Promise.resolve(window.getWorldbookNames());
+      if(!(names||[]).includes(wb)){
+        const ok=await Promise.resolve(window.createWorldbook(wb,[entry]));
+        if(ok===false)throw new Error('创建世界书失败');
+      }else{
+        /* 已有书：先删同名条目再建，保留书内其它条目（delete+create 两步，避免整本替换的误伤面） */
+        await Promise.resolve(window.deleteWorldbookEntries(wb,e=>e.name===entryName));
+        await Promise.resolve(window.createWorldbookEntries(wb,[entry]));
+      }
+      b.titleWb=wb;b.titleEntry=entryName;
+      Project.save();
+      ov.remove();
+      toast('标题库已写入「'+wb+'」/「'+entryName+'」——进对话验证开场白标题是否生效');
+    }catch(err){
+      msg.style.color='var(--err)';msg.textContent='❌ 写入失败：'+(err&&err.message||err);
+    }
+  };
 }
