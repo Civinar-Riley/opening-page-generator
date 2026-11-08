@@ -471,10 +471,10 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
     expect(html).toContain('await goGreeting(n,BTN_GI)');
     expect(html).not.toContain('d.map?d.map[n-1]');
   });
-  it('联动音轨：CFG.meta 注入 + 宿主文档挂载标记 + 穿透与降级结构',()=>{
+  it('联动音轨：CFG.meta 注入（含绑定标题）+ 宿主文档挂载标记 + 穿透与降级结构',()=>{
     const b={...gBase,entries:[{cover:'',audio:'https://x/a.mp3'},{cover:'',audio:''}]};
     const html=Gen.build(proj([b]),{isPreview:false});
-    expect(html).toContain('"meta":[{"cover":"","audio":"https://x/a.mp3"},{"cover":"","audio":""}]');
+    expect(html).toContain('"meta":[{"title":"","cover":"","audio":"https://x/a.mp3"},{"title":"","cover":"","audio":""}]');
     expect(html).toContain('data-opg-greet-audio');
     expect(html).toContain('function hostDoc()');
     expect(html).toContain('w.parent.document');
@@ -511,6 +511,93 @@ describe('Gen.build greetings 封面墙/排除标签/人名/联动音轨（v1.11
       /* 让 IIFE 尾部 loadTitleMap().then(loadGreetings) 的微任务链在 stub 还原前排空 */
       await new Promise(r=>setTimeout(r,0));
     }finally{globalThis.document=origDoc;globalThis.window=origWin;globalThis.setInterval=origSi}
+  });
+});
+
+describe('Gen.build greetings 搜索框/全文预览入口/aria-current（v1.32）',()=>{
+  const g6={type:'greetings',enabled:true,clickAction:'go',cardStyle:'card',buttonText:'开始',titleWb:'',titleEntry:'',entries:[],
+    placeholderList:'一｜1\n二｜2\n三｜3\n四｜4\n五｜5\n六｜6'};
+  it('占位条目 ≥6 渲染搜索框（data-opg=gsearch 带 data-gi），<6 不渲染',()=>{
+    const on=Gen.build(proj([g6]),{isPreview:true});
+    expect(on).toContain('data-opg="gsearch" data-gi="0"');
+    expect(on).toContain('aria-label="按标题、描述或人名过滤开场白"');
+    const off=Gen.build(proj([{...g6,placeholderList:'一\n二\n三\n四\n五'}]),{isPreview:true});
+    expect(off).not.toContain('data-opg="gsearch"');
+  });
+  it('每个列表项带 👁 全文预览热区（data-opg=gp），card 与 wall 两种风格都有',()=>{
+    const card=Gen.build(proj([g6]),{isPreview:true});
+    expect(card.match(/data-opg="gp"/g)).toHaveLength(6);
+    const wall=Gen.build(proj([{...g6,cardStyle:'wall'}]),{isPreview:true});
+    expect(wall.match(/data-opg="gp"/g)).toHaveLength(6);
+    expect(wall).toContain('aria-label="预览第 0 条开场白全文"');
+  });
+  it('运行时：搜索过滤按实例 data-gi 定位并在 renderList 后重放；aria-current 标当前条；gp 热区先于选项本体判断',()=>{
+    const html=Gen.build(proj([g6]),{isPreview:false});
+    expect(html).toContain("btn.setAttribute('aria-current',i===d.cur?'true':'false')");
+    expect(html).toContain("root.querySelector('[data-opg=\"gsearch\"][data-gi=\"'+gi+'\"]')");
+    expect(html).toContain('applyFilter(gi)');
+    expect(html).toContain("ev.target.closest('[data-opg=\"gp\"]')");
+    expect(html).toContain('function openPreview(');
+    expect(html).toContain("ov.setAttribute('role','dialog')");
+  });
+});
+
+describe('Gen.build 封面/音轨按标题绑定（v1.32）',()=>{
+  const gb={type:'greetings',enabled:true,clickAction:'go',cardStyle:'wall',buttonText:'开始',titleWb:'',titleEntry:'',entries:[],
+    placeholderList:'宁静的清晨｜晨光\n雨夜的邂逅｜大雨\n命运的转折｜抉择'};
+  it('按绑定标题命中：条目存放在任意位置都能绑到同名的开场白行',()=>{
+    const b={...gb,entries:[{title:'命运的转折',cover:'https://x/3.png',audio:''},{title:'宁静的清晨',cover:'https://x/1.png',audio:''}]};
+    const html=Gen.build(proj([b]),{isPreview:true});
+    expect(html).toContain('-gtitle">宁静的清晨</span>');
+    expect(html).toContain('-gcover" src="https://x/1.png"');
+    expect(html).toContain('-gcover" src="https://x/3.png"');
+    /* 静谧行（无绑定）不串绑：封面只出现两处 */
+    expect(html.match(/-gcover" src=/g)).toHaveLength(2);
+  });
+  it('未填标题的条目按序号回落（旧数据兼容）；序号位条目已绑定他条标题时跳过不串',()=>{
+    const legacy={...gb,entries:[{cover:'https://x/legacy.png',audio:''}]};
+    const html=Gen.build(proj([legacy]),{isPreview:true});
+    expect(html).toContain('-gcover" src="https://x/legacy.png"');
+    const skip={...gb,entries:[{title:'别的开场白',cover:'https://x/other.png',audio:''}]};
+    const html2=Gen.build(proj([skip]),{isPreview:true});
+    expect(html2).not.toContain('-gcover" src="https://x/other.png"');
+  });
+  it('运行时 metaFor 与 gen 侧 greetEntry 同规则（标题优先、序号回落、他条标题跳过）',()=>{
+    const html=Gen.build(proj([{...gb,entries:[{title:'雨夜的邂逅',cover:'https://x/2.png',audio:'https://x/2.mp3'}]}]),{isPreview:false});
+    expect(html).toContain('function metaFor(meta,i,title)');
+    expect(html).toContain('metaFor(META,i,td.title)');
+    expect(html).toContain('RES[gi][i]={cover:en.cover||\'\',audio:en.audio||\'\'}');
+    expect(html).toContain('metaFor((CFG[gi||0]||CFG[0]).meta,i,\'\')');
+  });
+});
+
+describe('Gen.buildFullDoc v2 配置快照（v1.32）',()=>{
+  it('data-opg-ver=2 + 内嵌 application/json 配置快照（含排版类字段，< 与 ` 已转义）',()=>{
+    const p=proj([{type:'welcome',enabled:true,title:'T',subtitle:'S',decoStyle:'boxed',showEyebrow:true,eyebrow:'E'}]);
+    const doc=Gen.buildFullDoc(p);
+    expect(doc).toContain('data-opg-ver="2"');
+    expect(doc).toContain('<script type="application/json" id="opg-cfg-json">');
+    expect(doc).toContain('"decoStyle":"boxed"');
+    /* 快照锚 id 含连字符：不命中解析器的 opg-[a-z0-9]+ 容器锚，不会被误当成容器 */
+    expect(doc.match(/id="opg-[a-z0-9]+"/)[0]).not.toContain('cfg');
+    expect(doc).not.toMatch(/data-opg-ver="1"/);
+  });
+  it('停用区块内容里的 ``` 不再误触围栏升级（快照内反引号 \\u0060 转义，JSON.parse 还原）',()=>{
+    const p=defaultProject('t');
+    const fb=p.blocks.find(b=>b.type==='freehtml');
+    fb.enabled=false;fb.html='<div>```code```</div>';
+    expect(Gen.fencedFullDoc(p).startsWith('```\n')).toBe(true);
+    expect(Gen.buildFullDoc(p)).toContain('\\u0060\\u0060\\u0060');
+    fb.enabled=true;
+    expect(Gen.fencedFullDoc(p).startsWith('````\n')).toBe(true);
+  });
+  it('快照随 fencedFullDoc/regexScript 同源携带（正则版可回读）',()=>{
+    const p=proj([{type:'gallery',enabled:true,cols:'4',images:[{url:'a.png',cap:''}]}]);
+    const fenced=Gen.fencedFullDoc(p);
+    expect(fenced).toContain('id="opg-cfg-json"');
+    const rs=Gen.regexScript(p);
+    expect(rs.replaceString).toContain('id="opg-cfg-json"');
+    expect(rs.replaceString).toContain('"cols":"4"');
   });
 });
 
@@ -1295,7 +1382,7 @@ describe('Gen.build 回归修复批次（停用注入/多实例/宏双轨/序号
     expect(html).toContain('"act":"button"');
     expect(html).toContain('"wall":false');
     expect(html).toContain('"wall":true');
-    expect(html).toContain('"meta":[{"cover":"https://x/c.png","audio":""}]');
+    expect(html).toContain('"meta":[{"title":"","cover":"https://x/c.png","audio":""}]');
   });
   it('greetings 多实例运行时：renderList 同步全部 glist，点击按所属实例取配置',()=>{
     const html=Gen.build(proj([

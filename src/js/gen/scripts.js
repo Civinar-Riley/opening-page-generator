@@ -65,6 +65,9 @@ export function comicReader(px){
     var rb=rbodyOf(rd);
     if(rb&&!pagedOf(rd))rb.scrollTop=0;
     show(rd,0);
+    /* 焦点移入弹层：键盘用户 Esc/Tab 从阅读器内开始，而非留在被遮住的触发钮上 */
+    var cb=rd.querySelector('[data-opg="comic-close"]');
+    if(cb)try{cb.focus()}catch(e){}
   }
   function closeRd(){
     if(!cur)return;
@@ -226,7 +229,8 @@ export function script(p,px){
       act:g.clickAction||'go',
       wall:g.cardStyle==='wall',
       names:g.showNames!==false,
-      meta:(Array.isArray(g.entries)?g.entries:[]).map(e=>({cover:String(e&&e.cover||''),audio:String(e&&e.audio||'')})),
+      /* title：封面/音轨的绑定标题（与列表标题一致才命中；空=按序号回落，旧数据兼容） */
+      meta:(Array.isArray(g.entries)?g.entries:[]).map(e=>({title:String(e&&e.title||''),cover:String(e&&e.cover||''),audio:String(e&&e.audio||'')})),
     }));
     const titleWb=greets[0]?.titleWb||'',titleEntry=greets[0]?.titleEntry||'开场白标题库';
     const btnGreet=greets.find(g=>(g.clickAction||'go')==='button')||greets[0];
@@ -328,6 +332,15 @@ export function script(p,px){
   var TITLE_WB=${jss(titleWb||'')},TITLE_ENTRY=${jss(titleEntry||'')};
   /* 排除标签（全实例并集）+ 各实例配置 + 按钮模式所属实例序号（见 gen 层 script()） */
   var TAGS=${jss(tags)},CFG=${jss(cfg)},BTN_GI=${btnGi};
+  /* ---------- 封面/音轨 ↔ 开场白绑定：先按绑定标题精确匹配（卡里插删/重排不错位），
+     未命中按序号回落——序号位条目若已绑定他条标题则跳过不串。
+     与 gen/body.js 的 greetEntry 同一规则，改动须两处同步 ---------- */
+  function metaFor(meta,i,title){
+    if(title){for(var k=0;k<meta.length;k++)if(meta[k]&&meta[k].title===title)return meta[k]}
+    var at=meta[i];
+    return (at&&!at.title)?at:null;
+  }
+  var RES=[]; /* 每实例按列表序解析好的封面/音轨（renderList 填充，切换成功后播音轨消费） */
   /* 剥除作者配置的排除标签：整块元素连内容删掉；自闭合/孤立开、孤立闭标签单独删
      （标签名已经 gen 侧白名单校验，无需再转义正则元字符） */
   function stripTags(text){
@@ -377,8 +390,8 @@ export function script(p,px){
   }
   var gAudio=null;
   function playGreetAudio(i,gi){
-    var meta=(CFG[gi||0]||CFG[0]).meta;
-    var url=(meta[i]&&meta[i].audio)||'';
+    var en=(RES[gi]&&RES[gi][i])||metaFor((CFG[gi||0]||CFG[0]).meta,i,'')||{};
+    var url=en.audio||'';
     if(!url){stopGreetAudio();return}
     try{
       var doc=hostDoc()||document;
@@ -436,29 +449,43 @@ export function script(p,px){
   var lastSig=null;
   function swipeSig(d){return JSON.stringify([d.cur,d.list])}
   function renderList(d){
+    RES=[];
     /* 多实例：同步全部开场白列表，各实例按 data-gi 取自己的风格/封面/人名配置 */
     Array.prototype.forEach.call(root.querySelectorAll('[data-opg="glist"]'),function(listEl){
-      var cfg=CFG[+listEl.getAttribute('data-gi')||0]||CFG[0];
+      var gi=+listEl.getAttribute('data-gi')||0;
+      var cfg=CFG[gi]||CFG[0];
       var WALL=cfg.wall,NAMES=cfg.names,META=cfg.meta;
+      RES[gi]=[];
       listEl.innerHTML='';
       d.list.forEach(function(msg,i){
         var td=(titleMap&&titleMap[i])?titleMap[i]:extractTitleDesc(msg);
         var btn=document.createElement('button');
         btn.type='button';btn.className=PX+'-gitem'+(WALL?' '+PX+'-gwallitem':'')+(i===d.cur?' '+PX+'-gcur':'');
         btn.setAttribute('data-opg','g');btn.setAttribute('data-i',i);
+        /* 键盘/读屏用户锚定当前位置：当前条带 aria-current */
+        btn.setAttribute('aria-current',i===d.cur?'true':'false');
+        var en=metaFor(META,i,td.title)||{};
+        RES[gi][i]={cover:en.cover||'',audio:en.audio||''};
         var main=document.createElement('span');main.className=PX+'-gmain';
         var t1=document.createElement('span');t1.className=PX+'-gtitle';t1.textContent=td.title;
         main.appendChild(t1);
         if(td.desc){var t2=document.createElement('span');t2.className=PX+'-gdesc';t2.textContent=td.desc;main.appendChild(t2)}
         var names=NAMES?extractNames(msg):[];
         if(names.length){var n3=document.createElement('span');n3.className=PX+'-gnames';n3.textContent=names.join(' · ');main.appendChild(n3)}
+        /* 全文预览入口：独立热区，点它不触发切换/填入（点击委托先查 data-opg="gp"） */
+        var mkPrev=function(){
+          var pv=document.createElement('span');pv.className=PX+'-gprev';
+          pv.setAttribute('data-opg','gp');pv.setAttribute('data-i',i);
+          pv.setAttribute('title','预览全文');pv.setAttribute('aria-label','预览第 '+i+' 条开场白全文');
+          pv.textContent='👁';return pv;
+        };
         if(WALL){
           /* 封面墙条目：渐变回落层垫底，img 加载失败隐藏后自然露出（与占位渲染同构） */
           var wrap=document.createElement('span');wrap.className=PX+'-gcoverwrap';
           var ph=document.createElement('span');ph.className=PX+'-gcoverph';
           var pn=document.createElement('span');pn.className=PX+'-gphnum';pn.textContent=GNUM[i]||String(i);
           ph.appendChild(pn);wrap.appendChild(ph);
-          var cv=(META[i]&&META[i].cover)||'';
+          var cv=RES[gi][i].cover;
           if(cv){
             var img=document.createElement('img');img.className=PX+'-gcover';
             img.setAttribute('loading','lazy');img.setAttribute('alt','');img.src=cv;
@@ -466,17 +493,35 @@ export function script(p,px){
             wrap.appendChild(img);
           }
           var n1=document.createElement('span');n1.className=PX+'-gnum';n1.textContent=GNUM[i]||String(i);
-          wrap.appendChild(n1);btn.appendChild(wrap);
+          wrap.appendChild(n1);wrap.appendChild(mkPrev());btn.appendChild(wrap);
         }else{
           var n0=document.createElement('span');n0.className=PX+'-gnum';n0.textContent=GNUM[i]||String(i);
           btn.appendChild(n0);
         }
         btn.appendChild(main);
+        if(!WALL)btn.appendChild(mkPrev());
         listEl.appendChild(btn);
       });
+      /* 重建后重放搜索关键词，防 3 秒轮询把过滤结果冲掉 */
+      applyFilter(gi);
     });
     lastSig=swipeSig(d);
   }
+  /* 搜索过滤：按项内可见文本（标题/描述/人名/序号）纯 DOM 匹配，无 API 依赖——
+     占位静态列表与运行时渲染列表同样生效 */
+  function applyFilter(gi){
+    var sin=root.querySelector('[data-opg="gsearch"][data-gi="'+gi+'"]');
+    var listEl=root.querySelector('[data-opg="glist"][data-gi="'+gi+'"]');
+    if(!sin||!listEl)return;
+    var kw=String(sin.value||'').trim().toLowerCase();
+    Array.prototype.forEach.call(listEl.querySelectorAll('[data-opg="g"]'),function(b){
+      b.style.display=(!kw||String(b.textContent).toLowerCase().indexOf(kw)>=0)?'':'none';
+    });
+  }
+  root.addEventListener('input',function(ev){
+    var s=ev.target&&ev.target.closest?ev.target.closest('[data-opg="gsearch"]'):null;
+    if(s)applyFilter(+s.getAttribute('data-gi')||0);
+  });
   async function loadGreetings(){
     var d=await getSwipes();
     if(!d)return; /* 无 API 环境：保留占位列表 */
@@ -524,7 +569,67 @@ export function script(p,px){
     if(!_lastSwipes)_lastSwipes=await getSwipes();
     return _lastSwipes?(_lastSwipes.list[i]||''):'';
   }
+  /* 选中（send 模式）：页内点选与预览弹层共用 */
+  function selectGreet(i,gi){
+    selIdx=i;
+    root.querySelectorAll('[data-opg="g"]').forEach(function(b){b.style.outline=''});
+    var el=root.querySelector('[data-opg="glist"][data-gi="'+gi+'"] [data-opg="g"][data-i="'+i+'"]');
+    if(el)el.style.outline='2px solid currentColor';
+  }
+  /* 填入输入框（insert 模式）：页内点选与预览弹层共用 */
+  function doInsert(msg){
+    if(hasFn('triggerSlash')){try{var r=triggerSlash('/setinput '+slashArg(msg));if(r&&typeof r.catch==='function')r.catch(function(){note('填入输入框失败')})}catch(e){note('填入输入框失败')}}
+    else note('未检测到酒馆助手 API，无法填入');
+  }
+  /* ---------- 全文预览弹层：先读全文再决定，防「点错直接切走」。
+     动作按所属实例的点击行为分派（go/button→切换、insert→填入、send→选中）；
+     全文实时读卡（不走 _lastSwipes 缓存，防陈旧），无 API 时读不到给提示 ---------- */
+  function openPreview(i,gi){
+    getSwipes().then(function(d){
+      var msg=(d&&d.list&&d.list[i])||'';
+      if(!msg){note('未检测到酒馆助手 API，无法读取开场白全文');return}
+      var td=(titleMap&&titleMap[i])?titleMap[i]:extractTitleDesc(msg);
+      var cfg=CFG[gi]||CFG[0];
+      var ov=document.createElement('div');
+      ov.setAttribute('data-opg','gpov');ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
+      ov.setAttribute('aria-label','开场白预览：'+(td.title||('第 '+i+' 条')));
+      ov.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(6,7,14,.88);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+      var box=document.createElement('div');
+      box.style.cssText='background:rgba(18,19,28,.97);border:1px solid rgba(255,255,255,.18);border-radius:12px;width:min(560px,94vw);max-height:82vh;display:flex;flex-direction:column;color:#e8e6e0;font-size:13px;line-height:1.8;box-shadow:0 18px 50px rgba(0,0,0,.6)';
+      var hd=document.createElement('div');
+      hd.style.cssText='flex:none;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.12);font-weight:700;overflow-wrap:anywhere';
+      hd.textContent=td.title||('开场白 '+i);
+      var bd=document.createElement('div');
+      bd.style.cssText='flex:1;min-height:0;overflow:auto;padding:12px 16px;white-space:pre-wrap;overflow-wrap:anywhere';
+      bd.textContent=msg;
+      var ft=document.createElement('div');
+      ft.style.cssText='flex:none;padding:10px 16px;border-top:1px solid rgba(255,255,255,.12);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+      var mkBtn=function(label,primary){
+        var b=document.createElement('button');b.type='button';b.textContent=label;
+        b.style.cssText='padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid '+(primary?'transparent':'rgba(255,255,255,.25)')+';background:'+(primary?'#e8e6e0':'transparent')+';color:'+(primary?'#14141e':'inherit');
+        return b;
+      };
+      if(cfg.act==='go'||cfg.act==='button'){var b1=mkBtn('✓ 切换到此开场白',true);b1.addEventListener('click',function(){closePv();goGreeting(i,gi)});ft.appendChild(b1)}
+      else if(cfg.act==='insert'){var b2=mkBtn('✓ 填入输入框',true);b2.addEventListener('click',function(){closePv();doInsert(msg)});ft.appendChild(b2)}
+      else if(cfg.act==='send'){var b3=mkBtn('✓ 选中此项（再点发送按钮）',true);b3.addEventListener('click',function(){selectGreet(i,gi);closePv()});ft.appendChild(b3)}
+      var bx=mkBtn('关闭',false);bx.addEventListener('click',closePv);ft.appendChild(bx);
+      box.appendChild(hd);box.appendChild(bd);box.appendChild(ft);
+      ov.appendChild(box);document.body.appendChild(ov);
+      ov.addEventListener('click',function(ev2){if(ev2.target===ov)closePv()});
+      function onKey(e2){if(e2.key==='Escape')closePv()}
+      document.addEventListener('keydown',onKey);
+      function closePv(){if(ov.parentNode)ov.parentNode.removeChild(ov);document.removeEventListener('keydown',onKey)}
+      try{bx.focus()}catch(e){}
+    });
+  }
   root.addEventListener('click',async function(ev){
+    /* 全文预览热区在最内层，先于选项本体判断（gp 在 gitem 内，closest('g') 也会命中） */
+    var pv=ev.target.closest?ev.target.closest('[data-opg="gp"]'):null;
+    if(pv){
+      var gpEl=pv.closest('[data-gi]'),gpi=gpEl?(+gpEl.getAttribute('data-gi')||0):0;
+      openPreview(parseInt(pv.getAttribute('data-i'),10),gpi);
+      return;
+    }
     var item=ev.target.closest('[data-opg="g"]');
     if(item){
       var gEl=item.closest('[data-gi]'),gi=gEl?(+gEl.getAttribute('data-gi')||0):0;
@@ -535,12 +640,9 @@ export function script(p,px){
       if(cfg.act==='go'||cfg.act==='button'){await goGreeting(i,gi)}
       else if(cfg.act==='insert'){
         var msg=await getGreetingText(i);
-        if(msg&&hasFn('triggerSlash')){try{await triggerSlash('/setinput '+slashArg(msg))}catch(e){note('填入输入框失败')}}
-        else if(!hasFn('triggerSlash')){note('未检测到酒馆助手 API，无法填入')}
+        if(msg)doInsert(msg);
       }else if(cfg.act==='send'){ /* send 模式：先选中再点按钮 */
-        selIdx=i;
-        root.querySelectorAll('[data-opg="g"]').forEach(function(b){b.style.outline=''});
-        item.style.outline='2px solid currentColor';
+        selectGreet(i,gi);
       }
       return;
     }

@@ -164,16 +164,18 @@ export function renderBlockBody(container,b,i){
           <option value="button"${b.clickAction==='button'?' selected':''}>页内列表 + 注入酒馆按钮（输入序号快速跳转，极简页适用）</option>
         </select></div>
         ${bind('buttonText','按钮文字（发送模式发送钮 / 按钮模式注册钮名）')}
-        <div style="margin-top:8px"><label>封面与音轨（按开场白序号对应）</label></div>`;
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><label style="flex:1">封面与音轨（按绑定标题对应开场白，未填标题的项按序号回落）</label>${b.entries.length?`<button type="button" class="btn ghost small" data-gesync="1">📋 按占位列表补标题</button>`:''}</div>`;
+        const lineTitles=String(b.placeholderList||'').split('\n').map(s=>s.trim().split(/[｜|]/)[0].trim());
         b.entries.forEach((en,ei)=>{
           h+=`<div style="border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:4px 0">
-            <div style="display:flex;align-items:center"><span style="font-size:11px;color:var(--accent);font-weight:600">第 ${ei+1} 个开场白</span><button type="button" data-gedel="${ei}" style="margin-left:auto;background:none;border:none;color:var(--err);font-size:14px">✕</button></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0">
+            <div style="display:flex;align-items:center"><span style="font-size:11px;color:var(--accent);font-weight:600">第 ${ei+1} 项${en.title?` · ${esc(en.title)}`:''}</span><button type="button" data-gedel="${ei}" style="margin-left:auto;background:none;border:none;color:var(--err);font-size:14px">✕</button></div>
+            <div style="margin:4px 0"><input data-gef="${ei}.title" value="${esc(en.title||'')}" placeholder="${esc(lineTitles[ei]||'开场白标题（与列表标题一致才会命中）')}"></div>
+            <div class="row2" style="gap:6px">
               <input data-gef="${ei}.cover" value="${esc(en.cover||'')}" placeholder="封面图 URL（可空）">
               <input data-gef="${ei}.audio" value="${esc(en.audio||'')}" placeholder="联动音轨 URL（可空）">
             </div></div>`;
         });
-        h+=`<div style="font-size:11px;color:var(--txt2);margin:4px 0">序号对应角色卡开场白顺序，开场白数多于配置项时多余项用默认样式；联动音轨在<strong>点击切换开场白成功后</strong>播放（挂宿主文档，切换楼层不中断），选中未配音轨的开场白时停止。与 BGM 区块同时使用会叠播，请自行取舍。</div>
+        h+=`<div style="font-size:11px;color:var(--txt2);margin:4px 0">绑定标题需与开场白列表标题一致（自动提取时为开场白首行，标题库覆盖时为库内标题）——填了标题的项按标题匹配，卡里插入/删除/重排开场白不再错位；未填标题的项按序号对位（旧数据兼容，序号对应角色卡开场白顺序）。开场白数多于配置项时多余项用默认样式；联动音轨在<strong>点击切换开场白成功后</strong>播放（挂宿主文档，切换楼层不中断），选中未配音轨的开场白时停止。与 BGM 区块同时使用会叠播，请自行取舍。</div>
         <button type="button" class="btn ghost small" data-geadd="1" style="margin-top:6px">＋ 添加一项</button>`;
         container.innerHTML=h;
       };
@@ -181,10 +183,26 @@ export function renderBlockBody(container,b,i){
       bindListEditor(container,b.entries,{
         delAttr:'gedel',addAttr:'geadd',fieldAttr:'gef',build,
         confirmMsg:'删除该项的封面与音轨配置？',
-        createItem:()=>({cover:'',audio:''}),
+        createItem:()=>({title:'',cover:'',audio:''}),
         afterDel:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
+      });
+      /* 按占位列表补标题（挂 container 事件委托：bindListEditor 重建 DOM 后按钮仍有效）：
+         为空标题的条目按序号补上对应占位行的标题，把旧数据的序号绑定升级为标题绑定 */
+      container.addEventListener('click',e=>{
+        if(e.target.dataset.gesync===undefined)return;
+        const lines=String(b.placeholderList||'').split('\n').map(s=>s.trim()).filter(Boolean);
+        let n=0;
+        lines.forEach((ln,i)=>{
+          const t=ln.split(/[｜|]/)[0].trim();
+          if(!t)return;
+          while(b.entries.length<=i)b.entries.push({title:'',cover:'',audio:''});
+          if(!b.entries[i].title){b.entries[i].title=t;n++}
+        });
+        build();
+        if(n){UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();toast(`已为 ${n} 项补上绑定标题`)}
+        else toast('没有需要补的空标题');
       });
       const bkcopy=container.querySelector('[data-bkcopy]');
       if(bkcopy)bkcopy.addEventListener('click',()=>{copyText(b.titleBookDraft);toast('标题库草稿已复制，粘进酒馆世界书条目即可')});

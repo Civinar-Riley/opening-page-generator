@@ -110,7 +110,8 @@ describe('docImport 导出反向解析',()=>{
     expect(gt.logo).toBe('VAULT-07');
     expect(B2('decode').lines).toBe('信号一行\n信号二行');
     expect(B2('gacha').title).toBe('命运卡池');
-    expect(B2('gacha').cards).toBe('SSR|剑|描述A\nR|尘');
+    /* v2 快照路径：区块字段原样回填，全角｜不做归一（salvage 才会转半角） */
+    expect(B2('gacha').cards).toBe('SSR｜剑｜描述A\nR｜尘');
     const eg=B2('egg');
     expect(eg.lines).toBe('彩蛋一\n彩蛋二');
     expect(eg.count).toBe(3);
@@ -178,33 +179,99 @@ describe('docImport 导出反向解析',()=>{
     expect(()=>parseExportDoc('')).toThrow(/opg-/);
   });
 
-  it('同类多实例：开场白列表行合并，标量首见生效',()=>{
+  it('同类多实例：v2 快照逐实例保留不合并；旧导出（剥快照）salvage 合并行、标量首见生效',()=>{
     const p=defaultProject('多实例');
     p.blocks.forEach(b=>{b.enabled=b.type==='greetings'||b.type==='quote'});
     p.blocks.find(b=>b.type==='quote').text='第一条引言';
     p.blocks.push({type:'greetings',enabled:true,placeholderList:'额外线｜额外描述',clickAction:'go'});
-    const parsed=parseExportDoc(Gen.buildFullDoc(p));
-    const greets=parsed.items.filter(i=>i.type==='greetings');
-    expect(greets).toHaveLength(2);
-    const p2=defaultProject('合并目标');
+    const doc=Gen.buildFullDoc(p);
+    /* v2：两个 greetings 实例作为独立区块原样落位（多实例不再被迫合并） */
+    const parsed=parseExportDoc(doc);
+    const p2=defaultProject('快照目标');
     applyRestorePlan(p2,parsed,['greetings','quote']);
-    const gr=p2.blocks.find(b=>b.type==='greetings');
+    const greets2=p2.blocks.filter(b=>b.type==='greetings');
+    expect(greets2).toHaveLength(2);
+    expect(greets2[0].enabled).toBe(true);
+    expect(greets2[1].placeholderList).toContain('额外线｜额外描述');
+    const qu2=p2.blocks.find(b=>b.type==='quote');
+    expect(qu2.enabled).toBe(true);
+    expect(qu2.text).toBe('第一条引言');
+    /* 旧导出（剥掉配置快照模拟 v1）：salvage 路径合并两实例行回单区块 */
+    const oldDoc=doc.replace(/<script type="application\/json" id="opg-cfg-json">[\s\S]*?<\/script>/,'');
+    const parsedOld=parseExportDoc(oldDoc);
+    const greets=parsedOld.items.filter(i=>i.type==='greetings');
+    expect(greets).toHaveLength(2);
+    const p3=defaultProject('合并目标');
+    applyRestorePlan(p3,parsedOld,['greetings','quote']);
+    const gr=p3.blocks.find(b=>b.type==='greetings');
     expect(gr.enabled).toBe(true);
     expect(gr.placeholderList).toContain('额外线｜额外描述');
     /* 首实例恢复出的正是 create() 默认样本（被替换而非拼积），第二实例追加 */
     expect(gr.placeholderList.split('\n')).toHaveLength(4);
-    const qu=p2.blocks.find(b=>b.type==='quote');
-    expect(qu.enabled).toBe(true);
-    expect(qu.text).toBe('第一条引言');
+    expect(p3.blocks.find(b=>b.type==='quote').text).toBe('第一条引言');
+  });
+
+  it('v2 快照完整往返：salvage 认不回的排版/样式/开关配置原样恢复',()=>{
+    const p=defaultProject('快照往返');
+    const B=t=>p.blocks.find(b=>b.type===t);
+    p.blocks.forEach(b=>{b.enabled=true});
+    Object.assign(B('welcome'),{decoStyle:'stamp',showEyebrow:true,eyebrow:'E'});
+    Object.assign(B('gallery'),{cols:'4'});
+    Object.assign(B('clockbar'),{color:'#ff8800',size:22,align:'left',glow:false});
+    Object.assign(B('greetings'),{cardStyle:'list',clickAction:'insert',excludedTags:'status',
+      entries:[{title:'宁静的清晨',cover:'https://example.com/g1.png',audio:'https://example.com/a.mp3'}]});
+    const parsed=parseExportDoc(Gen.buildFullDoc(p));
+    expect(parsed.cfg).toBeTruthy();
+    expect(parsed.cfg.theme).toEqual(p.theme);
+    const p2=defaultProject('恢复目标');
+    applyRestorePlan(p2,parsed,['welcome','gallery','clockbar','greetings']);
+    const B2=t=>p2.blocks.find(b=>b.type===t);
+    expect(B2('welcome').decoStyle).toBe('stamp');
+    expect(B2('welcome').showEyebrow).toBe(true);
+    expect(B2('gallery').cols).toBe('4');
+    expect(B2('clockbar')).toMatchObject({color:'#ff8800',size:22,align:'left',glow:false});
+    const gr=B2('greetings');
+    expect(gr.cardStyle).toBe('list');
+    expect(gr.clickAction).toBe('insert');
+    expect(gr.excludedTags).toBe('status');
+    /* 封面/音轨连绑定标题一起原样回位（标题绑定跨导出仍然命中） */
+    expect(gr.entries).toEqual([{title:'宁静的清晨',cover:'https://example.com/g1.png',audio:'https://example.com/a.mp3'}]);
+  });
+
+  it('勾选摘要：v2 标注完整恢复；旧导出逐区块点名按默认项',()=>{
+    const p=defaultProject('摘要');
+    p.blocks.forEach(b=>{b.enabled=b.type==='gallery'||b.type==='clockbar'});
+    Object.assign(p.blocks.find(b=>b.type==='gallery'),{cols:'2',images:[{url:'a.png',cap:''},{url:'b.png',cap:''}]});
+    const plan=buildRestorePlan(parseExportDoc(Gen.buildFullDoc(p)));
+    expect(plan.items.find(i=>i.id==='gallery').detail).toContain('完整恢复');
+    expect(plan.recognized).toBe(plan.total);
+    const oldDoc=Gen.buildFullDoc(p).replace(/<script type="application\/json" id="opg-cfg-json">[\s\S]*?<\/script>/,'');
+    const planOld=buildRestorePlan(parseExportDoc(oldDoc));
+    expect(planOld.items.find(i=>i.id==='gallery').detail).toContain('列数按默认');
+    expect(planOld.items.find(i=>i.id==='clockbar').detail).toContain('颜色/字号/对齐/辉光按默认');
+  });
+
+  it('v2 快照损坏（JSON 不合法）回落 salvage 轻量恢复',()=>{
+    const doc=Gen.buildFullDoc(buildRichProject())
+      .replace(/(<script type="application\/json" id="opg-cfg-json">)[\s\S]*?(<\/script>)/,'$1not-json{$2');
+    const parsed=parseExportDoc(doc);
+    expect(parsed.cfg).toBe(null);
+    expect(parsed.items.length).toBeGreaterThan(0);
+    const p2=defaultProject('兜底');
+    const sum=applyRestorePlan(p2,parsed,['welcome']);
+    expect(sum).toContain('欢迎 / 标题区');
+    expect(p2.blocks.find(b=>b.type==='welcome').title).toBe('欢迎标题 A&B<C');
   });
 
   it('buildRestorePlan 按类型聚合并给出勾选摘要',()=>{
     const parsed=parseExportDoc(Gen.buildFullDoc(buildRichProject()));
     const plan=buildRestorePlan(parsed);
-    expect(plan.total).toBe(parsed.items.length);
+    /* v2 快照路径：total=快照区块数（含 decor 空壳与停用块，均完整还原），不再等于 salvage 识别数 */
+    expect(plan.total).toBe(parsed.cfg.blocks.length);
     expect(plan.recognized).toBe(plan.total);
     const greet=plan.items.find(i=>i.id==='greetings');
     expect(greet.label).toContain('开场白选择区');
+    expect(greet.detail).toContain('完整恢复');
     expect(greet.detail).toContain('2 条开场白');
     expect(greet.detail).toContain('1 张封面');
   });

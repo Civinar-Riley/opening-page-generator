@@ -218,6 +218,14 @@ ${bk} .${px}-disc summary{cursor:pointer;user-select:none}
           break;
         case 'greetings':
           s+=`
+${bk} .${px}-gsearch{margin:10px 0 2px}
+${bk} .${px}-gsearch input{width:100%;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid ${th.primary}55;background:rgba(255,255,255,.07);color:inherit;font-size:13px;outline:none;font-family:inherit}
+${bk} .${px}-gsearch input::placeholder{color:inherit;opacity:.45}
+${bk} .${px}-gsearch input:focus{border-color:${th.accent}}
+${bk} .${px}-gprev{flex:none;cursor:pointer;font-size:13px;line-height:1;padding:2px 5px;border-radius:6px;opacity:.4;transition:opacity .15s;user-select:none}
+${bk} .${px}-gprev:hover{opacity:1!important;background:rgba(255,255,255,.14)}
+${bk} .${px}-gitem:hover .${px}-gprev{opacity:.85}
+${bk} .${px}-glist .${px}-gprev{margin-left:auto}
 ${bk} .${px}-glist{margin:12px 0;display:flex;flex-direction:column;gap:${b.cardStyle==='list'?'2px':'8px'}}
 ${bk} .${px}-gitem{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.07);border:1px solid ${th.primary}55;border-radius:8px;padding:10px 14px;cursor:pointer;transition:all .15s;font-size:13px;line-height:1.5;color:inherit;text-align:left;width:100%}
 ${bk} .${px}-gitem:hover{border-color:${th.accent};background:rgba(255,255,255,.13);transform:translateX(3px)}
@@ -256,6 +264,7 @@ ${bk} .${px}-gphnum{position:absolute;right:8px;bottom:-7px;font-size:46px;font-
 ${bk} .${px}-gwallitem .${px}-gnum{position:absolute;top:6px;left:6px;z-index:1;min-width:0;font-size:12px;line-height:1;padding:3px 8px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;opacity:1}
 ${bk} .${px}-gwallitem.${px}-gcur .${px}-gnum,${bk} .${px}-gwallitem:hover .${px}-gnum{color:${th.accent}}
 ${bk} .${px}-gwallitem .${px}-gmain{padding:8px 10px 10px}
+${bk} .${px}-gwallitem .${px}-gprev{position:absolute;right:8px;bottom:8px;z-index:2;margin-left:0;background:rgba(0,0,0,.55);opacity:1}
 ${bk} .${px}-gwallitem .${px}-gtitle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 ${bk} .${px}-gwallitem .${px}-gdesc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 ${bk} .${px}-gcur{box-shadow:0 0 0 1.5px ${th.accent},0 6px 18px ${th.accent}33}
@@ -569,7 +578,8 @@ ${bk} .${px}-gate{animation:none!important}
             /* 年龄验证主题「准入审查站」：警示斜纹 + 面板卡片 + 18+ 印章徽章，全走主题令牌
                随 6 套页面主题变色；类名独立 -gage* 前缀，与经典主题同工程共存不互扰 */
             s+=`
-.${px}-gageck{display:none}
+.${px}-gageck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gageck:focus-visible ~ .${px}-gagecover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gagecover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(140% 100% at 50% 0%,${th.primary}33,rgba(6,7,14,0) 60%),rgba(6,7,14,.96);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .5s ease,visibility .5s ease`}}
 .${px}-gagepanel{position:relative;width:100%;max-width:400px;padding:36px 26px 26px;background:rgba(14,15,24,.92);border:1px solid rgba(255,255,255,.12);border-radius:${radius}px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.8)}
 .${px}-gagestripe{position:absolute;top:0;left:0;right:0;height:6px;background:repeating-linear-gradient(-45deg,${th.accent} 0 10px,rgba(0,0,0,0) 10px 20px);opacity:.7}
@@ -600,7 +610,8 @@ ${bk} .${px}-gate{animation:none!important}
                ::before 层——:checked 后随幕布滑出淡出（否则半透明幕布下黑底残留成新遮挡），
                封面本体只做 visibility 切换（:checked 后 pointer-events:none 让滑出不被拦截） */
             s+=`
-.${px}-gcurck{display:none}
+.${px}-gcurck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gcurck:focus-visible ~ .${px}-gcurcover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gcurcover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:24px;color:${cText};text-align:center;cursor:pointer;overflow:hidden}
 .${px}-gcurcover::before{content:"";position:absolute;inset:0;background:radial-gradient(140% 100% at 50% 0%,${th.primary}2a,rgba(6,7,14,0) 62%),rgba(6,7,14,.96)${motion==='off'?'':`;transition:opacity .45s ease .18s`}}
 .${px}-gcurl,.${px}-gcurr{position:absolute;top:0;bottom:0;width:52%;background:repeating-linear-gradient(90deg,${th.primary}44 0 26px,${th.primary}22 26px 52px),linear-gradient(180deg,${th.primary}66,${th.primary}18);box-shadow:inset 0 0 60px rgba(0,0,0,.55)${motion==='off'?'':`;transition:transform .75s cubic-bezier(.65,0,.35,1)`}}
@@ -625,7 +636,8 @@ ${bk} .${px}-gate{animation:none!important}
             /* 封印法阵「符文消散」：虚线外环慢转 + conic 刻度环 + 内环，中心菱形徽记；
                揭示 = 整个封印 scale 扩散 + 封面淡出（纯 CSS 两段联动） */
             s+=`
-.${px}-gsealck{display:none}
+.${px}-gsealck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gsealck:focus-visible ~ .${px}-gsealcover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gsealcover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background:radial-gradient(100% 75% at 50% 42%,${th.primary}33,rgba(6,7,14,0) 70%),rgba(6,7,14,.97);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .55s ease,visibility .55s ease`}}
 .${px}-gsealmark{position:relative;width:min(66vw,240px);height:min(66vw,240px);display:flex;align-items:center;justify-content:center;flex:none${motion==='off'?'':`;transition:transform .55s ease,opacity .55s ease`}}
 .${px}-gsealring{position:absolute;inset:0;border:2px dashed ${th.accent};border-radius:50%;opacity:.75${motion==='off'?'':`;animation:${px}-gsealspin 14s linear infinite`}}
@@ -649,7 +661,8 @@ ${bk} .${px}-gate{animation:none!important}
             /* 机密金库「转轮开启」：拉丝钢板 + 四角铆钉 + 四辐转轮（accent 描边 + 钢印编号）。
                揭示 = 转轮先转 540°，封面随后整扇升起 translateY(-101%)（视觉上限延迟交错） */
             s+=`
-.${px}-gvaultck{display:none}
+.${px}-gvaultck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gvaultck:focus-visible ~ .${px}-gvaultcover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gvaultcover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px 24px;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,rgba(0,0,0,0) 1px 4px),linear-gradient(180deg,${th.primary}3a,rgba(10,11,16,.97) 55%);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:transform .8s cubic-bezier(.7,0,.3,1) .25s,visibility 0s 1.05s`}}
 .${px}-gvaultcover::before,.${px}-gvaultcover::after{content:"";position:absolute;left:22px;right:22px;height:8px;background:radial-gradient(circle at 5px 4px,rgba(255,255,255,.26) 3px,rgba(0,0,0,0) 4px) 0 0/28px 8px repeat-x;opacity:.8}
 .${px}-gvaultcover::before{top:18px}
@@ -673,7 +686,8 @@ ${bk} .${px}-gate{animation:none!important}
             /* 生物识别「扫描验证」：指纹弧 + 往复扫描线 + 状态文本，识别面板淡入。
                揭示 = 扫描线停 + 状态翻转为「验证通过」+ 封面延迟淡出 */
             s+=`
-.${px}-gscanck{display:none}
+.${px}-gscanck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gscanck:focus-visible ~ .${px}-gscancover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gscancover{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(130% 95% at 50% 12%,${th.primary}30,rgba(6,7,14,0) 65%),rgba(6,7,14,.97);color:${cText};text-align:center;cursor:pointer${motion==='off'?'':`;transition:opacity .45s ease,visibility .45s ease`}}
 .${px}-gscanpanel{position:relative;width:100%;max-width:390px;padding:32px 24px 28px;background:rgba(11,14,20,.93);border:1px solid ${th.accent}55;border-radius:${radius}px;overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.85)${motion==='off'?'':`;animation:${px}-gscanin .45s ease both`}}
 .${px}-gscanpanel::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,rgba(0,0,0,0),${th.accent},rgba(0,0,0,0));opacity:.7}
@@ -699,7 +713,8 @@ ${bk} .${px}-gate{animation:none!important}
 `;
           }else{
             s+=`
-.${px}-gateck{display:none}
+.${px}-gateck{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.${px}-gateck:focus-visible ~ .${px}-gatecover{outline:3px solid ${th.accent};outline-offset:-3px}
 .${px}-gatecover{position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,8,14,.97);color:${cText};text-align:center;padding:24px;cursor:pointer${motion==='off'?'':`;transition:opacity .6s ease,visibility .6s ease`}}
 .${px}-gatetitle{font-size:20px;font-weight:700;letter-spacing:6px;color:${th.accent}}
 .${px}-gatetext{font-size:13px;opacity:.75;line-height:1.8;max-width:320px}

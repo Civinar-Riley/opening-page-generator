@@ -2,9 +2,9 @@
    与 cardImport 同款三段式：parseExportDoc（纯解析）→ buildRestorePlan（勾选预览）→ applyRestorePlan（落位）。
    不追求完整还原——只认区块作用域层（.opg-{px}-bk{n}）里能识别的标记与文本；认不出的整段进
    自由 HTML 草稿并标注待认领。纯函数无 DOM——UI 接线在 project.js 的 openDocImport。 */
-import { BLOCK_DEFS } from './defs.js';
+import { BLOCK_DEFS, BLOCK_ORDER } from './defs.js';
 
-const EXPORT_VER=1; // 与 gen/index.js buildFullDoc 的 data-opg-ver 对应
+const EXPORT_VER=2; // 与 gen/index.js buildFullDoc 的 data-opg-ver 对应；v2 起产物内嵌配置快照
 
 /* esc()（utils.js 五类转义）的逆运算；&amp; 必须最后还原，防 &amp;lt; 被二次解开 */
 const unesc=s=>String(s??'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
@@ -224,14 +224,27 @@ function wrapSlice(doc,px){
   return [doc.slice(s)];
 }
 
+/* v2 配置快照：buildFullDoc 内嵌的精简工程 JSON（< 已转义 \u003c，不会提前闭合标签，
+   type=application/json 不执行）。完整往返靠它——salvage 只做旧导出的兜底 */
+function parseCfg(doc){
+  const m=doc.match(/<script type="application\/json" id="opg-cfg-json">([\s\S]*?)<\/script>/);
+  if(!m)return null;
+  try{
+    const c=JSON.parse(m[1]);
+    if(c&&Array.isArray(c.blocks)&&c.theme&&typeof c.theme==='object')return c;
+  }catch(e){}
+  return null;
+}
+
 /** 解析导出的开场页 HTML → 工程草稿。旧导出（无 data-opg-ver 版本锚）也按尽力识别处理；
  *  无 bk 作用域层的更老导出无法安全切块，整段标待认领。
  * @param {string} html 完整导出文档（导出页①带围栏原文亦可）或含 opg- 容器的片段
- * @returns {{ver:number|null,px:string,items:{type:string,ok:boolean,html:string,draft:object}[]}}
- */
+ * @returns {{ver:number|null,cfg:object|null,px:string,items:{type:string,ok:boolean,html:string,draft:object}[]}}
+ *          cfg 为 v2 配置快照（存在时导入优先走它，items 仅供旧路径兼容） */
 export function parseExportDoc(html){
   const doc=String(html??'');
   const verM=doc.match(/data-opg-ver="(\d+)"/);
+  const cfg=parseCfg(doc);
   const pxM=doc.match(/id="(opg-[a-z0-9]+)"/);
   if(!pxM)throw new Error('没找到开场页容器（id="opg-…"）——确认粘贴的是本工具导出的完整页面');
   const px=pxM[1];
@@ -259,24 +272,22 @@ export function parseExportDoc(html){
   if(!chunks.length&&wrap.trim().replace(/^<div[^>]*>/,'').replace(/<\/div>\s*$/,'').trim()){
     items.push({type:'freehtml',ok:false,html:wrap,draft:{}});
   }
-  return {ver:verM?+verM[1]:null,px,items};
+  return {ver:verM?+verM[1]:null,cfg,px,items};
 }
 
-/* 勾选预览的 detail 列：摘要一类草稿实际恢复到的内容 */
-function detailOf(g){
-  const d0=g.drafts[0]||{};
+/* 勾选预览的 detail 列：摘要草稿实际恢复到的内容（freehtml 由调用方按聚合计数另行拼装） */
+function detailOf(type,d0){
   const lineN=v=>String(v??'').split('\n').filter(Boolean).length;
-  switch(g.type){
-    case 'freehtml':return [g.ok&&`${g.ok} 段已识别`,g.fallback&&`${g.fallback} 段未能识别（原样保留待认领）`].filter(Boolean).join(' + ')||'原样保留';
+  switch(type){
     case 'welcome':return [d0.title&&'标题',d0.subtitle&&'副标题',d0.eyebrow&&'眉标'].filter(Boolean).join(' / ')||'仅启用（字段为空）';
     case 'quote':return d0.text?`引言 ${d0.text.length} 字${d0.source?'（含出处）':''}`:'仅启用';
-    case 'profile':return `${(d0.characters||[]).length} 位角色（排版开关按默认）`;
-    case 'gallery':return `${(d0.images||[]).length} 张图（列数按默认）`;
+    case 'profile':return (d0.characters||[]).length?`${d0.characters.length} 位角色`:'仅启用';
+    case 'gallery':return `${(d0.images||[]).length} 张图`;
     case 'comic':return `${(d0.pages||[]).length} 页`+(d0.cover?'（含封面入口）':'（横幅入口）');
     case 'greetings':return `${lineN(d0.placeholderList)} 条开场白`+((d0.entries||[]).some(e=>e.cover)?` + ${(d0.entries||[]).filter(e=>e.cover).length} 张封面`:'');
     case 'divider':return d0.text?`自定义文案「${d0.text.slice(0,12)}」`:(d0.style?`样式 ${d0.style}`:'纯线（花色不可辨）');
     case 'disclaimer':case 'author':return `文本 ${String(d0.text||'').length} 字${d0.style?`，样式 ${d0.style}`:''}`;
-    case 'clockbar':return '文案原样保留（颜色/字号按默认）';
+    case 'clockbar':return '文案原样保留';
     case 'randomevent':case 'changelog':case 'decode':case 'blurreveal':return `${lineN(d0.lines)} 行`;
     case 'timeline':return `${lineN(d0.nodes)} 个节点`;
     case 'dice':return [d0.label,d0.expr&&`表达式 ${d0.expr}`].filter(Boolean).join(' · ')||'仅启用';
@@ -290,11 +301,39 @@ function detailOf(g){
   }
   return '';
 }
+/* salvage 兜底路径的「丢了什么」点名：产物里没保留、只能按默认值回填的配置，逐区块标注 */
+const LOSS_NOTES={
+  welcome:'装饰风格按默认',
+  profile:'头像来源与显示开关按默认',
+  gallery:'列数按默认',
+  greetings:'风格/点击行为/标题库按默认，音轨不随产物保留',
+  clockbar:'颜色/字号/对齐/辉光按默认',
+  dice:'样式按默认',
+};
 
-/** 解析结果 → 勾选预览（同 cardImport.buildPlan 形状）：按类型聚合多实例
+/** 解析结果 → 勾选预览（同 cardImport.buildPlan 形状）：v2 配置快照存在时逐区块完整恢复；
+ *  否则按类型聚合 salvage 多实例（旧导出兜底）
  * @returns {{items:{id:string,label:string,detail:string}[],recognized:number,total:number}}
  */
 export function buildRestorePlan(parsed){
+  if(parsed.cfg){
+    const agg=new Map();
+    parsed.cfg.blocks.forEach(b=>{
+      if(!b||!b.type||!BLOCK_DEFS[b.type])return;
+      const g=agg.get(b.type)||{type:b.type,n:0,disabled:0,first:b};
+      g.n++;if(b.enabled===false)g.disabled++;
+      agg.set(b.type,g);
+    });
+    const items=[...agg.values()].map(g=>{
+      const def=BLOCK_DEFS[g.type];
+      const name=g.type==='freehtml'?'自由 HTML 区':def.name;
+      const d=detailOf(g.type,g.type==='freehtml'?{html:''}:g.first);
+      const base=g.type==='freehtml'?'自由 HTML 原文':(d||'内容原样');
+      return {id:g.type,label:`${def.icon} ${name}${g.n>1?` ×${g.n}`:''}`,detail:`完整恢复（v2 配置快照）· ${base}${g.disabled?` · 含 ${g.disabled} 个停用实例`:''}`};
+    });
+    const total=parsed.cfg.blocks.filter(b=>b&&b.type&&BLOCK_DEFS[b.type]).length;
+    return {items,recognized:total,total};
+  }
   const agg=new Map();
   parsed.items.forEach(it=>{
     const g=agg.get(it.type)||{type:it.type,ok:0,fallback:0,drafts:[]};
@@ -306,7 +345,10 @@ export function buildRestorePlan(parsed){
     const def=BLOCK_DEFS[g.type];
     const name=g.type==='freehtml'&&!g.ok?'待认领区块':(def?def.name:g.type);
     const n=g.ok+g.fallback;
-    return {id:g.type,label:`${def?def.icon:'❓'} ${name}${n>1?` ×${n}`:''}`,detail:detailOf(g)};
+    const detail=g.type==='freehtml'
+      ?[g.ok&&`${g.ok} 段已识别`,g.fallback&&`${g.fallback} 段未能识别（原样保留待认领）`].filter(Boolean).join(' + ')||'原样保留'
+      :detailOf(g.type,g.drafts[0])+(LOSS_NOTES[g.type]?`（${LOSS_NOTES[g.type]}）`:'');
+    return {id:g.type,label:`${def?def.icon:'❓'} ${name}${n>1?` ×${n}`:''}`,detail};
   });
   return {items,recognized:parsed.items.filter(i=>i.ok).length,total:parsed.items.length};
 }
@@ -317,10 +359,30 @@ export function buildRestorePlan(parsed){
 const LINE_FIELDS={greetings:'placeholderList',randomevent:'lines',timeline:'nodes',changelog:'lines',decode:'lines',blurreveal:'lines',gacha:'cards',egg:'lines',freehtml:'html'};
 const ARR_FIELDS={profile:'characters',gallery:'images',comic:'pages',bgm:'tracks',qa:'groups',greetings:'entries'};
 
-/** 把勾选的恢复计划应用到工程（p 已 defaultProject+normalize；启用区块并按合并策略写字段）
+/** 把勾选的恢复计划应用到工程（p 已 defaultProject+normalize；调用方在应用后需再跑一遍
+ *  migrate/normalize 补齐字段——v2 快照路径整体替换了 theme/blocks）。
+ *  v2 快照：整工程配置原样落位（勾选的类型保留、未勾选的补回默认停用块），无损往返；
+ *  旧导出：启用区块并按合并策略写字段
  * @returns {string} 结果摘要（toast 用） */
 export function applyRestorePlan(p,parsed,chosenTypes){
   const got=new Set(chosenTypes);
+  /* v2 配置快照优先：name/marker/theme/macros/blocks 原样回填（create() 缺省字段先垫底，
+     快照带值再覆盖——跨版本字段增删由调用方的 normalize 兜底） */
+  if(parsed.cfg){
+    const c=parsed.cfg;
+    if(c.name)p.name=String(c.name);
+    if(c.marker)p.marker=String(c.marker);
+    if(c.theme&&typeof c.theme==='object')p.theme=c.theme;
+    if(Array.isArray(c.macros)&&c.macros.length)p.macros=c.macros;
+    const kept=Array.isArray(c.blocks)?c.blocks.filter(b=>b&&b.type&&BLOCK_DEFS[b.type]&&got.has(b.type)):[];
+    p.blocks=kept.map(b=>{
+      const out={...BLOCK_DEFS[b.type].create(),type:b.type,enabled:b.enabled!==false};
+      Object.keys(b).forEach(k=>{if(b[k]!==undefined)out[k]=b[k]});
+      return out;
+    });
+    BLOCK_ORDER.forEach(t=>{if(!p.blocks.some(b=>b.type===t))p.blocks.push({type:t,enabled:false,...BLOCK_DEFS[t].create()})});
+    return '已按配置快照完整恢复：'+([...new Set(kept.map(b=>BLOCK_DEFS[b.type].name))].join('、')||'（未勾选任何项）');
+  }
   const seen=new Set();
   const done=[];
   parsed.items.forEach(it=>{

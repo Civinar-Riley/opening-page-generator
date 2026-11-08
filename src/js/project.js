@@ -504,8 +504,9 @@ const Project={
       catch(err){msg.style.color='var(--err)';msg.textContent='❌ '+(err&&err.message||err)}
     });
   },
-  /* 导出 HTML 反向导入（v1.30）：粘贴本工具导出的完整页面 → 本地解析认回区块草稿 → 勾选生成新工程。
-     解析纯前端进行（docImport.js 纯函数）；认不出的段落整段进自由 HTML 区并标注待认领 */
+  /* 导出 HTML 反向导入（v1.30；v1.32 起优先读 v2 配置快照完整往返）：粘贴本工具导出的完整页面 →
+     本地解析认回区块草稿 → 勾选生成新工程。v2 导出自带精简工程配置快照（排版/样式/开关随产物保留）；
+     旧导出走 salvage 轻量恢复（未随产物保留的配置逐区块标注按默认），认不出的段落整段进自由 HTML 区并标注待认领 */
   openDocImport(){
     const ov=document.createElement('div');
     ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
@@ -517,7 +518,7 @@ const Project={
     const home=()=>{
       box.innerHTML=`<div style="font-weight:700;margin-bottom:10px">🧩 从导出 HTML 反向导入</div>
         <textarea id="diHtml" rows="9" placeholder="粘贴本工具导出的开场页 HTML（导出页 ① 完整文档，带围栏原文亦可；含 id=&quot;opg-…&quot; 容器即可识别）" style="width:100%;font-size:12px;font-family:monospace;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.05);color:var(--txt);padding:8px;box-sizing:border-box;resize:vertical"></textarea>
-        <div style="font-size:12px;color:var(--txt2);margin:8px 0">解析纯本地进行：按区块作用域层切块认回能识别的区块与字段（轻量恢复，排版开关与样式类配置以默认值为准），认不出的整段进自由 HTML 区待手动认领。</div>
+        <div style="font-size:12px;color:var(--txt2);margin:8px 0">解析纯本地进行：本版本导出的页面自带配置快照，可完整还原（含排版开关/颜色/字号/列数）；旧版导出按区块作用域层轻量恢复，未随产物保留的配置在下方逐区块标注，认不出的整段进自由 HTML 区待手动认领。</div>
         <div id="diMsg" style="font-size:12px;min-height:16px"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button type="button" class="btn ghost small" data-close>取消</button>
@@ -532,13 +533,15 @@ const Project={
       let parsed;
       try{parsed=parseExportDoc(box.querySelector('#diHtml').value)}
       catch(err){msg.style.color='var(--err)';msg.textContent='❌ '+(err&&err.message||err);return}
-      if(!parsed.items.length){msg.style.color='var(--err)';msg.textContent='❌ 没有解析到任何区块内容';return}
+      if(!parsed.items.length&&!parsed.cfg){msg.style.color='var(--err)';msg.textContent='❌ 没有解析到任何区块内容';return}
       msg.textContent='';
       const plan=buildRestorePlan(parsed);
-      const verNote=parsed.ver==null?'未带版本锚的旧导出，按尽力识别处理':(parsed.ver>EXPORT_VER?`⚠️ 导出格式 v${parsed.ver} 较新，解析可能不全`:'');
+      const verNote=parsed.ver==null?'未带版本锚的旧导出，按尽力识别处理'
+        :parsed.ver>EXPORT_VER?`⚠️ 导出格式 v${parsed.ver} 较新，解析可能不全`
+        :parsed.cfg?'✓ 检测到 v2 配置快照：勾选的区块将完整恢复（含排版/样式/开关）':'';
       box.innerHTML=`<div style="font-weight:700;margin-bottom:4px">🧩 识别结果（${plan.recognized}/${plan.total} 段已认出）</div>
         ${verNote?`<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">${esc(verNote)}</div>`:''}
-        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">勾选要恢复的区块，确认后生成新工程：</div>
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">勾选要恢复的区块，确认后生成新工程${parsed.cfg?'':'（括注为旧导出无法恢复、按默认处理的配置）'}：</div>
         ${plan.items.map(it=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border:1px solid var(--line);border-radius:8px;margin:5px 0;cursor:pointer">
           <input type="checkbox" data-pid="${it.id}" checked style="margin-top:3px">
           <span style="flex:1"><strong style="font-size:13px">${esc(it.label)}</strong><br><span style="font-size:12px;color:var(--txt2)">${esc(it.detail)}</span></span>
@@ -553,9 +556,105 @@ const Project={
         const p=defaultProject('反向导入工程');
         this.normalize(p);
         const sum=applyRestorePlan(p,parsed,ids);
+        this.migrate(p); /* 快照路径整体替换了 theme/blocks：重跑迁移补齐缺省字段与未知类型过滤 */
         this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();
         close();toast(sum);
       };
+    });
+  },
+
+  /* ---------- 工程快照（v1.32，IndexedDB）：localStorage 之外的手动版本兜底 ----------
+     数据只存 localStorage（5MB 上限）+ 20 步撤销栈，清站点数据/换浏览器即全丢；
+     快照手动保存当前工程的完整副本，与「导出工程」文件互补。恢复一律生成新工程，
+     不覆盖现有数据；IndexedDB 不可用（隐私模式等）时功能降级提示，不影响主流程 */
+  SNAP_DB:'openingPageGen',SNAP_STORE:'snapshots',SNAP_MAX:20,
+  _snapDb(){
+    return new Promise((res,rej)=>{
+      let rq;
+      try{rq=indexedDB.open(this.SNAP_DB,1)}
+      catch(e){rej(e);return}
+      rq.onupgradeneeded=()=>{const db=rq.result;if(!db.objectStoreNames.contains(this.SNAP_STORE))db.createObjectStore(this.SNAP_STORE,{keyPath:'id'})};
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=()=>rej(rq.error||new Error('IndexedDB 打开失败'));
+    });
+  },
+  async _snapStore(mode){
+    const db=await this._snapDb();
+    return db.transaction(this.SNAP_STORE,mode).objectStore(this.SNAP_STORE);
+  },
+  async _snapReq(r){
+    return new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+  },
+  async snapList(){
+    try{
+      const st=await this._snapStore('readonly');
+      const all=await this._snapReq(st.getAll());
+      return (all||[]).sort((a,b)=>String(b.at||'').localeCompare(String(a.at||'')));
+    }catch(e){return []}
+  },
+  async snapSave(){
+    if(!this.cur){toast('没有可快照的工程');return}
+    const name=`${this.cur.name||'未命名'} · ${new Date().toLocaleString('zh-CN',{hour12:false})}`;
+    const item={id:uid(),at:new Date().toISOString(),name,data:this.exportData()};
+    try{
+      const st=await this._snapStore('readwrite');
+      await this._snapReq(st.put(item));
+      /* 容量护栏：超上限删最旧（按时间排序，快照是版本历史不是收藏夹） */
+      const all=await this.snapList();
+      if(all.length>this.SNAP_MAX){
+        const st2=await this._snapStore('readwrite');
+        all.slice(this.SNAP_MAX).forEach(x=>st2.delete(x.id));
+      }
+      toast('已保存快照：'+name);
+    }catch(e){toast('⚠️ 快照保存失败（浏览器 IndexedDB 不可用？）')}
+  },
+  async snapRestore(id){
+    try{
+      const st=await this._snapStore('readonly');
+      const item=await this._snapReq(st.get(id));
+      if(!item||!item.data||!Array.isArray(item.data.blocks)){toast('快照数据无效');return}
+      const p=JSON.parse(JSON.stringify(item.data));
+      p.id=uid();if(!p.name)p.name='快照工程';
+      this.migrate(p);
+      this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();
+      toast('已从快照恢复：'+(item.name||p.name));
+    }catch(e){toast('⚠️ 快照恢复失败（浏览器 IndexedDB 不可用？）')}
+  },
+  async snapDelete(id){
+    try{
+      const st=await this._snapStore('readwrite');
+      await this._snapReq(st.delete(id));
+      toast('已删除快照');
+    }catch(e){toast('⚠️ 快照删除失败')}
+  },
+  openSnapshots(){
+    const ov=document.createElement('div');
+    ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2147483647;display:flex;align-items:center;justify-content:center';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(520px,92vw);max-height:84vh;overflow:auto';
+    ov.appendChild(box);document.body.appendChild(ov);
+    const close=()=>ov.remove();
+    const render=async()=>{
+      const snaps=await this.snapList();
+      box.innerHTML=`<div style="font-weight:700;margin-bottom:4px">📸 工程快照</div>
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:10px">手动保存当前工程的完整副本，存于浏览器 IndexedDB（与 localStorage 分开存储，工程数据损坏或超限时仍有底）。恢复会生成<strong>新工程</strong>，不覆盖现有数据；最多保留 ${this.SNAP_MAX} 份，超出自动删最旧。</div>
+        <button type="button" class="btn small" data-snapsave="1" style="width:100%">📸 保存当前工程快照（${esc(this.cur?.name||'')}）</button>
+        <div style="margin-top:10px">${snaps.length?snaps.map(s=>`<div style="display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:5px 0">
+          <span style="flex:1;min-width:0"><strong style="font-size:13px">${esc(s.name||'快照')}</strong><br><span style="font-size:11px;color:var(--txt2)">${esc(String(s.at||'').replace('T',' ').slice(0,19))} · ${s.data&&Array.isArray(s.data.blocks)?s.data.blocks.filter(b=>b&&b.enabled).length:0} 个启用区块</span></span>
+          <button type="button" class="btn small" data-snaprestore="${esc(s.id||'')}">恢复</button>
+          <button type="button" class="btn danger small" data-snapdel="${esc(s.id||'')}">✕</button>
+        </div>`).join(''):'<div style="font-size:12px;color:var(--txt2);padding:14px;text-align:center">还没有快照——改完一版存一份，回退有底。</div>'}</div>
+        <div style="text-align:right;margin-top:12px"><button type="button" class="btn ghost small" data-close>关闭</button></div>`;
+    };
+    render();
+    ov.addEventListener('click',e=>{
+      if(e.target===ov||e.target.dataset.close!==undefined){close();return}
+      if(e.target.dataset.snapsave!==undefined){e.target.disabled=true;this.snapSave().then(render);return}
+      const rid=e.target.dataset.snaprestore;
+      if(rid!==undefined){close();this.snapRestore(rid);return}
+      const did=e.target.dataset.snapdel;
+      if(did!==undefined){this.snapDelete(did).then(render)}
     });
   },
 };

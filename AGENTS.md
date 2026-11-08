@@ -41,9 +41,9 @@
 | `src/js/defs.js` | 纯数据汇总出口（大体量数据拆在 `defs/blocks.js`·`defs/complib.js`·`defs/templates.js`，调用方一律从 defs.js import）：`BLOCK_DEFS/BLOCK_ORDER/CORE_TYPES`、`THEME_PRESETS`（6 页面主题）、`COMP_LIB`（59 组件）、`UI_THEMES`（7 工具主题）、`BUILTIN_TEMPLATES`（12 官方模板）、`BLOCK_PRESETS`、`defaultProject()` |
 | `src/js/themes.js` | **纯函数/数据**：`THEME_SKINS` 材质枚举与本机字体栈、`themeSkin` 兼容兜底、`themePresetPatch` 试穿/套用补丁、`themePresetMatches` 完整匹配、`themeTexture` 卡片/产物共用纹理；不按 presetRef 推断材质 |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
-| `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `openingPageGen_v1_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
+| `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `openingPageGen_v1_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key）、工程快照（v1.32 起 IndexedDB 手动版本，snapSave/snapRestore/openSnapshots，恢复生成新工程） |
 | `src/js/cardImport.js` | **纯函数**角色卡导入（v1.30）：parseCardFile（PNG tEXt chara/ccv3 / JSON / CHARX）归一 V1/V2/V3、buildPlan 映射预览、applyImportPlan 落位、toV2Card；UI 接线在 project.js openCardImport |
-| `src/js/docImport.js` | **纯函数**导出 HTML 反向解析（v1.30）：parseExportDoc 按 `.opg-{px}-bk{n}` 作用域层切块（wrap 层 div 配对计数切片，页尾运行时脚本挡在切块外）+ 24 类产物签名识别（gacha/egg 脚本型内容从内联脚本取回）、buildRestorePlan 勾选预览、applyRestorePlan 合并落位；UI 接线在 project.js openDocImport |
+| `src/js/docImport.js` | **纯函数**导出 HTML 反向解析（v1.30；v1.32 起 v2 快照优先）：parseExportDoc 按 `.opg-{px}-bk{n}` 作用域层切块（wrap 层 div 配对计数切片，页尾运行时脚本挡在切块外）+ 提取 buildFullDoc 内嵌的 `opg-cfg-json` 配置快照（存在则完整往返，salvage 仅兜底旧导出）+ 24 类产物签名识别（gacha/egg 脚本型内容从内联脚本取回）、buildRestorePlan 勾选预览（salvage 路径逐区块标注按默认项）、applyRestorePlan 合并落位；UI 接线在 project.js openDocImport |
 
 | `src/js/ui/core.js` | UI 壳 + `UI.renderAll()` 总入口（各渲染页有独立 try/catch 隔离）+ renderProjectSelect + 预览四件套（mountPreview/fitPreviewHeight/refreshPreview/debouncedPreview）+ 页签切换/全局快捷键/启动；经 `Object.assign(UI,…)` 挂载页面方法（模块顶层不读 UI 值，规避循环 import TDZ） |
 | `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig：主题/宏/区块列表拖拽/全局搜索替换 UI 层） |
@@ -54,7 +54,7 @@
 | `src/js/ui/shared.js` | 跨页辅助：bindListEditor / detectFonts |
 | `src/js/search.js` | **纯函数**全局搜索替换：collectSearchMatches / replaceAllInString / replaceAllInProject（UI 层仅调 API，逻辑可测） |
 | `src/js/fontdetect.js` | **纯函数**字体检测：COMMON_FONTS / BASE_FONTS / fontExists / detectAvailableFonts（ctx 由调用方注入，测试 mock） |
-| `src/js/gen/index.js` | 生成引擎入口：`Gen.build`（组件）/ `buildFullDoc` / `fencedFullDoc`（``` 围栏，含四反引号升级）/ `regexScript`（正则脚本 JSON）/ `auditFullDoc`+`auditCompat`（导出自检） |
+| `src/js/gen/index.js` | 生成引擎入口：`Gen.build`（组件）/ `buildFullDoc`（v2 起内嵌 `opg-cfg-json` 配置快照供反向导入完整往返）/ `fencedFullDoc`（``` 围栏，含四反引号升级）/ `regexScript`（正则脚本 JSON）/ `auditFullDoc`+`auditCompat`（导出自检） |
 | `src/js/gen/css.js` | 产物 CSS：容器作用域 + 各区块实例样式（`.opg-{id}-bk{i}` 用 display:contents 隔离，支持同类多实例） |
 | `src/js/gen/body.js` | 产物 HTML：逐区块渲染；`tx`（预览替换宏）/`raw`（导出保留宏）双轨；含倒计时/粒子内联脚本（无 API 依赖） |
 | `src/js/gen/scripts.js` | 产物运行时：lightbox / BGM 播放器 / 酒馆助手交互（开场白列表/切换/标题库）——全部带 API 守卫与降级 |

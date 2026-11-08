@@ -113,11 +113,12 @@ describe('页面预设与材质纯函数',()=>{
 
 describe('Gen 页面主题生成回归',()=>{
   it.each([
-    [false,'cbe57a1d74fc452a482d4199a65f1730830fffaadda345cd59428b159e50e595'],
-    [true,'fd544bceee1899c5b3ebd49d94045e04830f2124cf85d979d155e8e5fc0d32b0'],
-  ])('紫夜旧 CSS 字节快照不变（经典兼容路径，自定义字体=%s）',(customFont,hash)=>{
     /* 基线来自重设计前 HEAD:src/js/gen/css.js，固定 id 与默认核心区块；不是新旧入口自比。
-       锁的是旧工程实际走的 classic 路径，而非重构后的紫夜预设（后者已有 nebula 材质）。 */
+       锁的是旧工程实际走的 classic 路径，而非重构后的紫夜预设（后者已有 nebula 材质）。
+       v1.32 起 greetings 新增搜索框/预览热区选择器，为纯增量规则（只命中新元素），哈希随版更新 */
+    [false,'9b8500463bf67019c25e4d4af040e791a29d33b26abaece20c104863f29fafa2'],
+    [true,'36becb2a1b8ae5e6228bedfe36bed1020562d99b83f59cb3a9b3545d1150fda8'],
+  ])('紫夜旧 CSS 字节快照不变（经典兼容路径，自定义字体=%s）',(customFont,hash)=>{
     const p=classicFixture();
     if(customFont)Object.assign(p.theme,{fontName:'Custom Body',headingFont:'Custom Heading'});
     for(const preview of [false,true])expect(createHash('sha256').update(cssOf(p,preview)).digest('hex')).toBe(hash);

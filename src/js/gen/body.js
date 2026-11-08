@@ -7,6 +7,16 @@ import { Macros } from '../macros.js';
    11 字覆盖 0..10，更多条回落阿拉伯数字（直接显示下标，与零起口径一致） */
 const GNUM='零壹贰叁肆伍陆柒捌玖拾';
 
+/* 封面/音轨 ↔ 开场白绑定（与 scripts.js 运行时 metaFor 同一规则，改动须两处同步）：
+   先按绑定标题精确匹配——卡里插入/删除/重排开场白不再错位；无命中按序号回落，
+   但序号位上的条目若已绑定了别的标题（明确归属他条）则跳过不串。
+   title 为空（无分隔符的占位行）只能走序号 */
+function greetEntry(ents,i,title){
+  if(title){const hit=ents.find(e=>e&&e.title&&e.title===title);if(hit)return hit}
+  const at=ents[i];
+  return (at&&!(at.title))?at:null;
+}
+
 export function body(p,px,blocks,isPreview){
     const g=i=>Macros.apply(i,p.macros); // 预览时替换宏
     const raw=i=>String(i??'');           // 导出时保留宏
@@ -101,8 +111,9 @@ export function body(p,px,blocks,isPreview){
             }else{
               out+=`  <div class="${px}-cvwrap">\n    <div class="${px}-cvcard" data-opg="comic-open" data-comic="${cid}" role="button" tabindex="0">\n      <img class="${px}-cvimg" src="${esc(tx(b.cover))}" alt="" loading="lazy" onerror="this.style.display='none'">\n      <span class="${px}-cvpgs">${pgs.length} 页</span>\n      <span class="${px}-cvbelt"><span class="${px}-cvbt">${esc(tx(b.title))}</span><span class="${px}-cvgo">▶ 点击阅读</span></span>\n    </div>\n  </div>\n`;
             }
-            /* 阅读器覆盖层：页面列表每实例独立，故每实例各输出一份；打开/翻页由全页一份的脚本委托 */
-            out+=`  <div class="${px}-reader" data-opg="comic-reader" data-comic="${cid}" aria-hidden="true">\n`;
+            /* 阅读器覆盖层：页面列表每实例独立，故每实例各输出一份；打开/翻页由全页一份的脚本委托。
+               role=dialog + aria-modal：读屏用户能感知「进入了独立阅读界面」（aria-hidden 由脚本切换） */
+            out+=`  <div class="${px}-reader" data-opg="comic-reader" data-comic="${cid}" role="dialog" aria-modal="true" aria-label="${esc(tx(b.title||''))||'漫画阅读器'}" aria-hidden="true">\n`;
             out+=`    <div class="${px}-rbar"><span class="${px}-rtitle">${esc(tx(b.title))}</span><span class="${px}-rpage" data-opg="comic-pageinfo"></span><button type="button" class="${px}-rclose" data-opg="comic-close" aria-label="关闭">✕</button></div>\n`;
             out+=`    <div class="${px}-rbody ${paged?'paged':'strip'}">\n`;
             if(!paged)out+=`      <div class="${px}-rpgcol">\n`;
@@ -119,9 +130,12 @@ export function body(p,px,blocks,isPreview){
         case 'greetings':{
           const gi=greetOrd++; /* 实例序号：运行时脚本按 data-gi 取本实例的点击行为/封面音轨配置 */
           if(b.showTitle&&b.title)out+=`  <div class="${px}-ghead">${esc(tx(b.title))}</div>\n`;
-          out+=`  <div class="${px}-glist" data-opg="glist" data-gi="${gi}">\n`;
           const items=tx(b.placeholderList).split('\n').map(s=>s.trim()).filter(Boolean);
           const wall=b.cardStyle==='wall';
+          const ents=Array.isArray(b.entries)?b.entries:[];
+          /* 搜索框：条目多到值得翻找时才渲染（少条目是噪音）；运行时按项内文本纯前端过滤 */
+          if(items.length>=6)out+=`  <div class="${px}-gsearch"><input type="text" data-opg="gsearch" data-gi="${gi}" placeholder="🔍 搜索开场白…" aria-label="按标题、描述或人名过滤开场白"></div>\n`;
+          out+=`  <div class="${px}-glist" data-opg="glist" data-gi="${gi}">\n`;
           items.forEach((it,i)=>{
             const sep=it.includes('｜')?'｜':(it.includes('|')?'|':null);
             const parts=sep?it.split(sep):[it];
@@ -129,15 +143,18 @@ export function body(p,px,blocks,isPreview){
             /* 三段以上：末段作人物名、中间段回拼为描述（两段行为与旧版一致） */
             const names=sep&&parts.length>=3?parts[parts.length-1].trim():'';
             const desc=sep?(parts.length>=3?parts.slice(1,-1).join(sep):parts.slice(1).join(sep)).trim():'';
-            const cover=(Array.isArray(b.entries)&&b.entries[i]&&b.entries[i].cover)||'';
+            const en=greetEntry(ents,i,title);
+            const cover=(en&&en.cover)||'';
+            /* 全文预览入口：点它不触发切换（运行时点击委托先查 data-opg="gp"） */
+            const eye=`<span class="${px}-gprev" data-opg="gp" data-i="${i}" title="预览全文" aria-label="预览第 ${i} 条开场白全文">👁</span>`;
             const main=`<span class="${px}-gmain"><span class="${px}-gtitle">${esc(title)}</span>${desc?`<span class="${px}-gdesc">${esc(desc)}</span>`:''}${names?`<span class="${px}-gnames">${esc(names)}</span>`:''}</span>`;
             if(wall){
               /* 渐变回落层垫底，img 加载失败隐藏后自然露出占位（无需 JS 交换） */
               out+=`    <button type="button" class="${px}-gitem ${px}-gwallitem" data-opg="g" data-i="${i}"><span class="${px}-gcoverwrap"><span class="${px}-gcoverph"><span class="${px}-gphnum">${GNUM[i]||String(i)}</span></span>`;
               if(cover)out+=`<img class="${px}-gcover" src="${esc(tx(cover))}" alt="" loading="lazy" onerror="this.style.display='none'">`;
-              out+=`<span class="${px}-gnum">${GNUM[i]||String(i)}</span></span>${main}</button>\n`;
+              out+=`<span class="${px}-gnum">${GNUM[i]||String(i)}</span>${eye}</span>${main}</button>\n`;
             }else{
-              out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||String(i)}</span>${main}</button>\n`;
+              out+=`    <button type="button" class="${px}-gitem" data-opg="g" data-i="${i}"><span class="${px}-gnum">${GNUM[i]||String(i)}</span>${main}${eye}</button>\n`;
             }
           });
           out+=`  </div>\n`;

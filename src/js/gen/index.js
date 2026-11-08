@@ -86,12 +86,19 @@ const Gen={
   },
 
   /** 完整 HTML 文档（用于正则 replaceString：``` 包裹，由酒馆助手渲染为 iframe）。
-   *  data-opg-ver：导出格式版本锚（v1.30 引入，当前 1）——反向解析据此识别本工具导出的页面，
-   *  旧导出无此标记，解析器按「尽力识别 + 自由 HTML 兜底」处理 */
+   *  data-opg-ver：导出格式版本锚（v1.30 引入，当前 2）——反向解析据此识别本工具导出的页面，
+   *  旧导出无此标记，解析器按「尽力识别 + 自由 HTML 兜底」处理。
+   *  v2 起内嵌精简工程配置快照（id="opg-cfg-json" 的 application/json 脚本，不执行）：
+   *  排版开关/颜色/字号/列数等 salvage 认不回的配置随产物完整携带，反向导入优先读它实现无损往返。
+   *  id 含连字符不会命中解析器的 opg-[a-z0-9]+ 容器锚；< 与 ` 分别转义 \u003c/\u0060——
+   *  前者防提前闭合 script 标签，后者防停用区块内容里的 ``` 误触 fencedFullDoc 围栏升级 */
   buildFullDoc(p){
     const comp=this.build(p,{isPreview:false});
+    const cfgJson=JSON.stringify({
+      v:2,name:p.name||'',marker:p.marker||'',theme:p.theme||{},macros:p.macros||[],blocks:p.blocks||[],
+    }).replace(/</g,'\\u003c').replace(/`/g,'\\u0060');
     return `<!DOCTYPE html>
-<html lang="zh-CN" data-opg-ver="1">
+<html lang="zh-CN" data-opg-ver="2">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,6 +106,7 @@ const Gen={
 <style>html,body{margin:0;padding:0;background:transparent}</style>
 </head>
 <body>
+<script type="application/json" id="opg-cfg-json">${cfgJson}</script>
 ${comp}
 </body>
 </html>`;

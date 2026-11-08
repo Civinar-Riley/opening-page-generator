@@ -1,6 +1,6 @@
 /* 工具函数单元测试（esc / uid / highlightCode / 对比度 / API Key 加解密） */
 import { describe, it, expect } from 'vitest';
-import { esc, uid, highlightCode, hexLuma, contrastRatio, bigDataUrlKB } from '../src/js/utils.js';
+import { esc, uid, highlightCode, hexLuma, contrastRatio, bigDataUrlKB, compressImageFile } from '../src/js/utils.js';
 
 describe('hexLuma / contrastRatio 对比度（v1.24 主题警示用）',()=>{
   it('WCAG 锚点值：黑 0 / 白 1 / 黑白对比 21:1',()=>{
@@ -75,5 +75,12 @@ describe('bigDataUrlKB 内嵌图片预警',()=>{
   });
   it('多段小图合计超阈值但单段不超不报', ()=>{
     expect(bigDataUrlKB(img(120)+' '+img(120))).toBe(0);
+  });
+});
+
+describe('compressImageFile 粘贴图片压缩（v1.32）',()=>{
+  it('非图片/缺失文件在读取前拒绝（node 侧仅覆盖前置分支，canvas 路径在浏览器验证）',async()=>{
+    await expect(compressImageFile({type:'application/json',size:9e6})).rejects.toThrow('不是图片');
+    await expect(compressImageFile(null)).rejects.toThrow('不是图片');
   });
 });

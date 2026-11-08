@@ -157,5 +157,46 @@ function warnBigDataUrl(el){
   toast(`⚠️ 检测到约 ${kb} KB 的内嵌图片（base64），本地存储上限约 5MB，易导致保存失败——建议改用图床链接`,6000);
 }
 
-export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode, hexLuma, contrastRatio, bigDataUrlKB, warnBigDataUrl};
+/* ---- 粘贴图片本地压缩（canvas，v1.32）----
+   截图/复制的图片直接粘进输入框会产生动辄数 MB 的 base64（localStorage 头号杀手，
+   bigDataUrlKB 预警只能事后提示）——入库前先压：限宽重采样 + WebP/JPEG 质量递减到
+   阈值内。已低于安全线的原样保留（PNG 透明度/GIF 动画无损），GIF 一律不重压（会丢动画）。
+   Image/canvas 由浏览器提供；node 侧测试仅覆盖前置拒绝分支 */
+function compressImageFile(file,{maxW=1280,maxKB=180}={}){
+  return new Promise((res,rej)=>{
+    if(!file||!/^image\//.test(file.type)){rej(new Error('不是图片文件'));return}
+    const rd=new FileReader();
+    rd.onerror=()=>rej(new Error('图片读取失败'));
+    rd.onload=()=>{
+      const raw=String(rd.result||'');
+      if(file.size<=maxKB*1024*0.6||file.type==='image/gif'){res({dataUrl:raw,recompressed:false});return}
+      const img=new Image();
+      img.onerror=()=>rej(new Error('图片解码失败'));
+      img.onload=()=>{
+        const w=img.naturalWidth,h=img.naturalHeight;
+        if(!w||!h){rej(new Error('图片解码失败'));return}
+        const scale=Math.min(1,maxW/w);
+        const cv=document.createElement('canvas');
+        cv.width=Math.max(1,Math.round(w*scale));
+        cv.height=Math.max(1,Math.round(h*scale));
+        cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+        /* webp 编码不受支持时浏览器回落 png dataURL——探测后改走 jpeg（旧浏览器透明区变黑，可接受） */
+        let type='image/webp';
+        if(!cv.toDataURL('image/webp',0.8).startsWith('data:image/webp'))type='image/jpeg';
+        let best=raw,rec=false;
+        for(const q of [0.9,0.82,0.72,0.6]){
+          const u=cv.toDataURL(type,q);
+          best=u;rec=true;
+          if(u.length<=maxKB*1365)break; /* base64 膨胀约 4/3，按 dataURL 长度对齐阈值 */
+        }
+        if(rec&&best.length>=raw.length){res({dataUrl:raw,recompressed:false});return}
+        res({dataUrl:best,recompressed:rec});
+      };
+      img.src=raw;
+    };
+    rd.readAsDataURL(file);
+  });
+}
+
+export {$, $$, uid, esc, toast, copyText, download, confirmModal, promptModal, highlightCode, hexLuma, contrastRatio, bigDataUrlKB, warnBigDataUrl, compressImageFile};
 
