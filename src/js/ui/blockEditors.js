@@ -148,10 +148,10 @@ export function renderBlockBody(container,b,i){
         </div>
         <div style="font-size:11px;color:var(--txt2);margin:4px 0">标题库条目内容每行格式：<code>序号|标题|描述</code>，序号从 0 开始（与列表徽标一致，0 即第 1 个开场白；旧的从 1 开始写法会自动识别兼容）。</div>
         ${bind('excludedTags','排除标签（逗号/顿号分隔，自动提取标题、描述、人名前剥除，如 status,设定）')}
-        ${b.titleBookDraft?`<div style="border:1px dashed var(--accent);border-radius:8px;padding:8px;margin:6px 0">
-          <div style="font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>📚 标题库草稿（${b.titleBookDraft.split('\n').length} 条，来自角色卡导入）——粘进世界书条目「${esc(b.titleEntry||'开场白标题库')}」${b.titleWb?`（世界书 ${esc(b.titleWb)}）`:''}</span><button type="button" class="btn ghost small" data-bkcopy="1">📋 复制</button>${typeof window.createWorldbook==='function'?'<button type="button" class="btn ghost small" data-bkwb="1">📤 写入世界书</button>':'<span>（世界书直写需在酒馆内打开工具）</span>'}</div>
-          <pre style="font-size:11px;max-height:120px;overflow:auto;margin:6px 0 0;white-space:pre-wrap">${esc(b.titleBookDraft)}</pre>
-        </div>`:''}
+        <div style="border:1px dashed var(--accent);border-radius:8px;padding:8px;margin:6px 0">
+          <div style="font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>📚 标题库草稿（手动维护）——粘进世界书条目「${esc(b.titleEntry||'开场白标题库')}」供运行时按序号覆盖开场白标题${b.titleWb?`（已写入世界书 ${esc(b.titleWb)}）`:''}</span>${b.titleBookDraft?`<button type="button" class="btn ghost small" data-bkcopy="1">📋 复制</button>${typeof window.createWorldbook==='function'?'<button type="button" class="btn ghost small" data-bkwb="1">📤 写入世界书</button>':'<span>（写入需在酒馆内打开工具）</span>'}`:''}</div>
+          <textarea data-bkey="${i}.titleBookDraft" rows="3" style="font-size:11px;margin-top:6px" placeholder="留空不使用标题库。每行：序号|标题|描述，如 0｜雨夜邂逅｜一场大雨，命运的相遇">${esc(b.titleBookDraft||'')}</textarea>
+        </div>
         <div><label>选项风格</label><select data-bkey="${i}.cardStyle">
           <option value="card"${b.cardStyle==='card'?' selected':''}>卡片式（底色块 + 边框 + 悬浮位移）</option>
           <option value="list"${b.cardStyle==='list'?' selected':''}>列表式（左侧竖线 + 紧凑行）</option>

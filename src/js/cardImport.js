@@ -72,7 +72,9 @@ async function parseCharxCard(buf){
   return JSON.parse(new TextDecoder().decode(raw));
 }
 
-/* V1（扁平）/ V2 / V3（spec + data 包裹；世界书可能在 data.character_book 或 data.extensions.character_book）→ 统一形状 */
+/* V1（扁平）/ V2 / V3（spec + data 包裹）→ 统一形状。
+   character_book 不收集：那是角色设定世界书，装卡时酒馆自动读取，工具不搬运——
+   开场白标题库草稿（titleBookDraft）与设定条目是两回事，由用户在开场白区块手动维护 */
 function normalizeCard(raw){
   if(!raw||typeof raw!=='object')throw new Error('角色卡数据为空');
   const d=(raw.spec==='chara_card_v2'||raw.spec==='chara_card_v3')&&raw.data&&typeof raw.data==='object'?raw.data:raw;
@@ -82,21 +84,14 @@ function normalizeCard(raw){
   const alt=Array.isArray(d.alternate_greetings)?d.alternate_greetings.map(String):[];
   const description=String(d.description??'');
   const tags=Array.isArray(d.tags)?d.tags.map(String):[];
-  const bookSrc=(d.character_book&&Array.isArray(d.character_book.entries)&&d.character_book)
-    ||(d.extensions&&d.extensions.character_book&&Array.isArray(d.extensions.character_book.entries)&&d.extensions.character_book)
-    ||null;
-  const bookEntries=(bookSrc?bookSrc.entries:[])
-    .filter(e=>e&&typeof e==='object')
-    .map(e=>({title:String(e.comment??e.name??((Array.isArray(e.keys)?e.keys.join('、'):'')||'')),content:String(e.content??'')}))
-    .filter(e=>e.title||e.content);
   if(!name)warn.push('卡内没有角色名，工程名将用「导入工程」');
   if(!firstMes&&!alt.length)warn.push('卡内没有开场白文本（first_mes / alternate_greetings）');
-  return {name,description,firstMes,altGreetings:alt,tags,bookEntries,warnings:warn};
+  return {name,description,firstMes,altGreetings:alt,tags,warnings:warn};
 }
 
 /** 解析角色卡文件（按魔数分流：PNG / zip(CHARX) / JSON 文本）
  * @param {File} file
- * @returns {Promise<{name:string,description:string,firstMes:string,altGreetings:string[],tags:string[],bookEntries:{title:string,content:string}[],warnings:string[]}>}
+ * @returns {Promise<{name:string,description:string,firstMes:string,altGreetings:string[],tags:string[],warnings:string[]}>}
  */
 export async function parseCardFile(file){
   const buf=await file.arrayBuffer();
@@ -115,7 +110,6 @@ export function buildPlan(card){
   const items=[];
   if(card.firstMes||altN)items.push({id:'greet',label:'💌 开场白选择区',detail:altN?`主开场白 + ${altN} 条备用开场白 → 预览占位列表`:'主开场白（first_mes）→ 预览占位列表'});
   if(card.description)items.push({id:'desc',label:'👤 角色简介区',detail:`description ${card.description.length} 字${card.tags.length?` + tags ${card.tags.length} 个`:''}`});
-  if(card.bookEntries.length)items.push({id:'book',label:'📚 标题库草稿',detail:`character_book ${card.bookEntries.length} 条 → 存入开场白区块，复制粘进酒馆世界书`});
   return {name:card.name,items};
 }
 
@@ -138,12 +132,6 @@ export function applyImportPlan(p,card,ids){
       pr.characters=[{name:card.name||'{{char}}',desc:card.description,tags:card.tags.join(','),avatar:'',avatarMode:'manual'}];
       done.push('角色简介');
     }
-  }
-  if(got.has('book')&&g&&card.bookEntries.length){
-    g.enabled=true;
-    /* 标题库世界书条目格式：每行 序号|标题|描述，序号 0 起（与运行时 loadTitleMap 对齐） */
-    g.titleBookDraft=card.bookEntries.map((e,i)=>`${i}|${e.title}|${e.content.replace(/\s*\n+\s*/g,' ')}`).join('\n');
-    done.push(`标题库草稿 ${card.bookEntries.length} 条`);
   }
   return '已导入：'+(done.join('、')||'（未勾选任何项）');
 }

@@ -49,12 +49,12 @@ const V2={
 };
 
 describe('parseCardFile 解析',()=>{
-  it('PNG tEXt chara：V2 卡归一（data 包裹 + 世界书 comment/name/keys 三形态取标题）',async()=>{
+  it('PNG tEXt chara：V2 卡归一（data 包裹；character_book 不收集——设定世界书装卡时酒馆自动读取）',async()=>{
     const card=await parseCardFile(fileOf(pngWithText('chara',btoa(unescape(encodeURIComponent(JSON.stringify(V2)))))));
     expect(card.name).toBe('艾莉丝');
     expect(card.firstMes).toContain('图书馆');
     expect(card.altGreetings).toEqual(['雨夜的敲门声。']);
-    expect(card.bookEntries).toEqual([{title:'馆规',content:'保持安静。'},{title:'藏书',content:'三楼是禁区。'},{title:'禁书',content:'不可翻阅。'}]);
+    expect(card.bookEntries).toBeUndefined();
     expect(card.warnings).toEqual([]);
   });
   it('PNG 无卡数据时给出可读错误',async()=>{
@@ -66,19 +66,17 @@ describe('parseCardFile 解析',()=>{
     expect(card.name).toBe('V1卡');
     expect(card.description).toBe('旧版');
   });
-  it('JSON V3：世界书在 data.extensions.character_book；缺角色名写入 warnings',async()=>{
+  it('JSON V3：data 包裹归一；缺角色名写入 warnings',async()=>{
     const v3={spec:'chara_card_v3',data:{description:'无名的存在',first_mes:'……',extensions:{character_book:{entries:[{comment:'注',content:'内容'}]}}}};
     const blob=new Blob([JSON.stringify(v3)]);
     const card=await parseCardFile(new File([blob],'card.json',{type:'application/json'}));
     expect(card.name).toBe('');
-    expect(card.bookEntries).toEqual([{title:'注',content:'内容'}]);
     expect(card.warnings.join()).toContain('角色名');
   });
   it('CHARX：zip 内 card.json（store-only）',async()=>{
     const blob=makeZipStored('card.json',new TextEncoder().encode(JSON.stringify(V2)));
     const card=await parseCardFile(new File([blob],'card.charx'));
     expect(card.name).toBe('艾莉丝');
-    expect(card.bookEntries.length).toBe(3);
   });
   it('CHARX：deflate 条目走 DecompressionStream 解出',async()=>{
     const raw=new TextEncoder().encode(JSON.stringify(V2));
@@ -104,30 +102,30 @@ describe('parseCardFile 解析',()=>{
 });
 
 describe('buildPlan 计划生成',()=>{
-  it('按卡内容列项：全有→三项；精简卡→只列开场白',()=>{
+  it('按卡内容列项：全有→两项（greet/desc）；精简卡→只列开场白',()=>{
     const full=buildPlan(await0(V2));
-    expect(full.items.map(x=>x.id)).toEqual(['greet','desc','book']);
-    const slim=buildPlan({name:'s',description:'',firstMes:'hi',altGreetings:[],tags:[],bookEntries:[],warnings:[]});
+    expect(full.items.map(x=>x.id)).toEqual(['greet','desc']);
+    const slim=buildPlan({name:'s',description:'',firstMes:'hi',altGreetings:[],tags:[],warnings:[]});
     expect(slim.items.map(x=>x.id)).toEqual(['greet']);
   });
 });
 /* 小桥：buildPlan 收归一后的卡；测试里直接喂同形状对象 */
-function await0(x){return {name:x.data.name,description:x.data.description,firstMes:x.data.first_mes,altGreetings:x.data.alternate_greetings,tags:x.data.tags,bookEntries:x.data.character_book.entries.map(e=>({title:e.comment??e.name??(e.keys?e.keys.join('、'):''),content:e.content})),warnings:[]}}
+function await0(x){return {name:x.data.name,description:x.data.description,firstMes:x.data.first_mes,altGreetings:x.data.alternate_greetings,tags:x.data.tags,warnings:[]}}
 
 describe('applyImportPlan 工程应用',()=>{
-  it('勾选全部：占位列表/角色简介/标题库草稿按映射落位，区块启用',()=>{
+  it('勾选全部：占位列表/角色简介按映射落位，区块启用；不写标题库草稿',()=>{
     const p=defaultProject('t');
     p.blocks.find(b=>b.type==='profile').enabled=false; /* profile 是核心区块默认启用，先关掉才验证「导入开启」 */
-    applyImportPlan(p,await0(V2),['greet','desc','book']);
+    applyImportPlan(p,await0(V2),['greet','desc']);
     const g=p.blocks.find(b=>b.type==='greetings'),pr=p.blocks.find(b=>b.type==='profile');
     expect(g.enabled).toBe(true);
     expect(g.placeholderList.split('\n').length).toBe(2); /* 主 + 1 备用 */
     expect(g.placeholderList.split('\n')[0]).toContain('你好，欢迎来到图书馆');
     expect(pr.enabled).toBe(true);
     expect(pr.characters[0]).toEqual({name:'艾莉丝',desc:'银发的图书管理员。',tags:'图书员,温柔',avatar:'',avatarMode:'manual'});
-    expect(g.titleBookDraft).toBe('0|馆规|保持安静。\n1|藏书|三楼是禁区。\n2|禁书|不可翻阅。');
+    expect(g.titleBookDraft).toBe(''); /* 标题库草稿不自动生成，由用户手动维护 */
   });
-  it('只勾 greet：简介与草稿不动',()=>{
+  it('只勾 greet：简介不动',()=>{
     const p=defaultProject('t');
     p.blocks.find(b=>b.type==='profile').enabled=false;
     applyImportPlan(p,await0(V2),['greet']);
