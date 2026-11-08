@@ -42,6 +42,8 @@
 | `src/js/themes.js` | **纯函数/数据**：`THEME_SKINS` 材质枚举与本机字体栈、`themeSkin` 兼容兜底、`themePresetPatch` 试穿/套用补丁、`themePresetMatches` 完整匹配、`themeTexture` 卡片/产物共用纹理；不按 presetRef 推断材质 |
 | `src/js/macros.js` | 预览专用宏引擎（char/user/random/pick/roll/setvar/getvar/时间类），随机结果带缓存防预览闪变 |
 | `src/js/project.js` | 工程存储（v1.27 起分键：`openingPageGen_v1_projIndex` 索引 + `openingPageGen_v1_proj_<id>`，save 只写变化工程；首载自动从旧整表单键 `openingPageGen_v1_projects` 迁移，空间不足回滚保留旧格式）/migrate/normalize（含 `_hoistBg` 背景上收）、撤销重做（20 步快照栈存 JSON 字符串，v1.24 起含 theme）、模板、导入导出（剔除 API Key） |
+| `src/js/cardImport.js` | **纯函数**角色卡导入（v1.30）：parseCardFile（PNG tEXt chara/ccv3 / JSON / CHARX）归一 V1/V2/V3、buildPlan 映射预览、applyImportPlan 落位、toV2Card；UI 接线在 project.js openCardImport |
+| `src/js/docImport.js` | **纯函数**导出 HTML 反向解析（v1.30）：parseExportDoc 按 `.opg-{px}-bk{n}` 作用域层切块（wrap 层 div 配对计数切片，页尾运行时脚本挡在切块外）+ 24 类产物签名识别（gacha/egg 脚本型内容从内联脚本取回）、buildRestorePlan 勾选预览、applyRestorePlan 合并落位；UI 接线在 project.js openDocImport |
 
 | `src/js/ui/core.js` | UI 壳 + `UI.renderAll()` 总入口（各渲染页有独立 try/catch 隔离）+ renderProjectSelect + 预览四件套（mountPreview/fitPreviewHeight/refreshPreview/debouncedPreview）+ 页签切换/全局快捷键/启动；经 `Object.assign(UI,…)` 挂载页面方法（模块顶层不读 UI 值，规避循环 import TDZ） |
 | `src/js/ui/renderConfig.js` | 配置页渲染与交互（renderConfig：主题/宏/区块列表拖拽/全局搜索替换 UI 层） |

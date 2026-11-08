@@ -2,6 +2,7 @@
 import { esc, toast, uid, download, confirmModal, promptModal } from './utils.js';
 import { BLOCK_DEFS, BLOCK_ORDER, BUILTIN_TEMPLATES, defaultProject, SCHEMA_VERSION } from './defs.js';
 import { parseCardFile, buildPlan, applyImportPlan, toV2Card } from './cardImport.js';
+import { parseExportDoc, buildRestorePlan, applyRestorePlan, EXPORT_VER } from './docImport.js';
 
 /**
  * 工程对象（localStorage 持久化单元，id 同时作为生成组件的容器前缀）
@@ -319,7 +320,8 @@ const Project={
     let rows=`<div style="font-weight:700;margin-bottom:10px">📄 新建工程</div>
       <button type="button" class="btn ghost small" data-new="blank" style="width:100%;text-align:left;margin:4px 0">空白工程（默认区块布局）</button>
       <button type="button" class="btn ghost small" data-new="sample" style="width:100%;text-align:left;margin:4px 0">示例工程</button>
-      <button type="button" class="btn ghost small" data-new="cardimport" style="width:100%;text-align:left;margin:4px 0">📥 从角色卡导入（PNG / JSON / CHARX → 反向生成工程）</button>`;
+      <button type="button" class="btn ghost small" data-new="cardimport" style="width:100%;text-align:left;margin:4px 0">📥 从角色卡导入（PNG / JSON / CHARX → 反向生成工程）</button>
+      <button type="button" class="btn ghost small" data-new="docimport" style="width:100%;text-align:left;margin:4px 0">🧩 从导出 HTML 反向导入（粘贴产物 → 认回区块草稿）</button>`;
     if(BUILTIN_TEMPLATES.length)rows+=`<div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">官方模板（一键套用完整布局）</div>`+
       BUILTIN_TEMPLATES.map((t,i)=>`<button type="button" class="btn ghost small" data-new="bt:${i}" style="width:100%;text-align:left;margin:4px 0">⭐ ${esc(t.name)}</button>`).join('');
     if(this.templates.length)rows+=`<div style="font-size:12px;color:var(--txt2);margin:10px 0 4px">我的模板（点击以模板创建，✕ 删除模板）</div>`;
@@ -342,6 +344,7 @@ const Project={
         return;
       }
       if(nv==='cardimport'){ov.remove();this.openCardImport();return}
+      if(nv==='docimport'){ov.remove();this.openDocImport();return}
       /* 官方模板：bt:索引 */
       if(String(nv).startsWith('bt:')){
         const t=BUILTIN_TEMPLATES[+String(nv).slice(3)];
@@ -497,6 +500,60 @@ const Project={
       msg.style.color='var(--txt2)';msg.textContent='⏳ 解析中…';
       try{const card=await parseCardFile(f);msg.textContent='';plan(card)}
       catch(err){msg.style.color='var(--err)';msg.textContent='❌ '+(err&&err.message||err)}
+    });
+  },
+  /* 导出 HTML 反向导入（v1.30）：粘贴本工具导出的完整页面 → 本地解析认回区块草稿 → 勾选生成新工程。
+     解析纯前端进行（docImport.js 纯函数）；认不出的段落整段进自由 HTML 区并标注待认领 */
+  openDocImport(){
+    const ov=document.createElement('div');
+    ov.className='opg-ov'; /* 自绘弹层统一标记：core.js 的 Ctrl+Z/Esc 守卫借此识别「有弹层打开」 */
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center';
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:min(560px,92vw);max-height:84vh;overflow:auto';
+    ov.appendChild(box);document.body.appendChild(ov);
+    const close=()=>ov.remove();
+    const home=()=>{
+      box.innerHTML=`<div style="font-weight:700;margin-bottom:10px">🧩 从导出 HTML 反向导入</div>
+        <textarea id="diHtml" rows="9" placeholder="粘贴本工具导出的开场页 HTML（导出页 ① 完整文档，带围栏原文亦可；含 id=&quot;opg-…&quot; 容器即可识别）" style="width:100%;font-size:12px;font-family:monospace;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.05);color:var(--txt);padding:8px;box-sizing:border-box;resize:vertical"></textarea>
+        <div style="font-size:12px;color:var(--txt2);margin:8px 0">解析纯本地进行：按区块作用域层切块认回能识别的区块与字段（轻量恢复，排版开关与样式类配置以默认值为准），认不出的整段进自由 HTML 区待手动认领。</div>
+        <div id="diMsg" style="font-size:12px;min-height:16px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button type="button" class="btn ghost small" data-close>取消</button>
+          <button type="button" class="btn small" data-parse>🔍 解析</button>
+        </div>`;
+    };
+    home();
+    ov.addEventListener('click',e=>{if(e.target===ov||e.target.dataset.close!==undefined)close()});
+    box.addEventListener('click',e=>{
+      if(!e.target.closest('[data-parse]'))return;
+      const msg=box.querySelector('#diMsg');
+      let parsed;
+      try{parsed=parseExportDoc(box.querySelector('#diHtml').value)}
+      catch(err){msg.style.color='var(--err)';msg.textContent='❌ '+(err&&err.message||err);return}
+      if(!parsed.items.length){msg.style.color='var(--err)';msg.textContent='❌ 没有解析到任何区块内容';return}
+      msg.textContent='';
+      const plan=buildRestorePlan(parsed);
+      const verNote=parsed.ver==null?'未带版本锚的旧导出，按尽力识别处理':(parsed.ver>EXPORT_VER?`⚠️ 导出格式 v${parsed.ver} 较新，解析可能不全`:'');
+      box.innerHTML=`<div style="font-weight:700;margin-bottom:4px">🧩 识别结果（${plan.recognized}/${plan.total} 段已认出）</div>
+        ${verNote?`<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">${esc(verNote)}</div>`:''}
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:8px">勾选要恢复的区块，确认后生成新工程：</div>
+        ${plan.items.map(it=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:7px 8px;border:1px solid var(--line);border-radius:8px;margin:5px 0;cursor:pointer">
+          <input type="checkbox" data-pid="${it.id}" checked style="margin-top:3px">
+          <span style="flex:1"><strong style="font-size:13px">${esc(it.label)}</strong><br><span style="font-size:12px;color:var(--txt2)">${esc(it.detail)}</span></span>
+        </label>`).join('')}
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button type="button" class="btn ghost small" data-back>← 重新粘贴</button>
+          <button type="button" class="btn small" data-confirm>✓ 生成工程</button>
+        </div>`;
+      box.querySelector('[data-back]').onclick=home;
+      box.querySelector('[data-confirm]').onclick=()=>{
+        const ids=[...box.querySelectorAll('input[data-pid]:checked')].map(x=>x.dataset.pid);
+        const p=defaultProject('反向导入工程');
+        this.normalize(p);
+        const sum=applyRestorePlan(p,parsed,ids);
+        this.list.push(p);this.cur=p;this.save();this.resetHistory();_ui.renderAll();
+        close();toast(sum);
+      };
     });
   },
 };
