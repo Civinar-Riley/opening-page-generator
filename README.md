@@ -23,7 +23,8 @@
 
 - **不写代码**：25 种区块 + 59 个可复用组件 + 12 套官方模板，拖拽即所得，改文案改图片即可出成品；
 - **纯本地运行**：无服务端、零运行时依赖，工程数据只存浏览器 localStorage，数据不出本机；
-- **贴进酒馆就能用**：两种导出格式覆盖开场白 / 正则脚本。
+- **贴进酒馆就能用**：两种导出格式覆盖开场白 / 正则脚本；
+- **AI 也能直接编排**：随 Release 分发 `opg` 技能包，ZCode / Claude Code 等 AI 编码助手凭一份工程 JSON 直接产出成品，无需打开可视化界面。
 
 | 区块类型 | 复用组件 | 官方模板 | 页面主题 | 工具主题 |
 |:---:|:---:|:---:|:---:|:---:|
@@ -82,8 +83,16 @@
 | 🙈 Key 保护 | 输入框默认遮蔽（👁 切换显示）；关闭「在本机记住 Key」立即清除持久化值、保留本工程会话内使用，切换工程不串用；导出工程自动剔除 |
 | 📋 模型列表 | 填好 URL 与 Key 后可一键拉取 `/models` 下拉选择，支持关键词本地过滤（只读，不发送对话请求，90 秒超时保护） |
 | 🎯 生成目标 | 可选生成目标：自由 HTML / 开场白正文 / 角色简介 / 时间线节点 / 问答组——生成后直接追加进对应区块；最近 5 份草稿本机暂存可恢复或丢弃；酒馆内打开工具时可选「酒馆当前源」走酒馆助手 generate 通道（与自带 API 配置并存，待真机验证） |
+
+### 独立分发 · 「opg skill」—— AI 编码助手 headless 生成
+
+| 特性 | 说明 |
+| :--- | :--- |
+| 🤖 技能包 | Release 挂 `opg-skill-vX.X.X.zip`：SKILL.md + 单文件生成引擎 CLI（esbuild 打包，零 npm 依赖，本机 Node 18+ 即可跑），解压进 ZCode / Claude Code 等技能目录即装 |
+| ⌨️ headless CLI | `node opg-gen.mjs <工程.json> [--fenced / --regex]` 工程 JSON 直出自包含 HTML；`--schema` 输出 25 种区块字段参考与内置宏表，`--new` / `--template` 从骨架或 12 套官方模板起步；产物自检与兼容审查恒跑（报告走 stderr） |
+| 🧩 与工具同引擎 | CLI 打包同一份 `src/js/gen` 生成引擎与 defs 数据，残缺工程 JSON 按工具导入同一路径自动补齐；HTML 产物与工具导出逐字节一致 |
 <details>
-<summary><b>📖 功能明细（27 条完整说明，点击展开）</b></summary>
+<summary><b>📖 功能明细（28 条完整说明，点击展开）</b></summary>
 
 - **可视化编辑**：拖拽排列区块、一键复制区块、实时预览效果（📱手机 / 🖥PC 宽度、🌙暗色 / ☀️亮色底模拟）
 - **撤销/重做**：Ctrl+Z 撤销、Ctrl+Shift+Z / Ctrl+Y 重做，最多 20 步历史；Ctrl+S 立即保存
@@ -105,6 +114,7 @@
 - **工厂重置**：顶栏「⟲ 重置」三次确认后清空全部本地数据（工程/模板/主题偏好），恢复初始状态——重置前建议先「导出工程」备份
 - **AI 助手（可选）**：接 OpenAI 兼容接口生成自由 HTML 区内容与主题配色；API Key 输入框默认遮蔽（👁 切换显示），可勾掉「在本机记住 Key」改为仅本工程会话内使用、不写入 localStorage，切换工程不串用；填好 URL 与 Key 后可一键拉取模型列表（下拉选择，只读 /models 不发送对话请求，90 秒超时保护）；Key 导出工程自动剔除
 - **多种导出格式**：开场白版、标记+正则脚本版，分段切换共用产物查看器（正则版预览省略超长 replaceString，选项字段完整可见）；导出代码带语法高亮，长代码预览截断显示（复制/下载为完整内容）；「👁 新窗看产物」本地直开最终成品做最后一眼核对；导出自检 + 兼容审查合并「付印审读」逐条列出，阻断级问题拦截复制/下载；v1.29 起导出页顶部有统计行（区块 / 开场白 / 图片 / 产物体积 / 最近修改）与「💾 一键备份全部工程」（合并 JSON、剔除 API Key，可经导入工程整包还原），并内嵌「原生酒馆不执行完整 HTML」说明与三档环境降级对照
+- **AI 编排技能（opg skill）**：Release 资产 `opg-skill-vX.X.X.zip`——SKILL.md + headless 生成 CLI（`opg-gen.mjs`，esbuild 打包零 npm 依赖，本机 Node 18+），让 ZCode / Claude Code 等 AI 编码助手不开可视化工具直接产出开场页：`--schema` 拿 25 种区块字段与宏参考，`--new` / `--template` 起步工程 JSON，编辑后 `--fenced`（贴酒馆）/ `--regex`（正则脚本）构建成品；与工具跑同一份生成引擎（HTML 产物逐字节一致），残缺 JSON 自动补齐，构建恒跑自检报告；解压到技能目录即装
 - **角色卡导入**：新建工程弹层「📥 从角色卡导入」——酒馆卡 PNG（tEXt chara / ccv3）/ JSON / CHARX 三路纯本地解析（手解 PNG chunk 与 zip 中央目录 + 原生 DecompressionStream，不引第三方库），V1 / V2 / V3 自动归一；按卡内容列映射预览（first_mes + alternate_greetings → 开场白占位列表、description + tags → 角色简介；卡自带 character_book 世界书不搬运——装卡时酒馆自动读取），勾选确认后生成工程；酒馆内可选「同时创建进酒馆」（createOrReplaceCharacter，待真机验证）
 - **导出 HTML 反向导入**：新建工程弹层「🧩 从导出 HTML 反向导入」——把本工具导出的开场页 HTML 按区块作用域层切块认回可编辑草稿：24 种区块按产物签名识别，卡池 / 彩蛋等脚本型内容从内联脚本原样取回，认不出的段落整段进自由 HTML 区并标注待认领，旧导出（无版本锚）按尽力识别处理。轻量恢复——排版开关与样式类配置（列数 / 颜色 / 字号等）以默认值为准，同类型多实例合并
 - **图片连通性检查**：导出页付印审读区对全工程图片 URL（图库 / 漫画封面与页 / 头像 / 主题背景 / 自由 HTML 内 img）逐个 `Image()` 探测，8 秒超时单独标注「可能只是慢」，失效仅提示不阻断导出
@@ -138,7 +148,7 @@
 
 > ⚠️ 开发版 `src/index.html` 使用 ES Modules，直接双击会被浏览器 CORS 拦截，请使用构建产物或本地静态服务器。
 >
-> ⚠️ 每个 Release 挂两个资产：`opg-vX.X.X.html` 为工具本体（单文件，下载即用）；`opg-nh-helper-vX.X.X.zip` 为「漫画导入助手」小包（免 clone 仓库，解压 → 双击安装协议 → 工具页点启动）。**这个 ZIP 不必单独下载**——工具本体已内嵌同一份小包，在「📚 漫画导入」页点「📦 导出助手小包」即可导出，两者逐字节一致。push `v*` tag 会自动触发完整流水线（lint → 测试 → 构建 → 双冒烟 → 建 Release）。
+> ⚠️ 每个 Release 挂三个资产：`opg-vX.X.X.html` 为工具本体（单文件，下载即用）；`opg-nh-helper-vX.X.X.zip` 为「漫画导入助手」小包（免 clone 仓库，解压 → 双击安装协议 → 工具页点启动。**这个 ZIP 不必单独下载**——工具本体已内嵌同一份小包，在「📚 漫画导入」页点「📦 导出助手小包」即可导出，两者逐字节一致）；`opg-skill-vX.X.X.zip` 为 AI 技能包（解压进 ZCode / Claude Code 等的技能目录，AI 凭工程 JSON 直接产出开场页，本机需 Node 18+）。push `v*` tag 会自动触发完整流水线（lint → 测试 → 构建 → 双冒烟 → 建 Release）。
 >
 > ⚠️ 工具页离线打开时飞书字体 CDN 加载失败会回落系统字体，不影响任何功能；无 API 环境下组件自动降级显示占位内容。
 
@@ -154,6 +164,7 @@
 | **把一本漫画填进开场页** | 「📚 漫画导入」页启动本机服务 → 贴 nhentai 画廊链接抓全本 → 勾选页面 / 去尾 N 页 → 一键写入漫画区块 → 「预览」页核对 |
 | **用正则方案嵌入** | 「导出」页②生成「标记 + 正则脚本」→ 标记文本贴进开场白或世界书条目 → 酒馆「扩展 → 正则」导入下载的 JSON |
 | **让 AI 帮忙出内容** | 「AI 助手」页填 OpenAI 兼容 URL + Key → 生成自由 HTML 内容与主题配色 |
+| **让 AI 直接编排整页（skill）** | Releases 下载 `opg-skill-vX.X.X.zip` 解压到 AI 编码助手技能目录（如 `~/.claude/skills/` 或 `.zcode/skills/`）→ 对 AI 说「用 opg 给某某角色生成一个开场页」——AI 走 `--template` / `--new` 起步、改工程 JSON、`--fenced` 出成品（本机需 Node 18+） |
 | **换工具界面配色** | 顶栏主题下拉：暖铜金 / 星夜 / 蓝图 / 磷光 / 深海 / 绯幕 / 月岩，选择自动记忆；仅改变工具界面，不影响导出页面 |
 | **重置全部本地数据** | 顶栏「⟲ 重置」三次确认（清空工程 / 模板 / 主题偏好，建议先「导出工程」备份） |
 
@@ -195,17 +206,21 @@ opening-page-generator/
 │           ├── renderHelp.js     # 说明页
 │           ├── shared.js         # 跨页辅助（列表编辑器 / 字体探测）
 │           └── extBridge.js      # 扩展版桥接（角色卡写入 / 酒馆 AI 通道）
-├── tests/                        # 单元测试（vitest，17 个测试文件，含 themes.test.js 页面主题、uithemes.test.js 工具主题、helperpack.test.js 助手小包 ZIP 编码、cardImport.test.js 角色卡导入、docImport.test.js 反向导入）
+├── tests/                        # 单元测试（vitest，18 个测试文件，含 themes.test.js 页面主题、uithemes.test.js 工具主题、helperpack.test.js 助手小包 ZIP 编码、cardImport.test.js 角色卡导入、docImport.test.js 反向导入、opgcli.test.js headless CLI）
 ├── dist/index.html               # 构建产物（自包含单文件，下载即用）
+├── skill/                        # 「opg skill」技能源码
+│   └── SKILL.md                  # 技能正文（CLI 由 pack-skill.mjs 打包注入后随 Release 分发）
 ├── scripts/                      # 辅助脚本
 │   ├── nh-import.mjs             # nhentai 导入（页面服务 / CLI / CONNECT 隧道代理）
 │   ├── nh-install.mjs            # 注册 / 移除 opg-nh:// 本地协议
 │   ├── opg-nh.bat                # 协议注册双击批处理（进助手小包，检出 CRLF）
 │   ├── nh-lib.mjs                # 抓取与解析公共库
+│   ├── opg-gen-cli.mjs           # headless 生成 CLI 源码（type:commonjs 下仅 vitest/esbuild 可加载，运行形态是打包产物）
 │   ├── smoke-static.mjs          # 构建后静态冒烟
 │   ├── smoke-browser.mjs         # 无头浏览器冒烟（playwright）
 │   ├── helper-pack.mjs           # 助手小包文件清单 + store-only ZIP 组装（纯函数）
-│   └── pack-helper.mjs           # 打包「漫画导入助手」小包（构建期内嵌与 Release 资产共用同一份字节）
+│   ├── pack-helper.mjs           # 打包「漫画导入助手」小包（构建期内嵌与 Release 资产共用同一份字节）
+│   └── pack-skill.mjs            # 打包「opg skill」（esbuild bundle 生成引擎 + 同一 zipStore；不内嵌工具单文件）
 ├── .github/                      # 工作流（CI / tag 自动发版 + Release 说明模板）+ issue 模板
 ├── reference/                    # 外部参考资料（酒馆助手文档 / API 类型，只读不进构建）
 ├── build.js                      # 构建脚本（esbuild + 产物体积预算）
@@ -221,6 +236,7 @@ opening-page-generator/
 | 文档 | 内容 |
 | :--- | :--- |
 | 工具内「使用说明」页 | 区块详解 / 嵌入方式 / 宏支持 / 漫画导入操作 |
+| [`skill/SKILL.md`](skill/SKILL.md) | 「opg skill」正文——headless 用法（命令表 / 工程 JSON 结构 / 宏表 / 交付要点） |
 | [`src/js/gen/TAVERN_API.md`](src/js/gen/TAVERN_API.md) | 生成脚本依赖的酒馆助手 API 契约（守卫 / 降级矩阵） |
 | [`AGENTS.md`](AGENTS.md) | AI 协作指南（硬约束 / 常见任务配方 / 发版配方） |
 | [`PITFALLS.md`](PITFALLS.md) | 防踩坑清单（真实踩坑沉淀，AI 协作检查表） |
@@ -276,10 +292,11 @@ A：请走 [Issue 模板](https://github.com/Civinar-Riley/opening-page-generato
 ## 🕘 版本历史
 
 <details>
-<summary><b>📋 版本历史表（25 个里程碑，点击展开）</b></summary>
+<summary><b>📋 版本历史表（26 个里程碑，点击展开）</b></summary>
 
 | 版本 | 日期 | 更新内容 |
 |------|------|----------|
+| **v1.32.0** | 2026-11-08 | 新增「opg skill」AI 技能包（v1.29.0 计划的 MCP/skill 询问落地方案）：Release 挂第三个资产 `opg-skill-*.zip`（SKILL.md + esbuild 打包的单文件生成 CLI，零 npm 依赖，Node 18+ 直跑），解压进 ZCode / Claude Code 等技能目录后 AI 即可 headless 产出开场页——`--schema` 输出 25 种区块字段参考与内置宏表，`--new` / `--template` 起步工程 JSON，`--fenced` / `--regex` 构建成品，产物自检 + 兼容审查恒走 stderr；工程 JSON 经工具导入同一路径补齐（残缺 JSON 直接吃）；CLI 与工具跑同一份 `src/js/gen` 引擎，HTML 产物逐字节一致，不内嵌工具单文件（改 CLI 重跑 `pack:skill` 即可）；新增 8 项回归（530→538） |
 | **v1.31.0** | 2026-11-08 | 移除「返回开场页」角色脚本功能（导出页 ③ 整块下线）：该功能以独立角色脚本 JSON 注入酒馆助手脚本栏，与正则/开场白两条主路径耦合弱、真机验证负担重，按使用反馈砍掉——删 Gen.backHomeScript 生成器、slots/back-home.json 插槽目录、导出页 ③ 面板与产物源、工程 schema 的 backHome 配置（normalize 按 statusbar/mvu 先例清理旧存档残留字段，无需迁移）；导出格式回归两段（开场白版 / 标记+正则），TAVERN_API.md 移除角色脚本形态规则与相关登记，README 入口表/功能明细/使用指南/FAQ/结构树/致谢同步；v1.29/v1.30.1 已发布的 Release 不受影响（历史版本产物含该脚本仍可用，仅新版本不再提供） |
 | **v1.30.1** | 2026-11-08 | 三区审查修复十三连：产物层——开场白按钮模式页内点选照常切换（此前落进描边死分支，契约「按钮仅快捷方式」不成立）；开场白「填入输入框/直接发送」动态文本包引号转义（文本含 \| 此前被酒馆解析器当命令分链静默截断，宏 {{...}} 内管道不受影响）；随机事件导出与预览同轨转义（导出保留宏）。数据层——反向导入开场白保留空段（空描述行不再被静默改写错位，全空行占位保证行与封面下标对齐）；全局搜索替换补扫标题库草稿（titleBookDraft）。工具层——确认弹窗焦点移入模态（Enter 不再复激活背景按钮致一次确认两次执行连删两条）；顶栏「导出工程」接回真实方法（此前调用不存在的方法按钮完全失灵）；漫画导入页签切入重刷目标下拉（配置页增删排序区块后不再写错 comic 区块）；组件库选择器/标题库写入/导入计划等五处弹层与 toast 层级统一置顶（此前被主题纹理层压住）；AI 页六处写入补拍撤销快照（AI 生成内容可撤销可重做）；watch 首建失败不再杀监听；配置页实时预览补齐预览页同款圆角投影样式；TAVERN_API.md 补 slashArg 转义契约与按钮序号 0 起口径；新增 5 项回归（533→538）——slashArg 真机转义行为待真机验证 |
 | **v1.30.0** | 2026-11-08 | 第二批五连：角色卡导入（PNG tEXt chara/ccv3 手解 chunk / JSON / CHARX 手解 zip 中央目录 + 原生 DecompressionStream，V1/V2/V3 归一，映射预览勾选确认，可选同时创建进酒馆）；导出 HTML 反向解析（data-opg-ver 格式版本锚 + 按区块作用域层切块，24 类产物签名识别，卡池/彩蛋等脚本型内容从内联脚本原样取回，认不出整段进自由 HTML 待认领，旧导出按尽力识别处理）；图片连通性检查（付印审读区 Image() 逐 URL 探测，8 秒超时单独标注）；AI 生成目标扩展（五目标追加进对应区块 + 最近 5 份草稿恢复 + 酒馆内「酒馆当前源」渠道）；标题库写入世界书（自动建书 / 同名条目两步重建，position 支持 outlet）；新增 22 项回归（511→533）——角色卡直建酒馆 / 标题库写入 / AI 酒馆源渠道 / 反向导入真机还原，均待真机验证 |

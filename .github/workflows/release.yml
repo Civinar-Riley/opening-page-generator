@@ -22,10 +22,11 @@ jobs:
       - run: npx playwright install chromium --with-deps
       - run: npm run smoke
       - run: node scripts/pack-helper.mjs
+      - run: node scripts/pack-skill.mjs
       # 产物挂成 Release asset：带版本名的自描述文件名
       - name: Rename artifact
         run: cp dist/index.html "opg-${GITHUB_REF_NAME}.html"
-      # Release 说明头部用模板渲染（{{TAG}} 占位符替换为 tag 名），讲清两个资产各是干嘛的；
+      # Release 说明头部用模板渲染（{{TAG}} 占位符替换为 tag 名），讲清各资产是干嘛的；
       # generate_release_notes 会把自动更新日志追加在头部之后
       - name: Render release notes
         run: sed "s/{{TAG}}/${GITHUB_REF_NAME}/g" .github/release-template.md > release-notes.md
@@ -36,5 +37,6 @@ jobs:
           files: |
             opg-*.html
             dist-nh/opg-nh-helper-*.zip
+            dist-skill/opg-skill-*.zip
           generate_release_notes: true
           fail_on_unmatched_files: true
