@@ -173,9 +173,9 @@ async function cli(argv){
     else input=a;
   }
   if(!input){console.log(USAGE);process.exitCode=1;return}
-  /* 缺值/吃掉下个旗标不静默降级为全本导出（nh-lib 契约：解析不出必须报错） */
-  if(slSeen&&(skipLast===undefined||!Number.isFinite(+skipLast))){console.error('✗ --skip-last 需要一个数字（如 --skip-last 3）');process.exitCode=1;return}
-  if(pgSeen&&(pages===undefined||String(pages).startsWith('--'))){console.error('✗ --pages 需要一个页码表达式（如 --pages 1-20,25）');process.exitCode=1;return}
+  /* 缺值/空串/吃掉下个旗标不静默降级为全本导出（nh-lib 契约：解析不出必须报错） */
+  if(slSeen&&(skipLast===undefined||String(skipLast).trim()===''||!Number.isFinite(+skipLast))){console.error('✗ --skip-last 需要一个数字（如 --skip-last 3）');process.exitCode=1;return}
+  if(pgSeen&&(pages===undefined||String(pages).trim()===''||String(pages).startsWith('--'))){console.error('✗ --pages 需要一个页码表达式（如 --pages 1-20,25）');process.exitCode=1;return}
   const g=await fetchGallery(input,{proxy});
   const sel=pickGalleryPages(g,{skipLast,pages});
   if(sel===null){console.error('✗ 页码表达式没解析出有效页（示例：1-20,25）');process.exitCode=1;return}

@@ -97,7 +97,7 @@ export function main(argv=[],io={}){
     const opts={pos:[],out:'',fenced:false,regex:false,name:'',tpl:null,fresh:false};
     for(let i=0;i<argv.length;i++){
       const a=argv[i];
-      if(a==='-o'||a==='--out')opts.out=argv[++i]??'';
+      if(a==='-o'||a==='--out'){opts.out=argv[++i];if(opts.out===undefined||opts.out==='')throw new Error('-o/--out 需要一个输出文件名\n\n'+usage())}
       else if(a==='--fenced')opts.fenced=true;
       else if(a==='--regex')opts.regex=true;
       else if(a==='--name')opts.name=argv[++i]??'';
@@ -123,6 +123,7 @@ export function main(argv=[],io={}){
       return 0;
     }
     if(!opts.pos.length)throw new Error('缺少工程 JSON 文件（或用 --new / --template 起步）\n\n'+usage());
+    if(opts.pos.length>1)throw new Error(`一次只接受一个工程文件（多余参数：${opts.pos.slice(1).join(' ')}）\n\n`+usage());
     const input=opts.pos[0];
     const p=parseProjectJson(input==='-'?readFileSync(0,'utf8'):readFileSync(input,'utf8'));
     emit(p,buildOut(p,opts),opts,io);

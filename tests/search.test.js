@@ -158,3 +158,23 @@ describe('开场白项绑定标题（entries.title）纳入搜索替换',()=>{
     expect(p.blocks[0].entries[0].title).toBe('雪夜邂逅');
   });
 });
+/* v1.32.3 回归：工程级字段（正则标记 / 自定义宏 k/v）纳入搜索替换——此前只遍历 blocks */
+describe('工程级字段（marker/macros）纳入搜索替换',()=>{
+  it('collectSearchMatches 传整个工程命中 marker 与宏，blockIdx=-1 标记工程级',()=>{
+    const proj={marker:'【艾莉丝上场】',macros:[{k:'艾莉丝',v:'艾莉丝的招呼'},{k:'user',v:'{{user}}'}],blocks:[]};
+    const m=collectSearchMatches(proj,'艾莉丝');
+    expect(m).toHaveLength(3);
+    expect(m[0]).toMatchObject({blockIdx:-1,subField:'marker',path:'正则标记（导出页）'});
+    expect(m.filter(x=>x.parent==='macros')).toHaveLength(2);
+  });
+  it('仍兼容直接传区块数组（旧调用形状）',()=>{
+    expect(collectSearchMatches([{type:'welcome',title:'你好'}],'你好')).toHaveLength(1);
+  });
+  it('replaceAllInProject 覆盖 marker 与宏 k/v，计数合并',()=>{
+    const p={marker:'【艾莉丝】',macros:[{k:'艾莉丝',v:'艾莉丝的招呼'}],blocks:[{type:'welcome',title:'{{艾莉丝}}欢迎'}]};
+    expect(replaceAllInProject(p,'艾莉丝','雪乃')).toBe(4);
+    expect(p.marker).toBe('【雪乃】');
+    expect(p.macros[0]).toEqual({k:'雪乃',v:'雪乃的招呼'});
+    expect(p.blocks[0].title).toBe('{{雪乃}}欢迎');
+  });
+});

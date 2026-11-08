@@ -188,9 +188,11 @@ export function renderBlockBody(container,b,i){
         afterAdd:()=>{UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot()},
         afterInput:()=>{UI.debouncedPreview();Project.saveDebounced()}
       });
-      /* 按占位列表补标题（挂 container 事件委托：bindListEditor 重建 DOM 后按钮仍有效）：
+      /* 按占位列表补标题 + 标题库草稿复制/写入世界书（挂 container 事件委托：bindListEditor 重建 DOM 后按钮仍有效）：
          为空标题的条目按序号补上对应占位行的标题，把旧数据的序号绑定升级为标题绑定 */
       container.addEventListener('click',e=>{
+        if(e.target.dataset.bkcopy!==undefined){copyText(b.titleBookDraft);toast('标题库草稿已复制，粘进酒馆世界书条目即可');return}
+        if(e.target.dataset.bkwb!==undefined){openTitlebookWriter(b);return}
         if(e.target.dataset.gesync===undefined)return;
         const lines=String(b.placeholderList||'').split('\n').map(s=>s.trim()).filter(Boolean);
         let n=0;
@@ -204,10 +206,6 @@ export function renderBlockBody(container,b,i){
         if(n){UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();toast(`已为 ${n} 项补上绑定标题`)}
         else toast('没有需要补的空标题');
       });
-      const bkcopy=container.querySelector('[data-bkcopy]');
-      if(bkcopy)bkcopy.addEventListener('click',()=>{copyText(b.titleBookDraft);toast('标题库草稿已复制，粘进酒馆世界书条目即可')});
-      const bkwb=container.querySelector('[data-bkwb]');
-      if(bkwb)bkwb.addEventListener('click',()=>openTitlebookWriter(b));
       break;
     }
     case 'clockbar':
@@ -476,7 +474,9 @@ export function renderBlockBody(container,b,i){
           const ta=container.querySelector('[data-cmimp]');
           const lines=String(ta?ta.value:'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
           if(!lines.length){toast('请先粘贴图片 URL（每行一个）');return}
+          const pSnap=Project.cur; /* 确认弹窗无焦点陷阱，期间可经键盘切工程：b 是旧工程区块引用，切换后中止防错写 */
           if(b.pages.some(pg=>pg.url)&&!await confirmModal(`批量导入将覆盖现有的 ${b.pages.length} 页，确定？`))return;
+          if(Project.cur!==pSnap){toast('工程已切换，已取消导入');return}
           b.pages=lines.map(l=>{const[v,c]=l.split('|');return{url:v.trim(),cap:(c||'').trim()}});
           build();
           UI.debouncedPreview();UI.renderExport();Project.save();Project.saveSnapshot();
@@ -487,7 +487,9 @@ export function renderBlockBody(container,b,i){
         if(clear)clear.addEventListener('click',async()=>{
           const n=b.pages.filter(pg=>pg.url).length;
           if(!n){toast('没有可清空的页面');return}
+          const pSnap=Project.cur; /* 确认期间可经键盘切工程：切换后中止防错写旧工程 */
           if(!await confirmModal(`确定清空全部 ${n} 页漫画？封面与标题保留（Ctrl+Z 可撤销）。`))return;
+          if(Project.cur!==pSnap){toast('工程已切换，已取消清空');return}
           Project.saveSnapshot();
           b.pages=[];
           build();
@@ -639,6 +641,9 @@ function openTitlebookWriter(b){
   ov.appendChild(box);document.body.appendChild(ov);
   ov.addEventListener('click',e=>{if(e.target===ov||e.target.dataset.close!==undefined)ov.remove()});
   box.querySelector('[data-go]').onclick=async()=>{
+    const go=box.querySelector('[data-go]');
+    if(go.disabled)return; /* 防重入：连点会并发 delete+create，世界书落下重复条目 */
+    go.disabled=true;
     const wb=box.querySelector('#twbName').value.trim()||defWb;
     const entryName=box.querySelector('#twbEntry').value.trim()||'开场白标题库';
     const outlet=box.querySelector('#twbOutlet').checked;
@@ -656,10 +661,11 @@ function openTitlebookWriter(b){
         await Promise.resolve(window.createWorldbookEntries(wb,[entry]));
       }
       b.titleWb=wb;b.titleEntry=entryName;
-      Project.save();
+      Project.save();Project.saveSnapshot(); /* 与同字段手输路径的撤销行为对齐 */
       ov.remove();
       toast('标题库已写入「'+wb+'」/「'+entryName+'」——进对话验证开场白标题是否生效');
     }catch(err){
+      go.disabled=false;
       msg.style.color='var(--err)';msg.textContent='❌ 写入失败：'+(err&&err.message||err);
     }
   };

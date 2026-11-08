@@ -116,8 +116,8 @@ describe('Gen 页面主题生成回归',()=>{
     /* 基线来自重设计前 HEAD:src/js/gen/css.js，固定 id 与默认核心区块；不是新旧入口自比。
        锁的是旧工程实际走的 classic 路径，而非重构后的紫夜预设（后者已有 nebula 材质）。
        v1.32 起 greetings 新增搜索框/预览热区选择器，为纯增量规则（只命中新元素），哈希随版更新 */
-    [false,'9b8500463bf67019c25e4d4af040e791a29d33b26abaece20c104863f29fafa2'],
-    [true,'36becb2a1b8ae5e6228bedfe36bed1020562d99b83f59cb3a9b3545d1150fda8'],
+    [false,'60170404b2afd231910751aefe68a5db3c2a1e82004d0d538656489cc366f82b'],
+    [true,'a66d1576ec3b8b4ed0e59a29f01f4e3b995dfd9ca574f5861bba7615f731681a'],
   ])('紫夜旧 CSS 字节快照不变（经典兼容路径，自定义字体=%s）',(customFont,hash)=>{
     const p=classicFixture();
     if(customFont)Object.assign(p.theme,{fontName:'Custom Body',headingFont:'Custom Heading'});

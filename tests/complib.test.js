@@ -1,6 +1,7 @@
 /* 组件库硬约束扫描 + 新增能力单元测试 */
 import { describe, it, expect } from 'vitest';
 import { COMP_LIB } from '../src/js/defs.js';
+import { AI_LOADING_HTML } from '../src/js/defs/complib.js';
 import { Gen } from '../src/js/gen/index.js';
 import { Macros } from '../src/js/macros.js';
 import { defaultProject } from '../src/js/defs.js';
@@ -30,6 +31,14 @@ describe('COMP_LIB 组件库硬约束',()=>{
       if(SCRIPT_OK.has(c.name))return;
       expect(/window\.\w+\s*=/.test(c.html),c.name+' 定义了全局函数').toBe(false);
     });
+  });
+});
+
+describe('组件动画自包含',()=>{
+  it('AI 加载动画引用的 keyframes 都在组件 style 内定义（此前引用不存在的 pulse，三点永不闪烁）',()=>{
+    expect(AI_LOADING_HTML).toContain('@keyframes opg-dots');
+    expect(AI_LOADING_HTML).toMatch(/animation:opg-dots 1s infinite/);
+    expect(AI_LOADING_HTML).not.toContain('animation:pulse');
   });
 });
 

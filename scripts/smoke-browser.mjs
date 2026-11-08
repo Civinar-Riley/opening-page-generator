@@ -37,6 +37,8 @@ let browser;
 try {
   browser = await chromium.launch();
   const page = await browser.newPage();
+  /* 字体外链（飞书 CDN）不参与断言：本地空 CSS 直接打发，断网/代理抖动不把硬门槛判红 */
+  await page.route('**miaoda.feishu.cn/**', r => r.fulfill({ status: 200, contentType: 'text/css', body: '' }));
   page.on('console', msg => { if (msg.type() === 'error') errors.push('console.error: ' + msg.text()); });
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('requestfailed', r => errors.push('requestfailed: ' + r.url() + ' ' + (r.failure()?.errorText || '')));

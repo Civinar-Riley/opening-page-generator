@@ -19,7 +19,7 @@ function buildRichProject(){
   Object.assign(B('author'),{style:'card',text:'作者的话正文'});
   Object.assign(B('freehtml'),{html:'<p class="x">自由 <b>HTML</b> 内容</p>'});
   Object.assign(B('clockbar'),{text:'◆ {{date}} · <i>钟</i>'});
-  Object.assign(B('randomevent'),{showTitle:true,title:'随机事件',pickMode:'one',lines:'事件一行::带双冒号\n事件二行}}收尾'});
+  Object.assign(B('randomevent'),{showTitle:true,title:'随机事件',pickMode:'one',lines:'事件一行&甲::带双冒号\n事件二行}}收尾<终"幕"'});
   Object.assign(B('dice'),{label:'攻击判定',expr:'2d6+1'});
   Object.assign(B('countdown'),{title:'距离上线',target:'2030-01-01T00:00:00',doneText:'已上线！'});
   Object.assign(B('timeline'),{showTitle:true,title:'进度',nodes:'序章|启程|done\n终章||lock'});
@@ -82,7 +82,7 @@ describe('docImport 导出反向解析',()=>{
     expect(B2('clockbar').text).toBe('◆ {{date}} · <i>钟</i>');
     const re=B2('randomevent');
     expect(re.pickMode).toBe('one');
-    expect(re.lines).toBe('事件一行::带双冒号\n事件二行}}收尾');
+    expect(re.lines).toBe('事件一行&甲::带双冒号\n事件二行}}收尾<终"幕"');
     expect(B2('dice').label).toBe('攻击判定');
     expect(B2('dice').expr).toBe('2d6+1');
     const cd=B2('countdown');
@@ -128,6 +128,18 @@ describe('docImport 导出反向解析',()=>{
     const it=parsed.items.find(i=>i.type==='randomevent');
     expect(it.draft.pickMode).toBe('line');
     expect(it.draft.lines).toBe('行甲\n行乙\n行丙');
+  });
+
+  it('randomevent line 模式与 dice expr 还原做 unesc（行文本/表达式导出经 esc，实体残留会让再导出变双转义）',()=>{
+    const p=defaultProject('unesc');
+    p.blocks.forEach(b=>{b.enabled=b.type==='randomevent'||b.type==='dice'});
+    Object.assign(p.blocks.find(b=>b.type==='randomevent'),{pickMode:'line',showTitle:false,lines:'猫&咖啡\n台<词>"引"'});
+    Object.assign(p.blocks.find(b=>b.type==='dice'),{label:'判定',expr:'1d6&暴'});
+    const parsed=parseExportDoc(Gen.buildFullDoc(p));
+    const p2=defaultProject('恢复');
+    applyRestorePlan(p2,parsed,parsed.items.map(i=>i.type));
+    expect(p2.blocks.find(b=>b.type==='randomevent').lines).toBe('猫&咖啡\n台<词>"引"');
+    expect(p2.blocks.find(b=>b.type==='dice').expr).toBe('1d6&暴');
   });
 
   it('greetings salvage 保留空段与全空占位，行与封面按下标对齐',()=>{

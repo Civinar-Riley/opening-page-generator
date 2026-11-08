@@ -106,4 +106,13 @@ describe('opg-gen CLI',()=>{
     const io4=stubIO();
     expect(main(['--new','--template','0'],io4)).toBe(1);
   });
+
+  it('错误路径补遗：-o 缺值与多余位置参数报错（此前 -o 缺值静默打到 stdout、第二个位置参数静默丢弃）',()=>{
+    const io=stubIO();
+    expect(main(['proj.json','-o'],io)).toBe(1);
+    expect(io.errBuf).toContain('-o/--out 需要一个输出文件名');
+    const io2=stubIO();
+    expect(main(['a.json','b.json'],io2)).toBe(1);
+    expect(io2.errBuf).toContain('一次只接受一个工程文件');
+  });
 });

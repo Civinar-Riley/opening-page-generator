@@ -1,5 +1,6 @@
 /* UI 通用辅助（跨页面模块复用）：列表编辑器 / 字体检测 / 行拖拽 */
-import { confirmModal } from '../utils.js';
+import { confirmModal, toast } from '../utils.js';
+import { Project } from '../project.js';
 import { detectAvailableFonts } from '../fontdetect.js';
 
 /* ================================================================
@@ -21,10 +22,14 @@ import { detectAvailableFonts } from '../fontdetect.js';
  * @param {Function} [opts.afterInput] - 字段输入后回调
  */
 export function bindListEditor(container,items,{delAttr,addAttr,fieldAttr,build,confirmMsg,createItem,afterDel,afterAdd,afterInput}){
+  const owner=Project.cur; /* 确认弹窗无焦点陷阱，期间可经键盘切工程：items 绑定的是旧工程数组，切换后中止防跨工程误删 */
   container.addEventListener('click',async e=>{
-    const d=e.target.dataset[delAttr];
+      const d=e.target.dataset[delAttr];
     if(d!==undefined){
-      if(confirmMsg&&!await confirmModal(confirmMsg))return;
+      if(confirmMsg){
+        if(!await confirmModal(confirmMsg))return;
+        if(Project.cur!==owner){toast('工程已切换，已取消删除');return}
+      }
       items.splice(+d,1);
       build();
       if(afterDel)afterDel();

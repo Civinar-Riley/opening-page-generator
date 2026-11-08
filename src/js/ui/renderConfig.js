@@ -154,7 +154,8 @@ export function renderConfig(){
   /* 字体检测与选择 */
   const fontPicker=$('#fontPicker',col);
   const fontCustomInput=$('#fontCustomInput',col);
-  const detected=detectFonts();
+  /* detectFonts 返回会话缓存本体：拷贝后再 unshift 自定义项，不污染跨工程候选 */
+  const detected=[...detectFonts()];
   if(p.theme.fontName&&!detected.includes(p.theme.fontName)){
     detected.unshift(p.theme.fontName);
   }
@@ -398,12 +399,12 @@ export function renderConfig(){
     const replaceOneBtn=box.querySelector('#gsrReplaceOne');
     const replaceAllBtn=box.querySelector('#gsrReplaceAll');
 
-    let matches=[];  /* {blockIdx, path, field, subIdx?, subField?} */
+    let matches=[];  /* {blockIdx, path, field, subIdx?, subField?}；blockIdx<0 为工程级字段（marker/macros） */
     let curIdx=-1;   /* 当前定位在 matches 中的下标 */
 
-    /* 收集全部匹配项（纯函数在 search.js，可测） */
+    /* 收集全部匹配项（纯函数在 search.js，可测；传整个工程，marker/macros 等工程级字段一并扫描） */
     const collectMatches=()=>{
-      matches=collectSearchMatches(Project.cur.blocks,findInp.value);
+      matches=collectSearchMatches(Project.cur,findInp.value);
     };
 
     /* 更新 UI 状态 */
@@ -453,11 +454,12 @@ export function renderConfig(){
     const replaceCurrent=async()=>{
       if(curIdx<0||curIdx>=matches.length)return;
       const m=matches[curIdx];
-      const b=Project.cur.blocks[m.blockIdx];
+      const b=m.blockIdx>=0?Project.cur.blocks[m.blockIdx]:null;
       const kw=findInp.value.trim();
       const repl=replInp.value;
       if(!kw)return;
       const getTarget=()=>{
+        if(m.blockIdx<0)return m.parent==='macros'?Project.cur.macros[m.subIdx]:Project.cur;
         if(m.parent==='characters')return b.characters[m.subIdx];
         if(m.parent==='images')return b.images[m.subIdx];
         if(m.parent==='pages')return b.pages[m.subIdx];
@@ -503,7 +505,9 @@ export function renderConfig(){
   blockList.addEventListener('click',async e=>{
     const bd=e.target.dataset.bdel;
     if(bd!==undefined){
+      const pSnap=Project.cur; /* 确认弹窗无焦点陷阱，期间可经键盘切工程：切换后中止防跨工程误删 */
       if(!await confirmModal('确定删除该区块？删除后可通过底部「添加区块」重新添加。'))return;
+      if(Project.cur!==pSnap){toast('工程已切换，已取消删除');return}
       Project.cur.blocks.splice(+bd,1);
       renderBlocks();UI.renderExport();UI.refreshPreview();Project.save();Project.saveSnapshot();
       return;

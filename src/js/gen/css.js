@@ -49,7 +49,7 @@ export function css(p,px,blocks){
        标题位集合均无显式 font-family（继承自 root *{font-family:inherit}），声明即生效 */
     const hSafe=String(th.headingFont||'').replace(/[<>"\\]/g,'').trim();
     if(hSafe)s+=`.${px}-wrap .${px}-title,.${px}-wrap .${px}-eyebrow,.${px}-wrap .${px}-gnum,.${px}-wrap .${px}-ghead,.${px}-wrap .${px}-revt,.${px}-wrap .${px}-cd-title,.${px}-wrap .${px}-tl-title,.${px}-wrap .${px}-qa-title,.${px}-wrap .${px}-bgm-title,.${px}-wrap .${px}-authh,.${px}-wrap .${px}-pname{font-family:${themeFontStack(skin,th.headingFont,th.fontName)}}\n`;
-    s+=`@media(prefers-reduced-motion:reduce){.${px}-wrap>div>*,.${px}-lb.on,.${px}-lb.on img,.${px}-cd-done .${px}-cd-val,.${px}-hr::after{animation:none!important}}
+    s+=`@media(prefers-reduced-motion:reduce){.${px}-wrap>div>*,.${px}-lb.on,.${px}-lb.on img,.${px}-cd-done .${px}-cd-val,.${px}-hr::after,.${px}-tl-dot,.${px}-gagepanel{animation:none!important}}
 `;
     /* 增量跟随：引用色作用于引言/引用元素；强调色作用于斜体/着重内容 */
     if(fl.quote)s+=`.${px}-wrap .${px}-quote,.${px}-wrap blockquote,.${px}-wrap q{color:var(--SmartThemeQuoteColor, ${cText})}\n`;
@@ -137,7 +137,8 @@ ${bk} .${px}-title::after{content:"✧";color:${th.accent};opacity:.55;font-size
             /* 荧光笔：底部 38% 高强调色半透明高亮，入场后从左划入 */
             s+=`${bk} .${px}-title{${fit}padding:0 6px 3px;background:linear-gradient(${th.accent}4d,${th.accent}4d) left bottom/100% 38% no-repeat}\n`;
             if(motion!=='off'){
-              s+=`${bk} .${px}-title{animation:${px}-in ${md} ease both,${px}-marker .65s ease-out .3s both}\n`;
+              /* 划入延迟写进简写并以 (0,3,0) 特异性发出：否则被上方 (0,3,0) 单值 .08s delay 规则压过，marker 时序失效 */
+              s+=`.${px}-wrap ${bk} .${px}-title{animation:${px}-in ${md} ease .08s both,${px}-marker .65s ease-out .3s both}\n`;
               if(!wfKfDone.marker){wfKfDone.marker=1;s+=`@keyframes ${px}-marker{from{background-size:0% 38%}}\n`;}
             }
           }

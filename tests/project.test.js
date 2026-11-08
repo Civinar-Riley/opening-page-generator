@@ -122,6 +122,11 @@ describe('Project.migrate 旧版迁移',()=>{
     Project.migrate(p);
     expect(p.blocks[0].clickAction).toBe(clickAction);
   });
+  it('blocks 含 null/非对象残缺项不抛错（migrate 先于 normalize 的剔除到达，坏项交 normalize 清理而非整工程被弃）',()=>{
+    const p={name:'t',blocks:[null,{type:'greetings',enabled:true},'bad-string']};
+    expect(()=>Project.migrate(p)).not.toThrow();
+    expect(p.blocks.every(b=>b&&typeof b==='object')).toBe(true);
+  });
 });
 
 describe('defaultProject',()=>{

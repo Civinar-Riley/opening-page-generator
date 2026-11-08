@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # tag ↔ package.json 版本一致性闸门：typo tag 会产出资产名互相矛盾的 Release（说明表指向不存在的 zip 名）
+      - name: Verify tag matches package.json version
+        run: node -e "const v=require('./package.json').version,t=process.env.GITHUB_REF_NAME.slice(1);if(v!==t){console.error('tag v'+t+' != package.json v'+v);process.exit(1)}"
       - uses: actions/setup-node@v4
         with:
           node-version: 20

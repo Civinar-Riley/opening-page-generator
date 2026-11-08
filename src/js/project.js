@@ -195,6 +195,8 @@ const Project={
     p.schemaVersion=SCHEMA_VERSION;
     this._hoistBg(p);
     (p.blocks||[]).forEach(b=>{
+      /* 残缺项守卫：migrate 先于 normalize 的剔除到达，null/非对象直接读 .type 会让 load 把整工程当损坏剔除 */
+      if(!b||typeof b!=='object')return;
       if(b.type==='greetings'&&!b.clickAction)b.clickAction='go';
       if(b.type==='profile'&&!Array.isArray(b.characters)){
         b.characters=[{name:b.placeholderName||'{{char}}',desc:b.placeholderDesc||'',tags:b.placeholderTags||'',avatar:b.avatarUrl||''}];
@@ -388,8 +390,10 @@ const Project={
   },
   async deleteProject(){
     if(this.list.length<=1){toast('至少保留一个工程');return}
-    if(!await confirmModal(`确定删除工程「${this.cur.name}」？此操作不可撤销。`))return;
-    this.list=this.list.filter(p=>p.id!==this.cur.id);this.cur=this.list[0];this.save();this.resetHistory();_ui.renderAll();toast('已删除');
+    const p=this.cur; /* 确认期间可经键盘切工程：删的是确认时看到的那个，切换后中止防误删 */
+    if(!await confirmModal(`确定删除工程「${p.name}」？此操作不可撤销。`))return;
+    if(this.cur!==p){toast('工程已切换，已取消删除');return}
+    this.list=this.list.filter(x=>x.id!==p.id);this.cur=this.list[0];this.save();this.resetHistory();_ui.renderAll();toast('已删除');
   },
   /* 导出为可分享文件：剔除 API Key 等敏感字段，防止明文 Key / 加密密钥随文件外泄 */
   exportData(p=this.cur){

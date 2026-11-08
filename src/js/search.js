@@ -1,12 +1,25 @@
 /* 全局搜索替换：纯函数（可测），UI 层只负责弹窗/DOM/渲染。
-   标量字段全集须与 blockEditors 可编辑字段对齐（eyebrow/leaveText/logo/hint/cover/cards/excludedTags 此前漏扫） */
+   标量字段全集须与 blockEditors 可编辑字段对齐（eyebrow/leaveText/logo/hint/cover/cards/excludedTags 与工程级 marker/macros 此前漏扫） */
 export const TEXT_FIELDS=['title','subtitle','eyebrow','text','html','lines','desc','source','label','expr','placeholderList','buttonText','titleEntry','titleBookDraft','titleWb','excludedTags','name','cap','url','cover','cards','nodes','target','doneText','patternText','logo','hint','leaveText'];
 
-/* 收集全部匹配：遍历区块及其子项，返回 {blockIdx,path,field,subIdx,subField,parent?}[] */
-export function collectSearchMatches(blocks,kw){
+/* 收集全部匹配：遍历工程（兼容直接传区块数组）与区块子项，返回 {blockIdx,path,field,subIdx,subField,parent?}[]；
+   blockIdx<0 为工程级字段（marker/macros）——无可定位区块，UI 直接改数据 */
+export function collectSearchMatches(src,kw){
   const matches=[];
   const lkw=String(kw||'').trim().toLowerCase();
   if(!lkw)return matches;
+  const project=Array.isArray(src)?null:src;
+  const blocks=Array.isArray(src)?src:(src&&src.blocks)||[];
+  if(project){
+    if(typeof project.marker==='string'&&project.marker.toLowerCase().includes(lkw))
+      matches.push({blockIdx:-1,path:'正则标记（导出页）',field:'marker',subIdx:-1,subField:'marker'});
+    if(Array.isArray(project.macros))project.macros.forEach((mm,mi)=>{
+      ['k','v'].forEach(k=>{
+        if(typeof mm[k]==='string'&&mm[k].toLowerCase().includes(lkw))
+          matches.push({blockIdx:-1,path:`宏 ${mm.k||mi+1}`,field:k,subIdx:mi,subField:k,parent:'macros'});
+      });
+    });
+  }
   blocks.forEach((b,bi)=>{
     TEXT_FIELDS.forEach(k=>{
       if(typeof b[k]==='string'&&b[k].toLowerCase().includes(lkw))
@@ -74,6 +87,9 @@ export function replaceAllInProject(project,kw,repl){
     if(out!==str)count+=(str.match(new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'))||[]).length;
     return out;
   };
+  /* 工程级字段与区块同权替换（同一可编辑字段全集，见 collectSearchMatches） */
+  if(typeof project.marker==='string')project.marker=doReplace(project.marker);
+  if(Array.isArray(project.macros))project.macros.forEach(mm=>{['k','v'].forEach(k=>{if(typeof mm[k]==='string')mm[k]=doReplace(mm[k])})});
   project.blocks.forEach(b=>{
     TEXT_FIELDS.forEach(k=>{if(typeof b[k]==='string')b[k]=doReplace(b[k])});
     if(Array.isArray(b.characters))b.characters.forEach(ch=>{

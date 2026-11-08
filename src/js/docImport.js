@@ -119,14 +119,15 @@ const SALVAGE={
   randomevent:(s,px)=>{const d={};
     const t=s.match(new RegExp(`class="${px}-revt">([\\s\\S]*?)</div>`));if(t){d.showTitle=true;d.title=unesc(t[1])}
     const one=s.match(new RegExp(`class="${px}-rline">{{random::([\\s\\S]*?)}}`));
-    if(one){d.pickMode='one';d.lines=one[1].split('::').map(l=>l.replace(/⦂/g,'::').replace(/⎬⎬/g,'}}')).join('\n');return d}
-    const lines=[...s.matchAll(new RegExp(`class="${px}-rline">([\\s\\S]*?)</div>`,'g'))].map(m=>m[1]);
+    /* 行文本导出经 esc（body.js），还原须 unesc——与其它区块 salvage 口径一致，否则实体残留、再导出变双转义 */
+    if(one){d.pickMode='one';d.lines=one[1].split('::').map(l=>unesc(l.replace(/⦂/g,'::').replace(/⎬⎬/g,'}}'))).join('\n');return d}
+    const lines=[...s.matchAll(new RegExp(`class="${px}-rline">([\\s\\S]*?)</div>`,'g'))].map(m=>unesc(m[1]));
     /* shuffle 导出与 line 同形（固定顺序，body.js 注明酒馆宏无法整组乱序），按 line 恢复产物一致 */
     if(lines.length){d.pickMode='line';d.lines=lines.join('\n')}
     return d},
   dice:(s,px)=>{const d={};
     const lb=s.match(new RegExp(`class="${px}-dlabel">🎲 ([\\s\\S]*?)</span>`));if(lb)d.label=unesc(lb[1]);
-    const v=s.match(new RegExp(`class="${px}-dval">{{roll::([^}]*)}}</span>`));if(v)d.expr=v[1];
+    const v=s.match(new RegExp(`class="${px}-dval">{{roll::([^}]*)}}</span>`));if(v)d.expr=unesc(v[1]);
     return d},
   countdown:(s,px)=>{const d={};
     const t=s.match(new RegExp(`class="${px}-cd-title">([\\s\\S]*?)</div>`));if(t)d.title=unesc(t[1]);
