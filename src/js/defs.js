@@ -37,9 +37,6 @@ function defaultProject(name){
     macros:[{k:'char',v:'艾莉丝'},{k:'user',v:'旅行者'}],
     ai:{baseURL:'https://api.openai.com/v1',apiKey:'',model:'',models:[],rememberKey:true},
     preview:{mode:'mobile',theme:'dark'},
-    /* 返回开场页脚本配置（v1.29）：空串=沿用 slots/back-home.json 模板默认（模板即真相）；
-       fromSwipe=第几张 swipe 起出现（1=所有非首页 swipe，与旧模板行为一致） */
-    backHome:{mode:'text',text:'← 返回开场页',img:'',primary:'',accent:'',fromSwipe:1},
     updatedAt:null, /* 最近修改时间：save() 触碰；null=从未编辑（统计行回落 createdAt） */
   };
 }

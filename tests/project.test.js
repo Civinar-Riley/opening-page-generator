@@ -587,32 +587,20 @@ describe('分键存储（v1.27）',()=>{
 });
 
 describe('schemaVersion 与 v2 字段（v1.29）',()=>{
-  it('defaultProject 带 schemaVersion、backHome 默认值与 updatedAt=null',()=>{
+  it('defaultProject 带 schemaVersion 与 updatedAt=null',()=>{
     const p=defaultProject('t');
     expect(p.schemaVersion).toBe(2);
-    expect(p.backHome).toEqual({mode:'text',text:'← 返回开场页',img:'',primary:'',accent:'',fromSwipe:1});
     expect(p.updatedAt).toBeNull();
   });
-  it('migrate 给无版本旧工程升版并补 backHome',()=>{
+  it('migrate 给无版本旧工程升版',()=>{
     const p={name:'旧工程',theme:{primary:'#111111'}};
     Project.migrate(p);
     expect(p.schemaVersion).toBe(2);
-    expect(p.backHome.text).toBe('← 返回开场页');
-    expect(p.backHome.fromSwipe).toBe(1);
   });
-  it('normalize 补齐 backHome 缺失子字段，fromSwipe 非法值回落 1',()=>{
+  it('normalize 清理已移除的 backHome 残留字段（v1.31.0 移除该功能）',()=>{
     const p={name:'t',backHome:{text:'回去看看',fromSwipe:0}};
     Project.normalize(p);
-    expect(p.backHome.text).toBe('回去看看');
-    expect(p.backHome.mode).toBe('text');
-    expect(p.backHome.img).toBe('');
-    expect(p.backHome.primary).toBe('');
-    expect(p.backHome.fromSwipe).toBe(1);
-  });
-  it('backHome.fromSwipe 合法值保留',()=>{
-    const p={name:'t',backHome:{fromSwipe:3}};
-    Project.normalize(p);
-    expect(p.backHome.fromSwipe).toBe(3);
+    expect(p.backHome).toBeUndefined();
   });
   it('updatedAt：save 触碰当前工程，载入迁移路径不触碰',()=>{
     const original={...Project};const storage=new Map();

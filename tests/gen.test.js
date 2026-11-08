@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest';
 import { Gen } from '../src/js/gen/index.js';
 import { defaultProject, BLOCK_PRESETS, BLOCK_DEFS, COMP_LIB, applyBlockPreset, syncGateThemeCopy } from '../src/js/defs.js';
-import backHomeTpl from '../slots/back-home.json';
 
 const proj=blocks=>{const p=defaultProject('t');p.blocks=blocks;return p};
 const stripSlashes=s=>s.replace(/^\//,'').replace(/\/$/,'');
@@ -23,69 +22,6 @@ describe('Gen.regexScript 标记正则',()=>{
   });
 });
 
-describe('Gen.backHomeScript 返回开场页角色脚本（模板插槽 v1.22.0）',()=>{
-  it('输出与 slots/back-home.json 模板一致：content/name 透传、id 重新生成、可序列化回环',()=>{
-    const s=Gen.backHomeScript(defaultProject('t'));
-    expect(s.type).toBe('script');
-    expect(s.content).toBe(backHomeTpl.content);
-    expect(s.name).toBe(backHomeTpl.name);
-    expect(s.info).toBe(backHomeTpl.info);
-    expect(s.id).not.toBe(backHomeTpl.id);
-    expect(s.enabled).toBe(true);
-    expect(s.button).toEqual(backHomeTpl.button);
-    expect(s.export_with).toEqual(backHomeTpl.export_with);
-    expect(JSON.parse(JSON.stringify(s))).toEqual(s);
-  });
-  it('name 支持 {{工程名}} 占位符；非法模板（缺 content）抛错',()=>{
-    const p=defaultProject('t');
-    const fake={type:'script',name:'返回开场页-{{工程名}}',content:'(function(){})();'};
-    const s=Gen.backHomeScript(p,fake);
-    expect(s.name).toBe('返回开场页-t');
-    expect(()=>Gen.backHomeScript(p,{type:'script'})).toThrow(/插槽模板非法/);
-  });
-  it('模板契约守卫：type=script、content 非空、含关键守卫片段',()=>{
-    expect(backHomeTpl.type).toBe('script');
-    expect(typeof backHomeTpl.content).toBe('string');
-    const c=Gen.backHomeScript(defaultProject('t')).content;
-    expect(c).toContain("setChatMessages([{message_id:0,swipe_id:0}],{refresh:'affected'})");
-    expect(c).toContain("hasFn('getChatMessages')");
-    expect(c).toContain('.mes[mesid="0"]');
-    expect(c).toContain('opg-backhome');
-    expect(c).toContain('data-opg-greet-audio');
-    expect(c).toContain('← 返回开场页');
-  });
-  it('content 不含反引号且为合法 JS（Function 构造器解析校验）',()=>{
-    const c=Gen.backHomeScript(defaultProject('t')).content;
-    expect(c.includes('`')).toBe(false);
-    expect(()=>new Function(c)).not.toThrow();
-  });
-  it('backHome 配置烘焙：非默认替换模板 CFG 行，默认逐字透传',()=>{
-    const p=defaultProject('t');
-    expect(Gen.backHomeScript(p).content).toBe(backHomeTpl.content);
-    p.backHome={mode:'img',text:'回首页',img:'https://x/y.png',primary:'#112233',accent:'#445566',fromSwipe:3};
-    const c=Gen.backHomeScript(p).content;
-    expect(c).not.toBe(backHomeTpl.content);
-    expect(c).toContain('var CFG={mode:"img",text:"回首页",img:"https://x/y.png",primary:"#112233",accent:"#445566",fromSwipe:3};');
-    expect(c).toContain('sw<CFG.fromSwipe');
-    expect(c.includes('`')).toBe(false);
-    expect(()=>new Function(c)).not.toThrow();
-  });
-  it('backHome 颜色非法值清空回落模板默认，text 空缺省回落，fromSwipe 非法回落 1',()=>{
-    const p=defaultProject('t');
-    /* img 非空逼出烘焙分支（全回落到默认时会走透传分支，CFG 不注入） */
-    p.backHome={mode:'text',text:'',img:'https://x/i.png',primary:'red',accent:'#12345',fromSwipe:0};
-    const c=Gen.backHomeScript(p).content;
-    expect(c).toContain('var CFG={mode:"text",text:"← 返回开场页",img:"https://x/i.png",primary:"",accent:"",fromSwipe:1};');
-    expect(()=>new Function(c)).not.toThrow();
-  });
-  it('CFG 文案含替换模式字符（$& 等）时不被展开',()=>{
-    const p=defaultProject('t');
-    p.backHome.text='返回 $& $` ${y} 主页';
-    const c=Gen.backHomeScript(p).content;
-    expect(c).toContain('text:"返回 $& $` ${y} 主页"');
-    expect(()=>new Function(c)).not.toThrow();
-  });
-});
 describe('Gen.collectImageUrls 图片收集',()=>{
   it('收集启用区块的图库/漫画（封面+页）/头像/背景图/自由 HTML img，同 URL 去重',()=>{
     const p=proj([

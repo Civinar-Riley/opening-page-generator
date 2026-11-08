@@ -12,7 +12,6 @@ import { parseExportDoc, buildRestorePlan, applyRestorePlan, EXPORT_VER } from '
  * @property {string} createdAt - 创建时间（ISO）
  * @property {number} schemaVersion - 工程数据 schema 版本（migrate 分段迁移锚点）
  * @property {string|null} updatedAt - 最近修改时间（save 触碰；null=从未编辑，展示回落 createdAt）
- * @property {{mode:string,text:string,img:string,primary:string,accent:string,fromSwipe:number}} backHome - 返回开场页脚本配置（空串=模板默认）
  * @property {string} marker - 正则脚本标记文本
  * @property {import('./defs.js').ThemeConfig} theme - 主题配置
  * @property {import('./defs.js').Block[]} blocks - 区块列表（数组顺序即渲染顺序）
@@ -150,10 +149,7 @@ const Project={
     if(!p.preview||typeof p.preview!=='object')p.preview={};
     ['mode','theme'].forEach(k=>{if(p.preview[k]===undefined)p.preview[k]=def.preview[k]});
     if(p.schemaVersion===undefined)p.schemaVersion=def.schemaVersion; /* 直调 normalize 的路径（模板/测试）补锚点；载入路径已由 migrate 先行升版 */
-    /* 返回开场页脚本配置（v1.29）：子字段白名单补齐，fromSwipe 非法值回落 1 */
-    if(!p.backHome||typeof p.backHome!=='object')p.backHome={};
-    ['mode','text','img','primary','accent'].forEach(k=>{if(p.backHome[k]===undefined)p.backHome[k]=def.backHome[k]});
-    const bfsw=+p.backHome.fromSwipe;if(!Number.isFinite(bfsw)||bfsw<1)p.backHome.fromSwipe=1;
+    delete p.backHome; /* 「返回开场页」角色脚本功能已移除（v1.31.0），清理旧存档/导入数据中的残留字段 */
     if(p.updatedAt===undefined)p.updatedAt=null;
     delete p.statusbar; /* 状态栏生成器已移除，清理旧存档/导入数据中的残留节点 */
     delete p.mvu; /* MVU 状态栏生成器已拆分为独立工具，清理旧存档残留节点 */
@@ -192,7 +188,7 @@ const Project={
      注意：旧字段转换必须先于 normalize —— normalize 会给缺 characters 的
      profile 注入默认值，若后跑会使旧占位迁移分支永远无法命中 */
   migrate(p){
-    /* 版本锚点（v1.29）：缺字段视为 v1。v1→v2 无破坏性重排（引入锚点与 backHome/updatedAt，补齐交 normalize）；
+    /* 版本锚点（v1.29）：缺字段视为 v1。v1→v2 无破坏性重排（引入锚点与 updatedAt，补齐交 normalize）；
        后续破坏性变换在此按 v 分段追加——常规新增字段优先走 normalize 白名单，不必次次升版本 */
     const v=+p.schemaVersion||1;
     if(v<SCHEMA_VERSION)console.info('[工程] schema v'+v+' → v'+SCHEMA_VERSION+'：'+(p.name||'?'));
